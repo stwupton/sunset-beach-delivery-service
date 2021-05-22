@@ -1,7 +1,7 @@
 #include <Windows.h>
 #include <d2d1.h>
 
-// TODO(steven): Remove
+// TODO(steven): Move elsewhere
 static bool shouldClose = false;
 static ID2D1HwndRenderTarget *renderTarget = NULL;
 static RECT clientRect;
@@ -25,7 +25,7 @@ LRESULT CALLBACK handle(
 			GetClientRect(windowHandle, &clientRect);
 
 			// Create a Direct2D render target          
-			HRESULT result = factory->CreateHwndRenderTarget(
+			factory->CreateHwndRenderTarget(
 				D2D1::RenderTargetProperties(),
 				D2D1::HwndRenderTargetProperties(
 					windowHandle,
