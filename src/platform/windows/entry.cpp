@@ -81,7 +81,7 @@ LRESULT CALLBACK handle(
 		} break;
 
 		case WM_PAINT: {
-			// TODO(steven): 			
+			// TODO(steven):  			
 		} break;
 
 		case WM_CLOSE: {
