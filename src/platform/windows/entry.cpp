@@ -1,17 +1,16 @@
 #pragma once
 
 #include <cstdio>
-#include <malloc.h>
 
 #include <Windows.h>
-#include <d3d11.h>
 
+#include "dx3d_renderer.cpp"
 #include "types.hpp"
 #include "platform/windows/utils.cpp"
 
 // TODO(steven): Move elsewhere
 static bool shouldClose = false;
-static RECT clientRect;
+static Dx3dRenderer renderer;
 
 LRESULT CALLBACK handle(
 	HWND windowHandle, 
@@ -22,62 +21,7 @@ LRESULT CALLBACK handle(
 	INT result = 0;
 	switch (message) {
 		case WM_CREATE: {
-			GetClientRect(windowHandle, &clientRect);
-
-			D3D_FEATURE_LEVEL featureLevels = D3D_FEATURE_LEVEL_11_1;
-
-			DXGI_SWAP_CHAIN_DESC swapChainDescription = {};
-			swapChainDescription.BufferCount = 1;
-			swapChainDescription.BufferDesc.Width = clientRect.right - clientRect.left;
-			swapChainDescription.BufferDesc.Height = clientRect.bottom - clientRect.top;
-			swapChainDescription.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			swapChainDescription.BufferDesc.RefreshRate.Numerator = 60;
-			swapChainDescription.BufferDesc.RefreshRate.Denominator = 1;
-			swapChainDescription.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-			swapChainDescription.OutputWindow = windowHandle;
-			swapChainDescription.SampleDesc.Count = 1;
-			swapChainDescription.SampleDesc.Quality = 0;
-			swapChainDescription.Windowed = true;
-
-			// TODO(steven): Printing the adapters for now. Come back and check if we
-			// have any use for them.
-			{
-				IDXGIFactory *factory = nullptr;
-				CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)&factory);
-
-				IDXGIAdapter *adapter;
-				for (u8 i = 0; factory->EnumAdapters(i, &adapter) != DXGI_ERROR_NOT_FOUND; i++) {
-					DXGI_ADAPTER_DESC adapterDescription;
-					adapter->GetDesc(&adapterDescription);
-
-					const u16 descriptionLength = wcslen(adapterDescription.Description) + 1;
-					const size_t descriptionSize = sizeof(WCHAR) * descriptionLength;
-					WCHAR *buffer = (WCHAR*)alloca(descriptionSize);
-					swprintf_s(buffer, descriptionLength, L"%ls\n", adapterDescription.Description);
-
-					OutputDebugStringW(buffer);
-				}
-			}
-
-			IDXGISwapChain *swapChain;
-			ID3D11Device *device;
-			D3D_FEATURE_LEVEL featureLevel;
-			ID3D11DeviceContext *immediateContext;
-
-			D3D11CreateDeviceAndSwapChain(
-				NULL,
-				D3D_DRIVER_TYPE_REFERENCE,
-				NULL,
-				0,
-				&featureLevels,
-				1,
-				D3D11_SDK_VERSION,
-				&swapChainDescription,
-				&swapChain,
-				&device,
-				&featureLevel,
-				&immediateContext
-			);
+			renderer.initialise(windowHandle);
 		} break;
 
 		case WM_PAINT: {
