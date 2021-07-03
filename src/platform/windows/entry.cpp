@@ -12,7 +12,7 @@
 static bool shouldClose = false;
 static Dx3dRenderer renderer;
 
-LRESULT CALLBACK handle(
+LRESULT CALLBACK eventHandler(
 	HWND windowHandle, 
 	UINT message, 
 	WPARAM wParam, 
@@ -41,19 +41,20 @@ LRESULT CALLBACK handle(
 }
 
 INT createWin32Window(HINSTANCE instanceHandle, INT showFlag) {
-	const LPCSTR className = "SBDS";
+	const LPCWSTR className = L"SBDS";
 
-	WNDCLASS windowClass = {};
-	windowClass.lpfnWndProc = handle;
+	WNDCLASSEX windowClass = {};
+	windowClass.cbSize = sizeof(WNDCLASSEX);
+	windowClass.lpfnWndProc = eventHandler;
 	windowClass.hInstance = instanceHandle;
 	windowClass.lpszClassName = className;
 	windowClass.style = CS_OWNDC;
-	RegisterClass(&windowClass);
+	RegisterClassEx(&windowClass);
 
 	const HWND windowHandle = CreateWindowEx(
 		0,
 		className,
-		"Sunset Beach Delivery Service",
+		L"Sunset Beach Delivery Service",
 		WS_OVERLAPPEDWINDOW,
 		0,
 		200,

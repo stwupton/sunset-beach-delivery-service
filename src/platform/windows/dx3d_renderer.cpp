@@ -33,7 +33,7 @@ public:
 		swapChainDescription.BufferDesc.RefreshRate.Denominator = 1;
 		swapChainDescription.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 		swapChainDescription.OutputWindow = windowHandle;
-		swapChainDescription.SampleDesc.Count = 1;
+		swapChainDescription.SampleDesc.Count = 4;
 		swapChainDescription.SampleDesc.Quality = 0;
 		swapChainDescription.Windowed = true;
 
@@ -55,18 +55,18 @@ public:
 				WCHAR *buffer = (WCHAR*)_malloca(descriptionSize);
 				swprintf_s(buffer, descriptionLength, L"%ls\n", adapterDescription.Description);
 
-				OutputDebugStringW(buffer);
+				OutputDebugString(buffer);
 			}
 		}
 
 		D3D_FEATURE_LEVEL featureLevels = D3D_FEATURE_LEVEL_11_0;
 		D3D11CreateDeviceAndSwapChain(
 			NULL,
-			D3D_DRIVER_TYPE_REFERENCE,
+			D3D_DRIVER_TYPE_HARDWARE,
 			NULL,
 			0,
-			&featureLevels,
-			1,
+			NULL,
+			NULL,
 			D3D11_SDK_VERSION,
 			&swapChainDescription,
 			&this->swapChain,
