@@ -21,6 +21,12 @@ protected:
 	ID3D11Buffer *vertexBuffer;
 
 public:
+	~Dx3dRenderer() {
+		this->swapChain->Release();
+		this->device->Release();
+		this->deviceContext->Release();
+	}
+
 	void initialise(HWND windowHandle) {
 		GetClientRect(windowHandle, &this->clientRect);
 
@@ -49,10 +55,11 @@ public:
 				adapter->GetDesc(&adapterDescription);
 
 				// NOTE(steven): + 2 for new line & null terminator
-				const size_t descriptionLength = wcslen(adapterDescription.Description) + 2;
+				const size_t descriptionLength = 
+					sizeof(adapterDescription.Description) / 
+					sizeof(WCHAR) + 2;
 
-				const size_t descriptionSize = sizeof(WCHAR) * descriptionLength;
-				WCHAR *buffer = (WCHAR*)_malloca(descriptionSize);
+				WCHAR buffer[descriptionLength];
 				swprintf_s(buffer, descriptionLength, L"%ls\n", adapterDescription.Description);
 
 				OutputDebugString(buffer);
