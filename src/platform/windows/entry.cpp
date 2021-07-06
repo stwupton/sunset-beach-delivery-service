@@ -25,7 +25,7 @@ LRESULT CALLBACK eventHandler(
 		} break;
 
 		case WM_PAINT: {
-			// TODO(steven):  			
+			renderer.testRender();
 		} break;
 
 		case WM_CLOSE: {

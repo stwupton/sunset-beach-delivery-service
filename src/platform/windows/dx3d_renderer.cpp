@@ -6,16 +6,17 @@
 #include <malloc.h>
 #include <d3d11.h>
 #include <DirectXMath.h>
+#include <DirectXPackedVector.h>
 
 #include "types.hpp"
 
 class Dx3dRenderer {
 protected:
-	IDXGISwapChain *swapChain;
-	ID3D11Device *device;
-	D3D_FEATURE_LEVEL featureLevel;
-	ID3D11DeviceContext *deviceContext;
 	RECT clientRect;
+	ID3D11Device *device;
+	ID3D11DeviceContext *deviceContext;
+	ID3D11RenderTargetView *renderView; 
+	IDXGISwapChain *swapChain;
 
 	// TODO(steven): delete
 	ID3D11Buffer *vertexBuffer;
@@ -25,6 +26,7 @@ public:
 		this->swapChain->Release();
 		this->device->Release();
 		this->deviceContext->Release();
+		this->renderView->Release();
 	}
 
 	void initialise(HWND windowHandle) {
@@ -78,9 +80,22 @@ public:
 			&swapChainDescription,
 			&this->swapChain,
 			&this->device,
-			&this->featureLevel,
+			NULL,
 			&this->deviceContext
 		);
+
+		ID3D11Texture2D *backBuffer;
+		this->swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
+		this->device->CreateRenderTargetView(backBuffer, NULL, &this->renderView);
+		this->deviceContext->OMSetRenderTargets(1, &this->renderView, NULL);
+		backBuffer->Release();
+
+		D3D11_VIEWPORT viewport = {};
+		viewport.TopLeftX = 0;
+		viewport.TopLeftY = 0;
+		viewport.Width = 800;
+		viewport.Height = 600;
+		this->deviceContext->RSSetViewports(1, &viewport);
 
 		// TODO(steven): delete
 		// Creating a test vertex buffer
@@ -121,5 +136,11 @@ public:
 
 	// TODO(steven): delete
 	void testRender() const {
+		const f32 clearColor[] = { .0f, .2f, .4f, 1.f };
+		this->deviceContext->ClearRenderTargetView(this->renderView, clearColor);
+
+		// TODO(steven): Render to backbuffer
+
+		this->swapChain->Present(0, 0);
 	}
 };
