@@ -7,6 +7,7 @@
 #include "dx3d_renderer.cpp"
 #include "types.hpp"
 #include "platform/windows/utils.cpp"
+#include "platform/windows/window_config.hpp"
 
 // TODO(steven): Move elsewhere
 static bool shouldClose = false;
@@ -56,10 +57,10 @@ INT createWin32Window(HINSTANCE instanceHandle, INT showFlag) {
 		className,
 		L"Sunset Beach Delivery Service",
 		WS_OVERLAPPEDWINDOW,
-		0,
-		200,
-		800,
-		600,
+		CW_USEDEFAULT,
+		CW_USEDEFAULT,
+		screenWidth,
+		screenHeight,
 		NULL,
 		NULL,
 		instanceHandle,

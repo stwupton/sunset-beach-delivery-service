@@ -9,6 +9,7 @@
 #include <DirectXPackedVector.h>
 
 #include "types.hpp"
+#include "platform/windows/window_config.hpp"
 
 class Dx3dRenderer {
 protected:
@@ -23,6 +24,10 @@ protected:
 
 public:
 	~Dx3dRenderer() {
+		// Direct3D is incapable of closing down in full screen mode, so we ensure 
+		// that it's in windowed mode here.
+		this->swapChain->SetFullscreenState(false, NULL);
+
 		this->swapChain->Release();
 		this->device->Release();
 		this->deviceContext->Release();
@@ -34,8 +39,8 @@ public:
 
 		DXGI_SWAP_CHAIN_DESC swapChainDescription = {};
 		swapChainDescription.BufferCount = 1;
-		swapChainDescription.BufferDesc.Width = this->clientRect.right - this->clientRect.left;
-		swapChainDescription.BufferDesc.Height = this->clientRect.bottom - this->clientRect.top;
+		swapChainDescription.BufferDesc.Width = screenWidth;
+		swapChainDescription.BufferDesc.Height = screenHeight;
 		swapChainDescription.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 		swapChainDescription.BufferDesc.RefreshRate.Numerator = 60;
 		swapChainDescription.BufferDesc.RefreshRate.Denominator = 1;
@@ -44,6 +49,7 @@ public:
 		swapChainDescription.SampleDesc.Count = 4;
 		swapChainDescription.SampleDesc.Quality = 0;
 		swapChainDescription.Windowed = true;
+		swapChainDescription.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
 		// TODO(steven): Printing the adapters for now. Come back and check if we
 		// have any use for them.
@@ -93,8 +99,8 @@ public:
 		D3D11_VIEWPORT viewport = {};
 		viewport.TopLeftX = 0;
 		viewport.TopLeftY = 0;
-		viewport.Width = 800;
-		viewport.Height = 600;
+		viewport.Width = screenWidth;
+		viewport.Height = screenHeight;
 		this->deviceContext->RSSetViewports(1, &viewport);
 
 		// TODO(steven): delete
