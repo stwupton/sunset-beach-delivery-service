@@ -7,13 +7,13 @@
 #include <d3d11.h>
 #include <DirectXMath.h>
 #include <DirectXPackedVector.h>
+#include <d3dcompiler.h>
 
 #include "types.hpp"
 #include "platform/windows/window_config.hpp"
 
 class Dx3dRenderer {
 protected:
-	RECT clientRect;
 	ID3D11Device *device;
 	ID3D11DeviceContext *deviceContext;
 	ID3D11RenderTargetView *renderView; 
@@ -21,6 +21,8 @@ protected:
 
 	// TODO(steven): delete
 	ID3D11Buffer *vertexBuffer;
+	ID3D11VertexShader *vertexShader;
+	ID3D11PixelShader *pixelShader;
 
 public:
 	~Dx3dRenderer() {
@@ -28,15 +30,39 @@ public:
 		// that it's in windowed mode here.
 		this->swapChain->SetFullscreenState(false, NULL);
 
+		this->vertexShader->Release();
+		this->pixelShader->Release();
+		this->vertexBuffer->Release();
 		this->swapChain->Release();
 		this->device->Release();
 		this->deviceContext->Release();
 		this->renderView->Release();
 	}
 
-	void initialise(HWND windowHandle) {
-		GetClientRect(windowHandle, &this->clientRect);
+	void compileShaders() {
+		ID3D10Blob *vertexShaderBlob, *pixelShaderBlob;
+		D3DCompileFromFile(L"shaders.shader", 0, 0, "VShader", "vs_4_0", 0, 0, &vertexShaderBlob, 0); 
+		D3DCompileFromFile(L"shaders.shader", 0, 0, "PShader", "ps_4_0", 0, 0, &pixelShaderBlob, 0); 
 
+		this->device->CreateVertexShader(
+			vertexShaderBlob->GetBufferPointer(), 
+			vertexShaderBlob->GetBufferSize(), 
+			NULL, 
+			&this->vertexShader
+		);
+
+		this->device->CreatePixelShader(
+			pixelShaderBlob->GetBufferPointer(), 
+			pixelShaderBlob->GetBufferSize(), 
+			NULL, 
+			&this->pixelShader
+		);
+
+		this->deviceContext->VSSetShader(this->vertexShader, 0, 0);
+		this->deviceContext->PSSetShader(this->pixelShader, 0, 0);
+	}
+
+	void createDeviceAndSwapChain(HWND windowHandle) {
 		DXGI_SWAP_CHAIN_DESC swapChainDescription = {};
 		swapChainDescription.BufferCount = 1;
 		swapChainDescription.BufferDesc.Width = screenWidth;
@@ -102,42 +128,54 @@ public:
 		viewport.Width = screenWidth;
 		viewport.Height = screenHeight;
 		this->deviceContext->RSSetViewports(1, &viewport);
+	}
 
-		// TODO(steven): delete
-		// Creating a test vertex buffer
-		{
-			struct SimpleVertexCombined {
-				DirectX::XMFLOAT3 position;
-				DirectX::XMFLOAT3 colour;
-			};
+	void createVertexBuffer() {
+		struct Vertex {
+			float x, y, z;
+			D3DCOLORVALUE color;
+		};
 
-			SimpleVertexCombined vertexData[] = {
-				DirectX::XMFLOAT3(.0f, .5f, .5f),
-				DirectX::XMFLOAT3(.0f, .0f, .5f),
-				DirectX::XMFLOAT3(.5f, -.5f, .5f),
-				DirectX::XMFLOAT3(.5f, .0f, .0f),
-				DirectX::XMFLOAT3(-.5f, -.5f, .5f),
-				DirectX::XMFLOAT3(.0f, .5f, .0f),
-			};
+		Vertex exampleVertices[] = {
+			{ 
+				0.0f, 0.5f, 0.0f,
+				D3DCOLORVALUE { 1.0f, 0.0f, 0.0f, 1.0f }
+			},
+			{ 
+				0.45f, -0.5f, 0.0f,
+				D3DCOLORVALUE { 0.0f, 1.0f, 0.0f, 1.0f }
+			},
+			{ 
+				-0.45f, -0.5f, 0.0f,
+				D3DCOLORVALUE { 0.0f, 0.0f, 1.0f, 1.0f }
+			},
+		};
 
-			D3D11_BUFFER_DESC bufferDescription;
-			bufferDescription.Usage = D3D11_USAGE_DEFAULT;
-			bufferDescription.ByteWidth = sizeof(SimpleVertexCombined) * 3;
-			bufferDescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-			bufferDescription.CPUAccessFlags = 0;
-			bufferDescription.MiscFlags = 0;
+		D3D11_BUFFER_DESC bufferDescription = {};
+		bufferDescription.Usage = D3D11_USAGE_DEFAULT;
+		bufferDescription.ByteWidth = sizeof(Vertex) * 3;
+		bufferDescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+		bufferDescription.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
-			D3D11_SUBRESOURCE_DATA subresourceData;
-			subresourceData.pSysMem = vertexData;
-			subresourceData.SysMemPitch = 0;
-			subresourceData.SysMemSlicePitch = 0;
+		this->device->CreateBuffer(&bufferDescription, NULL, &this->vertexBuffer);
 
-			this->device->CreateBuffer(
-				&bufferDescription, 
-				&subresourceData, 
-				&this->vertexBuffer
-			);
-		}
+		D3D11_MAPPED_SUBRESOURCE mappedResource;
+		this->deviceContext->Map(
+			this->vertexBuffer, 
+			NULL, 
+			D3D11_MAP_WRITE_DISCARD,
+			NULL, 
+			&mappedResource
+		);
+
+		memcpy(mappedResource.pData, exampleVertices, sizeof(exampleVertices));
+		this->deviceContext->Unmap(this->vertexBuffer, NULL);
+	}
+
+	void initialise(HWND windowHandle) {
+		this->createDeviceAndSwapChain(windowHandle);
+		this->compileShaders();
+		this->createVertexBuffer();
 	}
 
 	// TODO(steven): delete
