@@ -11,7 +11,7 @@
 
 // TODO(steven): Move elsewhere
 static bool shouldClose = false;
-static Dx3dRenderer renderer;
+static Dx3dRenderer *renderer = new Dx3dRenderer();
 
 LRESULT CALLBACK eventHandler(
 	HWND windowHandle, 
@@ -22,16 +22,21 @@ LRESULT CALLBACK eventHandler(
 	INT result = 0;
 	switch (message) {
 		case WM_CREATE: {
-			renderer.initialise(windowHandle);
+			renderer->initialise(windowHandle);
 		} break;
 
 		case WM_PAINT: {
-			renderer.testRender();
+			renderer->testRender();
 		} break;
 
 		case WM_CLOSE: {
 			shouldClose = true;
 			DestroyWindow(windowHandle);
+		} break;
+
+		case WM_DESTROY: {
+			delete renderer;
+			PostQuitMessage(0);
 		} break;
 
 		default: {

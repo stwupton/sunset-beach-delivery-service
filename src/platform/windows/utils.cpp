@@ -1,10 +1,18 @@
 #pragma once
 
-template<typename T>
-void safeRelease(T **toRelease) {
-	T *toReleaseIn = (*toRelease);
-	if (toReleaseIn != NULL) {
-		toReleaseIn->Release();
-		toReleaseIn = NULL;
-	}
+#include <Windows.h>
+
+// NOTE(steven): Buffer size of 500 characters is completely arbitrary, 
+// increase if needed
+#define LOG(x, ...)                   \
+{                                     \
+	WCHAR buffer[sizeof(WCHAR) * 500];  \
+	swprintf_s(buffer, x, __VA_ARGS__); \
+	OutputDebugString(buffer);          \
 }
+
+#define RELEASE_COM_OBJ(x)      \
+	if (x != NULL) {              \
+		x->Release();               \
+		x = NULL;                   \
+	}

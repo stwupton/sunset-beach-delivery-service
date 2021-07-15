@@ -2,15 +2,17 @@
 
 #include <cstdio>
 
-#include <Windows.h>
-#include <malloc.h>
+#include <comdef.h>
 #include <d3d11.h>
+#include <d3dcompiler.h>
 #include <DirectXMath.h>
 #include <DirectXPackedVector.h>
-#include <d3dcompiler.h>
+#include <malloc.h>
+#include <Windows.h>
 
 #include "types.hpp"
 #include "platform/windows/window_config.hpp"
+#include "platform/windows/utils.cpp"
 
 class Dx3dRenderer {
 protected:
@@ -30,13 +32,13 @@ public:
 		// that it's in windowed mode here.
 		this->swapChain->SetFullscreenState(false, NULL);
 
-		this->vertexShader->Release();
-		this->pixelShader->Release();
-		this->vertexBuffer->Release();
-		this->swapChain->Release();
-		this->device->Release();
-		this->deviceContext->Release();
-		this->renderView->Release();
+		RELEASE_COM_OBJ(this->vertexShader)
+		RELEASE_COM_OBJ(this->pixelShader)
+		RELEASE_COM_OBJ(this->vertexBuffer)
+		RELEASE_COM_OBJ(this->swapChain)
+		RELEASE_COM_OBJ(this->device)
+		RELEASE_COM_OBJ(this->deviceContext)
+		RELEASE_COM_OBJ(this->renderView)
 	}
 
 	void compileShaders() {
@@ -87,16 +89,7 @@ public:
 			for (u8 i = 0; factory->EnumAdapters(i, &adapter) != DXGI_ERROR_NOT_FOUND; i++) {
 				DXGI_ADAPTER_DESC adapterDescription;
 				adapter->GetDesc(&adapterDescription);
-
-				// NOTE(steven): + 2 for new line & null terminator
-				const size_t descriptionLength = 
-					sizeof(adapterDescription.Description) / 
-					sizeof(WCHAR) + 2;
-
-				WCHAR buffer[descriptionLength];
-				swprintf_s(buffer, descriptionLength, L"%ls\n", adapterDescription.Description);
-
-				OutputDebugString(buffer);
+				LOG(L"%ls\n", adapterDescription.Description)
 			}
 		}
 
@@ -132,34 +125,25 @@ public:
 
 	void createVertexBuffer() {
 		struct Vertex {
-			float x, y, z;
-			D3DCOLORVALUE color;
+			Vec3<f32> position;
+			Color color;
 		};
 
 		Vertex exampleVertices[] = {
-			{ 
-				0.0f, 0.5f, 0.0f,
-				D3DCOLORVALUE { 1.0f, 0.0f, 0.0f, 1.0f }
-			},
-			{ 
-				0.45f, -0.5f, 0.0f,
-				D3DCOLORVALUE { 0.0f, 1.0f, 0.0f, 1.0f }
-			},
-			{ 
-				-0.45f, -0.5f, 0.0f,
-				D3DCOLORVALUE { 0.0f, 0.0f, 1.0f, 1.0f }
-			},
+			{ Vec3(0.0f, 0.5f, 0.0f), Color(1.0f, 0.0f, 0.0f, 1.0f) },
+			{ Vec3(0.45f, -0.5f, 0.0f), Color(0.0f, 1.0f, 0.0f, 1.0f) },
+			{ Vec3(-0.45f, -0.5f, 0.0f), Color(0.0f, 0.0f, 1.0f, 1.0f) },
 		};
 
 		D3D11_BUFFER_DESC bufferDescription = {};
-		bufferDescription.Usage = D3D11_USAGE_DEFAULT;
+		bufferDescription.Usage = D3D11_USAGE_DYNAMIC;
 		bufferDescription.ByteWidth = sizeof(Vertex) * 3;
 		bufferDescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 		bufferDescription.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
 		this->device->CreateBuffer(&bufferDescription, NULL, &this->vertexBuffer);
 
-		D3D11_MAPPED_SUBRESOURCE mappedResource;
+		D3D11_MAPPED_SUBRESOURCE mappedResource = {};
 		this->deviceContext->Map(
 			this->vertexBuffer, 
 			NULL, 
@@ -180,8 +164,8 @@ public:
 
 	// TODO(steven): delete
 	void testRender() const {
-		const f32 clearColor[] = { .0f, .2f, .4f, 1.f };
-		this->deviceContext->ClearRenderTargetView(this->renderView, clearColor);
+		const Color clearColor(0.0f, 0.2f, 0.4f, 1.0f);
+		this->deviceContext->ClearRenderTargetView(this->renderView, (f32*)&clearColor);
 
 		// TODO(steven): Render to backbuffer
 
