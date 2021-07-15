@@ -7,12 +7,20 @@
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
 #include <DirectXPackedVector.h>
+#include <dxgiformat.h>
 #include <malloc.h>
 #include <Windows.h>
 
 #include "types.hpp"
 #include "platform/windows/window_config.hpp"
 #include "platform/windows/utils.cpp"
+
+
+// TODO(steven): Delete
+struct Vertex {
+	Vec3<f32> position;
+	Color color;
+};
 
 class Dx3dRenderer {
 protected:
@@ -25,6 +33,7 @@ protected:
 	ID3D11Buffer *vertexBuffer;
 	ID3D11VertexShader *vertexShader;
 	ID3D11PixelShader *pixelShader;
+	ID3D11InputLayout *vertexBufferLayout;
 
 public:
 	~Dx3dRenderer() {
@@ -35,6 +44,7 @@ public:
 		RELEASE_COM_OBJ(this->vertexShader)
 		RELEASE_COM_OBJ(this->pixelShader)
 		RELEASE_COM_OBJ(this->vertexBuffer)
+		RELEASE_COM_OBJ(this->vertexBufferLayout)
 		RELEASE_COM_OBJ(this->swapChain)
 		RELEASE_COM_OBJ(this->device)
 		RELEASE_COM_OBJ(this->deviceContext)
@@ -42,11 +52,13 @@ public:
 	}
 
 	void compileShaders() {
-		ID3D10Blob *vertexShaderBlob, *pixelShaderBlob;
-		D3DCompileFromFile(L"shaders.shader", 0, 0, "VShader", "vs_4_0", 0, 0, &vertexShaderBlob, 0); 
-		D3DCompileFromFile(L"shaders.shader", 0, 0, "PShader", "ps_4_0", 0, 0, &pixelShaderBlob, 0); 
+		ID3D10Blob *vertexShaderBlob; 
+		ID3D10Blob *pixelShaderBlob;
 
-		this->device->CreateVertexShader(
+		D3DCompileFromFile(L"assets/shaders/shaders.hlsl", 0, 0, "VShader", "vs_4_0", 0, 0, &vertexShaderBlob, 0); 
+		D3DCompileFromFile(L"assets/shaders/shaders.hlsl", 0, 0, "PShader", "ps_4_0", 0, 0, &pixelShaderBlob, 0); 
+
+		device->CreateVertexShader(
 			vertexShaderBlob->GetBufferPointer(), 
 			vertexShaderBlob->GetBufferSize(), 
 			NULL, 
@@ -62,6 +74,20 @@ public:
 
 		this->deviceContext->VSSetShader(this->vertexShader, 0, 0);
 		this->deviceContext->PSSetShader(this->pixelShader, 0, 0);
+
+		D3D11_INPUT_ELEMENT_DESC inputElementDescriptions[] = {
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+		};
+
+		this->device->CreateInputLayout(
+			inputElementDescriptions,
+			2,
+			vertexShaderBlob->GetBufferPointer(),
+			vertexShaderBlob->GetBufferSize(),
+			&this->vertexBufferLayout
+		);
+		this->deviceContext->IASetInputLayout(this->vertexBufferLayout);
 	}
 
 	void createDeviceAndSwapChain(HWND windowHandle) {
@@ -124,11 +150,6 @@ public:
 	}
 
 	void createVertexBuffer() {
-		struct Vertex {
-			Vec3<f32> position;
-			Color color;
-		};
-
 		Vertex exampleVertices[] = {
 			{ Vec3(0.0f, 0.5f, 0.0f), Color(1.0f, 0.0f, 0.0f, 1.0f) },
 			{ Vec3(0.45f, -0.5f, 0.0f), Color(0.0f, 1.0f, 0.0f, 1.0f) },
@@ -136,24 +157,18 @@ public:
 		};
 
 		D3D11_BUFFER_DESC bufferDescription = {};
-		bufferDescription.Usage = D3D11_USAGE_DYNAMIC;
+		bufferDescription.Usage = D3D11_USAGE_DEFAULT;
 		bufferDescription.ByteWidth = sizeof(Vertex) * 3;
 		bufferDescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		bufferDescription.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
-		this->device->CreateBuffer(&bufferDescription, NULL, &this->vertexBuffer);
+		D3D11_SUBRESOURCE_DATA subresourceData = {};
+		subresourceData.pSysMem = exampleVertices;
 
-		D3D11_MAPPED_SUBRESOURCE mappedResource = {};
-		this->deviceContext->Map(
-			this->vertexBuffer, 
-			NULL, 
-			D3D11_MAP_WRITE_DISCARD,
-			NULL, 
-			&mappedResource
+		this->device->CreateBuffer(
+			&bufferDescription, 
+			&subresourceData, 
+			&this->vertexBuffer
 		);
-
-		memcpy(mappedResource.pData, exampleVertices, sizeof(exampleVertices));
-		this->deviceContext->Unmap(this->vertexBuffer, NULL);
 	}
 
 	void initialise(HWND windowHandle) {
@@ -167,8 +182,12 @@ public:
 		const Color clearColor(0.0f, 0.2f, 0.4f, 1.0f);
 		this->deviceContext->ClearRenderTargetView(this->renderView, (f32*)&clearColor);
 
-		// TODO(steven): Render to backbuffer
+		UINT stride = sizeof(Vertex);
+		UINT offset = 0;
+		this->deviceContext->IASetVertexBuffers(0, 1, &this->vertexBuffer, &stride, &offset);
 
+		this->deviceContext->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		this->deviceContext->Draw(3, 0);
 		this->swapChain->Present(0, 0);
 	}
 };
