@@ -6,7 +6,7 @@
 // increase if needed
 #define LOG(x, ...)                   \
 {                                     \
-	WCHAR buffer[sizeof(WCHAR) * 500];  \
+	WCHAR buffer[500];                  \
 	swprintf_s(buffer, x, __VA_ARGS__); \
 	OutputDebugString(buffer);          \
 }
