@@ -2,19 +2,14 @@
 
 #include <cstdio>
 
-#include <comdef.h>
 #include <d3d11.h>
 #include <d3dcompiler.h>
-#include <DirectXMath.h>
-#include <DirectXPackedVector.h>
-#include <dxgiformat.h>
 #include <malloc.h>
 #include <Windows.h>
 
 #include "types.hpp"
 #include "platform/windows/window_config.hpp"
 #include "platform/windows/utils.cpp"
-
 
 // TODO(steven): Delete
 struct Vertex {
@@ -35,28 +30,12 @@ protected:
 	ID3D11PixelShader *pixelShader;
 	ID3D11InputLayout *vertexBufferLayout;
 
-public:
-	~Dx3dRenderer() {
-		// Direct3D is incapable of closing down in full screen mode, so we ensure 
-		// that it's in windowed mode here.
-		this->swapChain->SetFullscreenState(false, NULL);
-
-		RELEASE_COM_OBJ(this->vertexShader)
-		RELEASE_COM_OBJ(this->pixelShader)
-		RELEASE_COM_OBJ(this->vertexBuffer)
-		RELEASE_COM_OBJ(this->vertexBufferLayout)
-		RELEASE_COM_OBJ(this->swapChain)
-		RELEASE_COM_OBJ(this->device)
-		RELEASE_COM_OBJ(this->deviceContext)
-		RELEASE_COM_OBJ(this->renderView)
-	}
-
 	void compileShaders() {
 		ID3D10Blob *vertexShaderBlob; 
 		ID3D10Blob *pixelShaderBlob;
 
-		D3DCompileFromFile(L"assets/shaders/shaders.hlsl", 0, 0, "VShader", "vs_4_0", 0, 0, &vertexShaderBlob, 0); 
-		D3DCompileFromFile(L"assets/shaders/shaders.hlsl", 0, 0, "PShader", "ps_4_0", 0, 0, &pixelShaderBlob, 0); 
+		D3DCompileFromFile(L"assets/shaders/shaders.hlsl", 0, 0, "vertex", "vs_4_0", 0, 0, &vertexShaderBlob, 0); 
+		D3DCompileFromFile(L"assets/shaders/shaders.hlsl", 0, 0, "pixel", "ps_4_0", 0, 0, &pixelShaderBlob, 0); 
 
 		device->CreateVertexShader(
 			vertexShaderBlob->GetBufferPointer(), 
@@ -169,6 +148,22 @@ public:
 			&subresourceData, 
 			&this->vertexBuffer
 		);
+	}
+
+public:
+	~Dx3dRenderer() {
+		// Direct3D is incapable of closing down in full screen mode, so we ensure 
+		// that it's in windowed mode here.
+		this->swapChain->SetFullscreenState(false, NULL);
+
+		RELEASE_COM_OBJ(this->vertexShader)
+		RELEASE_COM_OBJ(this->pixelShader)
+		RELEASE_COM_OBJ(this->vertexBuffer)
+		RELEASE_COM_OBJ(this->vertexBufferLayout)
+		RELEASE_COM_OBJ(this->swapChain)
+		RELEASE_COM_OBJ(this->device)
+		RELEASE_COM_OBJ(this->deviceContext)
+		RELEASE_COM_OBJ(this->renderView)
 	}
 
 	void initialise(HWND windowHandle) {
