@@ -130,9 +130,9 @@ protected:
 
 	void createVertexBuffer() {
 		Vertex exampleVertices[] = {
-			{ Vec3(0.0f, 0.5f, 0.0f), Color(1.0f, 0.0f, 0.0f, 1.0f) },
-			{ Vec3(0.45f, -0.5f, 0.0f), Color(0.0f, 1.0f, 0.0f, 1.0f) },
-			{ Vec3(-0.45f, -0.5f, 0.0f), Color(0.0f, 0.0f, 1.0f, 1.0f) },
+			{ Vec3<f32>(0.0f, 0.5f, 0.0f), Color(1.0f, 0.0f, 0.0f, 1.0f) },
+			{ Vec3<f32>(0.45f, -0.5f, 0.0f), Color(0.0f, 1.0f, 0.0f, 1.0f) },
+			{ Vec3<f32>(-0.45f, -0.5f, 0.0f), Color(0.0f, 0.0f, 1.0f, 1.0f) },
 		};
 
 		D3D11_BUFFER_DESC bufferDescription = {};

@@ -1,2 +1,11 @@
 build/
 .vscode/
+/bin
+*.obj
+/.vs
+/x64/Debug
+/sunset-beach-delivery-service.vcxproj.user
+/sunset-beach-delivery-service.vcxproj.filters
+/sunset-beach-delivery-service.vcxproj
+/sunset-beach-delivery-service.sln
+/CppProperties.json

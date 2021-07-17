@@ -1,0 +1,5 @@
+clang:
+clang++ -g src/main.cpp -o build/main.exe -Isrc/ -luser32 -lgdi32 -ld3d11 -ldxgi -DUNICODE -DWIN32
+
+MSVC:
+cl src/main.cpp /DWIN32 /DUNICODE /link user32.lib gdi32.lib d3d11.lib dxgi.lib /out:"bin/output.exe"
