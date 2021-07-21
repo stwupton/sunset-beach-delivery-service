@@ -25,10 +25,6 @@ LRESULT CALLBACK eventHandler(
 			renderer->initialise(windowHandle);
 		} break;
 
-		case WM_PAINT: {
-			renderer->testRender();
-		} break;
-
 		case WM_CLOSE: {
 			shouldClose = true;
 			DestroyWindow(windowHandle);
@@ -37,6 +33,7 @@ LRESULT CALLBACK eventHandler(
 		case WM_DESTROY: {
 			delete renderer;
 			PostQuitMessage(0);
+			return 0;
 		} break;
 
 		default: {
@@ -91,6 +88,8 @@ INT WINAPI wWinMain(
 
 	MSG message = {};
 	while (!shouldClose) {
+		renderer->testRender();
+		
 		while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
 			TranslateMessage(&message);
 			DispatchMessage(&message);
