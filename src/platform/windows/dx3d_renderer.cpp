@@ -97,7 +97,7 @@ protected:
 				LOG(L"%ls\n", adapterDescription.Description)
 			}
 		}
-
+		
 		D3D_FEATURE_LEVEL featureLevels = D3D_FEATURE_LEVEL_11_0;
 		D3D11CreateDeviceAndSwapChain(
 			NULL,
@@ -130,14 +130,15 @@ protected:
 
 	void createVertexBuffer() {
 		Vertex exampleVertices[] = {
-			{ Vec3<f32>(0.0f, 0.5f, 0.0f), Color(1.0f, 0.0f, 0.0f, 1.0f) },
-			{ Vec3<f32>(0.45f, -0.5f, 0.0f), Color(0.0f, 1.0f, 0.0f, 1.0f) },
-			{ Vec3<f32>(-0.45f, -0.5f, 0.0f), Color(0.0f, 0.0f, 1.0f, 1.0f) },
+			{ Vec3<f32>(-0.5f, -0.5f, 0.0f), Color(1.0f, 0.0f, 0.0f, 1.0f) },
+			{ Vec3<f32>(-0.5f, 0.5f, 0.0f), Color(0.0f, 1.0f, 0.0f, 1.0f) },
+			{ Vec3<f32>(0.5f, -0.5f, 0.0f), Color(0.0f, 0.0f, 1.0f, 1.0f) },
+			{ Vec3<f32>(0.5f, 0.5f, 0.0f), Color(1.0f, 1.0f, 1.0f, 1.0f) },
 		};
 
 		D3D11_BUFFER_DESC bufferDescription = {};
 		bufferDescription.Usage = D3D11_USAGE_DEFAULT;
-		bufferDescription.ByteWidth = sizeof(Vertex) * 3;
+		bufferDescription.ByteWidth = sizeof(exampleVertices);
 		bufferDescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 
 		D3D11_SUBRESOURCE_DATA subresourceData = {};
@@ -181,8 +182,8 @@ public:
 		UINT offset = 0;
 		this->deviceContext->IASetVertexBuffers(0, 1, &this->vertexBuffer, &stride, &offset);
 
-		this->deviceContext->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		this->deviceContext->Draw(3, 0);
+		this->deviceContext->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+		this->deviceContext->Draw(4, 0);
 		this->swapChain->Present(0, 0);
 	}
 };

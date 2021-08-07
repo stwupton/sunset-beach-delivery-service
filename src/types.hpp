@@ -14,14 +14,16 @@ typedef float f32;
 typedef double f64;
 
 template<typename T>
-struct Vec3 {
-  T x, y, z;
+struct Vec3 { 
+	union { T x, r; };
+	union { T y, g; };
+	union { T z, b; };
   Vec3(T x = 0, T y = 0, T z = 0) : x(x), y(y), z(z) {}
 };
 
 template<typename T>
 struct Vec4 : Vec3<T> {
-  T w;
+  union { T w, a; };
   Vec4(T x = 0, T y = 0, T z = 0, T w = 0) : Vec3<T>(x, y, z), w(w) {}
 };
 
