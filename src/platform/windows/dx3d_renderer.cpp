@@ -10,6 +10,7 @@
 #include <wincodec.h>
 
 #include "types.hpp"
+#include "platform/windows/dx3d_sprite_loader.cpp"
 #include "platform/windows/window_config.hpp"
 #include "platform/windows/utils.cpp"
 
@@ -20,19 +21,20 @@ struct Vertex {
 };
 
 class Dx3dRenderer {
-protected:
+public:
 	ID3D11Device *device;
+
+protected:
 	ID3D11DeviceContext *deviceContext;
 	ID3D11RenderTargetView *renderView; 
 	IDXGISwapChain *swapChain;
 
 	// TODO(steven): delete
-	ID3D11Texture2D *texture2d;
-	ID3D11ShaderResourceView *texture2dView;
 	ID3D11Buffer *vertexBuffer;
 	ID3D11VertexShader *vertexShader;
 	ID3D11PixelShader *pixelShader;
 	ID3D11InputLayout *vertexBufferLayout;
+	ID3D11BlendState *blendState;
 
 	void compileShaders() {
 		ID3D10Blob *vertexShaderBlob; 
@@ -71,6 +73,20 @@ protected:
 			&this->vertexBufferLayout
 		);
 		this->deviceContext->IASetInputLayout(this->vertexBufferLayout);
+	}
+
+	void createBlendState() {
+		D3D11_BLEND_DESC blendDescription = {};
+		blendDescription.RenderTarget[0].BlendEnable = true;
+		blendDescription.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+		blendDescription.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+		blendDescription.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+		blendDescription.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+		blendDescription.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+		blendDescription.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+		blendDescription.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+		this->device->CreateBlendState(&blendDescription, &this->blendState);
 	}
 
 	void createDeviceAndSwapChain(HWND windowHandle) {
@@ -155,117 +171,6 @@ protected:
 		);
 	}
 
-	void loadTexture() {
-		IWICImagingFactory *imagingFactory;
-		CoCreateInstance(
-			CLSID_WICImagingFactory, 
-			NULL, 
-			CLSCTX_INPROC_SERVER, 
-			__uuidof(IWICImagingFactory), 
-			(void**)&imagingFactory
-		);
-
-		IWICBitmapDecoder *bitmapDecoder;
-		imagingFactory->CreateDecoderFromFilename(
-			L"assets/img/spaceship.png", 
-			NULL, 
-			GENERIC_READ, 
-			WICDecodeMetadataCacheOnLoad, 
-			&bitmapDecoder
-		);
-
-		IWICBitmapFrameDecode *frameDecode;
-		bitmapDecoder->GetFrame(0, &frameDecode);
-
-		WICPixelFormatGUID wicPixelFormat;
-		frameDecode->GetPixelFormat(&wicPixelFormat);
-
-		UINT bitsPerPixel = 0;
-		{
-			IWICComponentInfo *componentInfo;
-			imagingFactory->CreateComponentInfo(wicPixelFormat, &componentInfo);
-
-			IWICPixelFormatInfo *formatInfo;
-			componentInfo->QueryInterface(__uuidof(IWICPixelFormatInfo), (void**)&formatInfo); 
-
-			formatInfo->GetBitsPerPixel(&bitsPerPixel);
-
-			RELEASE_COM_OBJ(componentInfo)
-			RELEASE_COM_OBJ(formatInfo)
-		}
-
-		UINT width = 0, height = 0;
-		frameDecode->GetSize(&width, &height);
-
-		const UINT stride = bitsPerPixel / 8; 
-		const UINT bufferSize = width * height * stride;
-		BYTE *buffer = (BYTE*)malloc(bufferSize);
-		HRESULT result = frameDecode->CopyPixels(NULL, stride * width, bufferSize, buffer);
-		LOG(L"%0X", result)
-
-		const DXGI_FORMAT dxgiFormat = this->wic2DxgiFormat(wicPixelFormat);
-
-		D3D11_TEXTURE2D_DESC textureDescription = {};
-		textureDescription.Width = width;
-		textureDescription.Height = height;
-		textureDescription.MipLevels = 1;
-		textureDescription.ArraySize = 1;
-		textureDescription.Format = dxgiFormat;
-		textureDescription.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		textureDescription.SampleDesc.Count = 1;
-		textureDescription.SampleDesc.Quality = 0;
-		textureDescription.Usage = D3D11_USAGE_DEFAULT;
-
-		D3D11_SUBRESOURCE_DATA subresourceData = {};
-		subresourceData.pSysMem = buffer;
-		subresourceData.SysMemPitch = width * stride;
-
-		this->device->CreateTexture2D(
-			&textureDescription, 
-			&subresourceData, 
-			&this->texture2d
-		);
-
-		D3D11_SHADER_RESOURCE_VIEW_DESC resourceViewDescription = {};
-		resourceViewDescription.Format = dxgiFormat;
-		resourceViewDescription.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-		resourceViewDescription.Texture2D.MipLevels = 1;
-
-		this->device->CreateShaderResourceView(
-			this->texture2d, 
-			&resourceViewDescription, 
-			&this->texture2dView
-		);
-
-		RELEASE_COM_OBJ(imagingFactory)
-		RELEASE_COM_OBJ(bitmapDecoder)
-		RELEASE_COM_OBJ(frameDecode)
-		free(buffer);
-	}
-
-	DXGI_FORMAT wic2DxgiFormat(const WICPixelFormatGUID &pixelFormat) const {
-		// TODO(steven): Why can't this be a switch statement? But it doesn't matter too much
-		if (pixelFormat == GUID_WICPixelFormat128bppRGBAFloat) return DXGI_FORMAT_R32G32B32A32_FLOAT;
-		if (pixelFormat == GUID_WICPixelFormat64bppRGBAHalf) return DXGI_FORMAT_R16G16B16A16_FLOAT;
-		if (pixelFormat == GUID_WICPixelFormat64bppRGBA) return DXGI_FORMAT_R16G16B16A16_UNORM;
-		if (pixelFormat == GUID_WICPixelFormat32bppRGBA) return DXGI_FORMAT_R8G8B8A8_UNORM;
-		if (pixelFormat == GUID_WICPixelFormat32bppBGRA) return DXGI_FORMAT_B8G8R8A8_UNORM;
-		if (pixelFormat == GUID_WICPixelFormat32bppBGR) return DXGI_FORMAT_B8G8R8X8_UNORM;
-		if (pixelFormat == GUID_WICPixelFormat32bppRGBA1010102XR) return DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM;
-		if (pixelFormat == GUID_WICPixelFormat32bppRGBA1010102) return DXGI_FORMAT_R10G10B10A2_UNORM;
-		if (pixelFormat == GUID_WICPixelFormat32bppRGBE) return DXGI_FORMAT_R9G9B9E5_SHAREDEXP;
-		if (pixelFormat == GUID_WICPixelFormat16bppBGRA5551) return DXGI_FORMAT_B5G5R5A1_UNORM;
-		if (pixelFormat == GUID_WICPixelFormat16bppBGR565) return DXGI_FORMAT_B5G6R5_UNORM;
-		if (pixelFormat == GUID_WICPixelFormat32bppGrayFloat) return DXGI_FORMAT_R32_FLOAT;
-		if (pixelFormat == GUID_WICPixelFormat16bppGrayHalf) return DXGI_FORMAT_R16_FLOAT;
-		if (pixelFormat == GUID_WICPixelFormat16bppGray) return DXGI_FORMAT_R16_UNORM;
-		if (pixelFormat == GUID_WICPixelFormat8bppGray) return DXGI_FORMAT_R8_UNORM;
-		if (pixelFormat == GUID_WICPixelFormat8bppAlpha) return DXGI_FORMAT_A8_UNORM;
-		if (pixelFormat == GUID_WICPixelFormat96bppRGBFloat) return DXGI_FORMAT_R32G32B32_FLOAT;
-
-		return DXGI_FORMAT_UNKNOWN;
-	}
-
 public:
 	~Dx3dRenderer() {
 		// Direct3D is incapable of closing down in full screen mode, so we ensure 
@@ -280,30 +185,33 @@ public:
 		RELEASE_COM_OBJ(this->device)
 		RELEASE_COM_OBJ(this->deviceContext)
 		RELEASE_COM_OBJ(this->renderView)
-		RELEASE_COM_OBJ(this->texture2d)
-		RELEASE_COM_OBJ(this->texture2dView)
 	}
 
 	void initialise(HWND windowHandle) {
 		this->createDeviceAndSwapChain(windowHandle);
 		this->compileShaders();
 		this->createVertexBuffer();
-		this->loadTexture();
+		this->createBlendState();
 	}
 
 	// TODO(steven): delete
-	void testRender() const {
+	void testRender(Dx3dSpriteInfo *spriteInfoBuffer, UINT bufferLength) const {
 		const Rgba clearColor(0.0f, 0.2f, 0.4f, 1.0f);
 		this->deviceContext->ClearRenderTargetView(this->renderView, (f32*)&clearColor);
-
-		this->deviceContext->PSSetShaderResources(0, 1, &this->texture2dView);
 
 		UINT stride = sizeof(Vertex);
 		UINT offset = 0;
 		this->deviceContext->IASetVertexBuffers(0, 1, &this->vertexBuffer, &stride, &offset);
 
+		this->deviceContext->OMSetBlendState(this->blendState, 0, 0xffffffff);
 		this->deviceContext->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-		this->deviceContext->Draw(4, 0);
-		this->swapChain->Present(0, 0);
+
+		for (UINT i = 0; i < bufferLength; i++) {
+			const Dx3dSpriteInfo &info = spriteInfoBuffer[i];
+			this->deviceContext->PSSetShaderResources(0, 1, &info.texture2dView);
+			this->deviceContext->Draw(4, 0);
+		}
+
+		this->swapChain->Present(2, 0);
 	}
 };

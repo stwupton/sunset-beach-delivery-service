@@ -5,6 +5,7 @@
 #include <Windows.h>
 
 #include "dx3d_renderer.cpp"
+#include "dx3d_sprite_loader.cpp"
 #include "types.hpp"
 #include "platform/windows/utils.cpp"
 #include "platform/windows/window_config.hpp"
@@ -12,6 +13,7 @@
 // TODO(steven): Move elsewhere
 static bool shouldClose = false;
 static Dx3dRenderer *renderer = new Dx3dRenderer();
+static Dx3dSpriteLoader *loader = new Dx3dSpriteLoader();
 
 LRESULT CALLBACK eventHandler(
 	HWND windowHandle, 
@@ -23,6 +25,7 @@ LRESULT CALLBACK eventHandler(
 	switch (message) {
 		case WM_CREATE: {
 			renderer->initialise(windowHandle);
+			loader->initialise(renderer->device);
 		} break;
 
 		case WM_CLOSE: {
@@ -87,13 +90,20 @@ INT WINAPI wWinMain(
 	CoInitialize(NULL);
 	createWin32Window(instanceHandle, showFlag);
 
+	Dx3dSpriteInfo sprites[] = {
+		loader->load(L"assets/img/homer.png"),
+		loader->load(L"assets/img/spaceship.png")
+	};
+	
 	MSG message = {};
 	while (!shouldClose) {
-		renderer->testRender();
+		renderer->testRender(sprites, 2);
 		
 		while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
 			TranslateMessage(&message);
 			DispatchMessage(&message);
 		}
 	}
+
+	loader->unload(sprites, 2);
 }
