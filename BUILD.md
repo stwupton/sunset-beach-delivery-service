@@ -22,15 +22,16 @@ The entry point is the platform layer which:
 - d3d11
 - d3dcompiler
 - dxgi
+- ole32
 
 ## Examples
 
 ### MSVC
 ```
-cl src/main.cpp /DWIN32 /DUNICODE /I src/ /link user32.lib gdi32.lib d3d11.lib d3dcompiler.lib dxgi.lib
+cl src/main.cpp /DWIN32 /DUNICODE /I src/ /link user32.lib gdi32.lib d3d11.lib ole32.lib d3dcompiler.lib dxgi.lib
 ```
 
 ### Clang
 ```
-clang++ -g src/main.cpp -Isrc/ -luser32 -lgdi32 -ld3d11 -ld3dcompiler -ldxgi -DUNICODE -DWIN32
+clang++ -g src/main.cpp -Isrc/ -luser32 -lgdi32 -ld3d11 -ld3dcompiler -ldxgi -lole32 -DUNICODE -DWIN32
 ```

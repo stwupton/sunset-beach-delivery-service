@@ -84,6 +84,7 @@ INT WINAPI wWinMain(
 	PWSTR cmdArgs, 
 	INT showFlag
 ) {
+	CoInitialize(NULL);
 	createWin32Window(instanceHandle, showFlag);
 
 	MSG message = {};

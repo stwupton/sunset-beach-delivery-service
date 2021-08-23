@@ -14,17 +14,29 @@ typedef float f32;
 typedef double f64;
 
 template<typename T>
-struct Vec3 { 
-	union { T x, r; };
-	union { T y, g; };
-	union { T z, b; };
-  Vec3(T x = 0, T y = 0, T z = 0) : x(x), y(y), z(z) {}
+struct Vec2 { 
+	T x, y;
+	Vec2(T x = 0, T y = 0) : x(x), y(y) {}
+};
+
+template<typename T>
+struct Vec3 : Vec2<T> { 
+	T z;
+	Vec3(T x = 0, T y = 0, T z = 0) : Vec2<T>(x, y), z(z) {}
 };
 
 template<typename T>
 struct Vec4 : Vec3<T> {
-  union { T w, a; };
-  Vec4(T x = 0, T y = 0, T z = 0, T w = 0) : Vec3<T>(x, y, z), w(w) {}
+	T w;
+	Vec4(T x = 0, T y = 0, T z = 0, T w = 0) : Vec3<T>(x, y, z), w(w) {}
 };
 
-typedef Vec4<f32> Color;
+struct Rgb {
+	f32 r, g, b;
+	Rgb(f32 r = 0, f32 g = 0, f32 b = 0) : r(r), g(g), b(b) {}
+};
+
+struct Rgba : Rgb {
+	f32 a;
+	Rgba(f32 r = 0, f32 g = 0, f32 b = 0, f32 a = 0) : Rgb(r, g, b), a(a) {}
+};
