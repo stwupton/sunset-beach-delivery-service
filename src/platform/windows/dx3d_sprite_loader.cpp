@@ -114,8 +114,8 @@ public:
 		return spriteInfo;
 	}
 
-	void unload(Dx3dSpriteInfo *spriteInfoBuffer, UINT bufferLength) {
-		for (UINT i = 0; i < bufferLength; i++) {
+	void unload(Dx3dSpriteInfo *spriteInfoBuffer, u16 bufferLength) {
+		for (u16 i = 0; i < bufferLength; i++) {
 			Dx3dSpriteInfo &info = spriteInfoBuffer[i];
 			RELEASE_COM_OBJ(info.texture2d)
 			RELEASE_COM_OBJ(info.texture2dView)

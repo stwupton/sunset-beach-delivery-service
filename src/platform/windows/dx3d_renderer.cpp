@@ -35,7 +35,56 @@ protected:
 	ID3D11PixelShader *pixelShader;
 	ID3D11InputLayout *vertexBufferLayout;
 	ID3D11BlendState *blendState;
+	ID3D11Buffer *orthoProjectionBuffer;
 
+public:
+	~Dx3dRenderer() {
+		// Direct3D is incapable of closing down in full screen mode, so we ensure 
+		// that it's in windowed mode here.
+		this->swapChain->SetFullscreenState(false, NULL);
+
+		RELEASE_COM_OBJ(this->vertexShader)
+		RELEASE_COM_OBJ(this->pixelShader)
+		RELEASE_COM_OBJ(this->vertexBuffer)
+		RELEASE_COM_OBJ(this->vertexBufferLayout)
+		RELEASE_COM_OBJ(this->swapChain)
+		RELEASE_COM_OBJ(this->device)
+		RELEASE_COM_OBJ(this->deviceContext)
+		RELEASE_COM_OBJ(this->renderView)
+	}
+
+	void initialise(HWND windowHandle) {
+		this->createDeviceAndSwapChain(windowHandle);
+		this->compileShaders();
+		this->createVertexBuffer();
+		this->createBlendState();
+		this->createConstantBuffers();
+	}
+
+	// TODO(steven): delete
+	void testRender(Dx3dSpriteInfo *spriteInfoBuffer, UINT bufferLength) const {
+		const Rgba clearColor(0.0f, 0.2f, 0.4f, 1.0f);
+		this->deviceContext->ClearRenderTargetView(this->renderView, (f32*)&clearColor);
+
+		this->deviceContext->VSSetConstantBuffers(0, 1, &this->orthoProjectionBuffer);
+
+		UINT stride = sizeof(Vertex);
+		UINT offset = 0;
+		this->deviceContext->IASetVertexBuffers(0, 1, &this->vertexBuffer, &stride, &offset);
+
+		this->deviceContext->OMSetBlendState(this->blendState, 0, 0xffffffff);
+		this->deviceContext->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+		for (UINT i = 0; i < bufferLength; i++) {
+			const Dx3dSpriteInfo &info = spriteInfoBuffer[i];
+			this->deviceContext->PSSetShaderResources(0, 1, &info.texture2dView);
+			this->deviceContext->Draw(4, 0);
+		}
+
+		this->swapChain->Present(2, 0);
+	}
+
+protected:
 	void compileShaders() {
 		ID3D10Blob *vertexShaderBlob; 
 		ID3D10Blob *pixelShaderBlob;
@@ -87,6 +136,32 @@ protected:
 		blendDescription.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 
 		this->device->CreateBlendState(&blendDescription, &this->blendState);
+	}
+
+	void createConstantBuffers() {
+		const f32 x0 = 2.0f / screenWidth;
+		const f32 y1 = 2.0f / screenHeight;
+		Mat4x4<f32> ortho = Mat4x4(
+			x0, 0.0f, 0.0f, 0.0f,
+			0.0f, y1, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f
+		);
+
+		D3D11_BUFFER_DESC bufferDescription = {};
+		bufferDescription.Usage = D3D11_USAGE_DYNAMIC;
+		bufferDescription.ByteWidth = sizeof(ortho);
+		bufferDescription.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		bufferDescription.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+		D3D11_SUBRESOURCE_DATA subresourceData = {};
+		subresourceData.pSysMem = &ortho;
+
+		this->device->CreateBuffer(
+			&bufferDescription, 
+			&subresourceData, 
+			&this->orthoProjectionBuffer
+		);
 	}
 
 	void createDeviceAndSwapChain(HWND windowHandle) {
@@ -150,10 +225,10 @@ protected:
 
 	void createVertexBuffer() {
 		Vertex exampleVertices[] = {
-			{ Vec3<f32>(-0.5f, -0.5f, 0.0f), Vec2<f32>(0.0f, 1.0f) },
-			{ Vec3<f32>(-0.5f, 0.5f, 0.0f), Vec2<f32>(0.0f, 0.0f) },
-			{ Vec3<f32>(0.5f, -0.5f, 0.0f), Vec2<f32>(1.0f, 1.0f) },
-			{ Vec3<f32>(0.5f, 0.5f, 0.0f), Vec2<f32>(1.0f, 0.0f) },
+			{ Vec3<f32>(-250.0f, -250.0f, 0.0f), Vec2<f32>(0.0f, 1.0f) },
+			{ Vec3<f32>(-250.0f, 250.0f, 0.0f), Vec2<f32>(0.0f, 0.0f) },
+			{ Vec3<f32>(250.0f, -250.0f, 0.0f), Vec2<f32>(1.0f, 1.0f) },
+			{ Vec3<f32>(250.0f, 250.0f, 0.0f), Vec2<f32>(1.0f, 0.0f) },
 		};
 
 		D3D11_BUFFER_DESC bufferDescription = {};
@@ -169,49 +244,5 @@ protected:
 			&subresourceData, 
 			&this->vertexBuffer
 		);
-	}
-
-public:
-	~Dx3dRenderer() {
-		// Direct3D is incapable of closing down in full screen mode, so we ensure 
-		// that it's in windowed mode here.
-		this->swapChain->SetFullscreenState(false, NULL);
-
-		RELEASE_COM_OBJ(this->vertexShader)
-		RELEASE_COM_OBJ(this->pixelShader)
-		RELEASE_COM_OBJ(this->vertexBuffer)
-		RELEASE_COM_OBJ(this->vertexBufferLayout)
-		RELEASE_COM_OBJ(this->swapChain)
-		RELEASE_COM_OBJ(this->device)
-		RELEASE_COM_OBJ(this->deviceContext)
-		RELEASE_COM_OBJ(this->renderView)
-	}
-
-	void initialise(HWND windowHandle) {
-		this->createDeviceAndSwapChain(windowHandle);
-		this->compileShaders();
-		this->createVertexBuffer();
-		this->createBlendState();
-	}
-
-	// TODO(steven): delete
-	void testRender(Dx3dSpriteInfo *spriteInfoBuffer, UINT bufferLength) const {
-		const Rgba clearColor(0.0f, 0.2f, 0.4f, 1.0f);
-		this->deviceContext->ClearRenderTargetView(this->renderView, (f32*)&clearColor);
-
-		UINT stride = sizeof(Vertex);
-		UINT offset = 0;
-		this->deviceContext->IASetVertexBuffers(0, 1, &this->vertexBuffer, &stride, &offset);
-
-		this->deviceContext->OMSetBlendState(this->blendState, 0, 0xffffffff);
-		this->deviceContext->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-
-		for (UINT i = 0; i < bufferLength; i++) {
-			const Dx3dSpriteInfo &info = spriteInfoBuffer[i];
-			this->deviceContext->PSSetShaderResources(0, 1, &info.texture2dView);
-			this->deviceContext->Draw(4, 0);
-		}
-
-		this->swapChain->Present(2, 0);
 	}
 };
