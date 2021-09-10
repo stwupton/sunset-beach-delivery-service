@@ -7,10 +7,12 @@
 #include <malloc.h>
 
 #include "platform/windows/utils.cpp"
+#include "platform/windows/sprite_vertex.hpp"
 
 struct Dx3dSpriteInfo {
 	ID3D11Texture2D *texture2d;
 	ID3D11ShaderResourceView *texture2dView;
+	ID3D11Buffer *vertexBuffer;
 };
 
 class Dx3dSpriteLoader {
@@ -22,6 +24,7 @@ public:
 		this->device = device;
 	}
 
+	// TODO(steven): Clean up
   Dx3dSpriteInfo load(LPCWSTR fileName) {
 		Dx3dSpriteInfo spriteInfo = {};
 
@@ -49,6 +52,17 @@ public:
 		WICPixelFormatGUID wicPixelFormat;
 		frameDecode->GetPixelFormat(&wicPixelFormat);
 
+		bool formatConverted = false;
+		DXGI_FORMAT dxgiFormat = this->wic2DxgiFormat(wicPixelFormat);
+
+		if (dxgiFormat == DXGI_FORMAT_UNKNOWN) {
+			formatConverted = true;
+			wicPixelFormat = this->convertWic(wicPixelFormat);
+		}
+
+		dxgiFormat = this->wic2DxgiFormat(wicPixelFormat);
+		assert(dxgiFormat != DXGI_FORMAT_UNKNOWN);
+
 		UINT bitsPerPixel = 0;
 		{
 			IWICComponentInfo *componentInfo;
@@ -66,13 +80,54 @@ public:
 		UINT width = 0, height = 0;
 		frameDecode->GetSize(&width, &height);
 
+		{
+			f32 halfWidth = (f32)width * 0.5;
+			f32 halfHeight = (f32)height * 0.5;
+			SpriteVertex vertices[] = {
+				{ Vec3<f32>(-halfWidth, -halfHeight, 0.0f), Vec2<f32>(0.0f, 1.0f) },
+				{ Vec3<f32>(-halfWidth, halfHeight, 0.0f), Vec2<f32>(0.0f, 0.0f) },
+				{ Vec3<f32>(halfWidth, -halfHeight, 0.0f), Vec2<f32>(1.0f, 1.0f) },
+				{ Vec3<f32>(halfWidth, halfHeight, 0.0f), Vec2<f32>(1.0f, 0.0f) },
+			};
+
+			D3D11_BUFFER_DESC bufferDescription = {};
+			bufferDescription.Usage = D3D11_USAGE_DEFAULT;
+			bufferDescription.ByteWidth = sizeof(vertices);
+			bufferDescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+
+			D3D11_SUBRESOURCE_DATA subresourceData = {};
+			subresourceData.pSysMem = vertices;
+
+			HRESULT result = this->device->CreateBuffer(
+				&bufferDescription, 
+				&subresourceData, 
+				&spriteInfo.vertexBuffer
+			);
+			assert(SUCCEEDED(result));
+		}
+
 		const UINT stride = bitsPerPixel / 8; 
 		const UINT bufferSize = width * height * stride;
 		BYTE *buffer = (BYTE*)malloc(bufferSize);
-		frameDecode->CopyPixels(NULL, stride * width, bufferSize, buffer);
 
-		const DXGI_FORMAT dxgiFormat = this->wic2DxgiFormat(wicPixelFormat);
-		assert(dxgiFormat != DXGI_FORMAT_UNKNOWN);
+		if (formatConverted) {
+			IWICFormatConverter *formatConverter;
+			imagingFactory->CreateFormatConverter(&formatConverter);
+
+			formatConverter->Initialize(
+				frameDecode, 
+				wicPixelFormat, 
+				WICBitmapDitherTypeErrorDiffusion, 
+				0, 
+				0, 
+				WICBitmapPaletteTypeCustom
+			);
+			formatConverter->CopyPixels(NULL, stride * width, bufferSize, buffer);
+
+			RELEASE_COM_OBJ(formatConverter);
+		} else {
+			frameDecode->CopyPixels(NULL, stride * width, bufferSize, buffer);
+		}
 
 		D3D11_TEXTURE2D_DESC textureDescription = {};
 		textureDescription.Width = width;
@@ -100,11 +155,12 @@ public:
 		resourceViewDescription.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 		resourceViewDescription.Texture2D.MipLevels = 1;
 
-		this->device->CreateShaderResourceView(
+		HRESULT result = this->device->CreateShaderResourceView(
 			spriteInfo.texture2d, 
 			&resourceViewDescription, 
 			&spriteInfo.texture2dView
 		);
+		assert(SUCCEEDED(result));
 
 		RELEASE_COM_OBJ(imagingFactory)
 		RELEASE_COM_OBJ(bitmapDecoder)
@@ -119,12 +175,57 @@ public:
 			Dx3dSpriteInfo &info = spriteInfoBuffer[i];
 			RELEASE_COM_OBJ(info.texture2d)
 			RELEASE_COM_OBJ(info.texture2dView)
+			RELEASE_COM_OBJ(info.vertexBuffer)
 		}
 	}
 
 protected:
+	WICPixelFormatGUID convertWic(const WICPixelFormatGUID &pixelFormat) {
+		if (pixelFormat == GUID_WICPixelFormatBlackWhite) return GUID_WICPixelFormat8bppGray;
+		if (pixelFormat == GUID_WICPixelFormat1bppIndexed) return GUID_WICPixelFormat32bppRGBA; 
+		if (pixelFormat == GUID_WICPixelFormat2bppIndexed) return GUID_WICPixelFormat32bppRGBA; 
+		if (pixelFormat == GUID_WICPixelFormat4bppIndexed) return GUID_WICPixelFormat32bppRGBA; 
+		if (pixelFormat == GUID_WICPixelFormat8bppIndexed) return GUID_WICPixelFormat32bppRGBA; 
+		if (pixelFormat == GUID_WICPixelFormat2bppGray) return GUID_WICPixelFormat8bppGray; 
+		if (pixelFormat == GUID_WICPixelFormat4bppGray) return GUID_WICPixelFormat8bppGray; 
+		if (pixelFormat == GUID_WICPixelFormat16bppGrayFixedPoint) return GUID_WICPixelFormat16bppGrayHalf; 
+		if (pixelFormat == GUID_WICPixelFormat32bppGrayFixedPoint) return GUID_WICPixelFormat32bppGrayFloat; 
+		if (pixelFormat == GUID_WICPixelFormat16bppBGR555) return GUID_WICPixelFormat16bppBGRA5551;
+		if (pixelFormat == GUID_WICPixelFormat32bppBGR101010) return GUID_WICPixelFormat32bppRGBA1010102;
+		if (pixelFormat == GUID_WICPixelFormat24bppBGR) return GUID_WICPixelFormat32bppRGBA; 
+		if (pixelFormat == GUID_WICPixelFormat24bppRGB) return GUID_WICPixelFormat32bppRGBA; 
+		if (pixelFormat == GUID_WICPixelFormat32bppPBGRA) return GUID_WICPixelFormat32bppRGBA; 
+		if (pixelFormat == GUID_WICPixelFormat32bppPRGBA) return GUID_WICPixelFormat32bppRGBA; 
+		if (pixelFormat == GUID_WICPixelFormat48bppRGB) return GUID_WICPixelFormat64bppRGBA;
+		if (pixelFormat == GUID_WICPixelFormat48bppBGR) return GUID_WICPixelFormat64bppRGBA;
+		if (pixelFormat == GUID_WICPixelFormat64bppBGRA) return GUID_WICPixelFormat64bppRGBA;
+		if (pixelFormat == GUID_WICPixelFormat64bppPRGBA) return GUID_WICPixelFormat64bppRGBA;
+		if (pixelFormat == GUID_WICPixelFormat64bppPBGRA) return GUID_WICPixelFormat64bppRGBA;
+		if (pixelFormat == GUID_WICPixelFormat48bppRGBFixedPoint) return GUID_WICPixelFormat64bppRGBAHalf; 
+		if (pixelFormat == GUID_WICPixelFormat48bppBGRFixedPoint) return GUID_WICPixelFormat64bppRGBAHalf; 
+		if (pixelFormat == GUID_WICPixelFormat64bppRGBAFixedPoint) return GUID_WICPixelFormat64bppRGBAHalf; 
+		if (pixelFormat == GUID_WICPixelFormat64bppBGRAFixedPoint) return GUID_WICPixelFormat64bppRGBAHalf; 
+		if (pixelFormat == GUID_WICPixelFormat64bppRGBFixedPoint) return GUID_WICPixelFormat64bppRGBAHalf; 
+		if (pixelFormat == GUID_WICPixelFormat64bppRGBHalf) return GUID_WICPixelFormat64bppRGBAHalf; 
+		if (pixelFormat == GUID_WICPixelFormat48bppRGBHalf) return GUID_WICPixelFormat64bppRGBAHalf; 
+		if (pixelFormat == GUID_WICPixelFormat128bppPRGBAFloat) return GUID_WICPixelFormat128bppRGBAFloat; 
+		if (pixelFormat == GUID_WICPixelFormat128bppRGBFloat) return GUID_WICPixelFormat128bppRGBAFloat; 
+		if (pixelFormat == GUID_WICPixelFormat128bppRGBAFixedPoint) return GUID_WICPixelFormat128bppRGBAFloat; 
+		if (pixelFormat == GUID_WICPixelFormat128bppRGBFixedPoint) return GUID_WICPixelFormat128bppRGBAFloat; 
+		if (pixelFormat == GUID_WICPixelFormat32bppRGBE) return GUID_WICPixelFormat128bppRGBAFloat; 
+		if (pixelFormat == GUID_WICPixelFormat32bppCMYK) return GUID_WICPixelFormat32bppRGBA;
+		if (pixelFormat == GUID_WICPixelFormat64bppCMYK) return GUID_WICPixelFormat64bppRGBA;
+		if (pixelFormat == GUID_WICPixelFormat40bppCMYKAlpha) return GUID_WICPixelFormat32bppRGBA;
+		if (pixelFormat == GUID_WICPixelFormat80bppCMYKAlpha) return GUID_WICPixelFormat64bppRGBA;
+#if (_WIN32_WINNT >= _WIN32_WINNT_WIN8) || defined(_WIN7_PLATFORM_UPDATE)
+		if (pixelFormat == GUID_WICPixelFormat32bppRGB) return GUID_WICPixelFormat32bppRGBA;
+		if (pixelFormat == GUID_WICPixelFormat64bppRGB) return GUID_WICPixelFormat64bppRGBA;
+		if (pixelFormat == GUID_WICPixelFormat64bppPRGBAHalf) return GUID_WICPixelFormat64bppRGBAHalf; 
+#endif
+		return pixelFormat;
+	}
+
 	DXGI_FORMAT wic2DxgiFormat(const WICPixelFormatGUID &pixelFormat) const {
-		// TODO(steven): Why can't this be a switch statement? But it doesn't matter too much
 		if (pixelFormat == GUID_WICPixelFormat128bppRGBAFloat) return DXGI_FORMAT_R32G32B32A32_FLOAT;
 		if (pixelFormat == GUID_WICPixelFormat64bppRGBAHalf) return DXGI_FORMAT_R16G16B16A16_FLOAT;
 		if (pixelFormat == GUID_WICPixelFormat64bppRGBA) return DXGI_FORMAT_R16G16B16A16_UNORM;

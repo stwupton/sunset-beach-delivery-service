@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdio>
+
 #include <Windows.h>
 
 // NOTE(steven): Buffer size of 500 characters is completely arbitrary, 

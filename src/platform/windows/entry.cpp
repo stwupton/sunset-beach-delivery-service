@@ -91,13 +91,14 @@ INT WINAPI wWinMain(
 	createWin32Window(instanceHandle, showFlag);
 
 	Dx3dSpriteInfo sprites[] = {
-		loader->load(L"assets/img/homer.png"),
-		loader->load(L"assets/img/spaceship.png")
+		loader->load(L"assets/img/starry_background.jpg"),
 	};
+	
+	const u8 spriteLength = sizeof(sprites) / sizeof(Dx3dSpriteInfo);
 	
 	MSG message = {};
 	while (!shouldClose) {
-		renderer->testRender(sprites, 2);
+		renderer->testRender(sprites, spriteLength);
 		
 		while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
 			TranslateMessage(&message);
@@ -105,5 +106,5 @@ INT WINAPI wWinMain(
 		}
 	}
 
-	loader->unload(sprites, 2);
+	loader->unload(sprites, spriteLength);
 }

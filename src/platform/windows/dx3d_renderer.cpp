@@ -13,12 +13,7 @@
 #include "platform/windows/dx3d_sprite_loader.cpp"
 #include "platform/windows/window_config.hpp"
 #include "platform/windows/utils.cpp"
-
-// TODO(steven): Delete
-struct Vertex {
-	Vec3<f32> position;
-	Vec2<f32> texCoord;
-};
+#include "platform/windows/sprite_vertex.hpp"
 
 class Dx3dRenderer {
 public:
@@ -30,7 +25,6 @@ protected:
 	IDXGISwapChain *swapChain;
 
 	// TODO(steven): delete
-	ID3D11Buffer *vertexBuffer;
 	ID3D11VertexShader *vertexShader;
 	ID3D11PixelShader *pixelShader;
 	ID3D11InputLayout *vertexBufferLayout;
@@ -45,7 +39,6 @@ public:
 
 		RELEASE_COM_OBJ(this->vertexShader)
 		RELEASE_COM_OBJ(this->pixelShader)
-		RELEASE_COM_OBJ(this->vertexBuffer)
 		RELEASE_COM_OBJ(this->vertexBufferLayout)
 		RELEASE_COM_OBJ(this->swapChain)
 		RELEASE_COM_OBJ(this->device)
@@ -56,7 +49,6 @@ public:
 	void initialise(HWND windowHandle) {
 		this->createDeviceAndSwapChain(windowHandle);
 		this->compileShaders();
-		this->createVertexBuffer();
 		this->createBlendState();
 		this->createConstantBuffers();
 	}
@@ -68,15 +60,16 @@ public:
 
 		this->deviceContext->VSSetConstantBuffers(0, 1, &this->orthoProjectionBuffer);
 
-		UINT stride = sizeof(Vertex);
-		UINT offset = 0;
-		this->deviceContext->IASetVertexBuffers(0, 1, &this->vertexBuffer, &stride, &offset);
-
 		this->deviceContext->OMSetBlendState(this->blendState, 0, 0xffffffff);
 		this->deviceContext->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
 		for (UINT i = 0; i < bufferLength; i++) {
 			const Dx3dSpriteInfo &info = spriteInfoBuffer[i];
+
+			const UINT stride = sizeof(SpriteVertex);
+			const UINT offset = 0;
+			this->deviceContext->IASetVertexBuffers(0, 1, &info.vertexBuffer, &stride, &offset);
+
 			this->deviceContext->PSSetShaderResources(0, 1, &info.texture2dView);
 			this->deviceContext->Draw(4, 0);
 		}
@@ -198,7 +191,7 @@ protected:
 			NULL,
 			D3D_DRIVER_TYPE_HARDWARE,
 			NULL,
-			0,
+			D3D11_CREATE_DEVICE_DEBUG,
 			NULL,
 			NULL,
 			D3D11_SDK_VERSION,
@@ -221,28 +214,5 @@ protected:
 		viewport.Width = screenWidth;
 		viewport.Height = screenHeight;
 		this->deviceContext->RSSetViewports(1, &viewport);
-	}
-
-	void createVertexBuffer() {
-		Vertex exampleVertices[] = {
-			{ Vec3<f32>(-250.0f, -250.0f, 0.0f), Vec2<f32>(0.0f, 1.0f) },
-			{ Vec3<f32>(-250.0f, 250.0f, 0.0f), Vec2<f32>(0.0f, 0.0f) },
-			{ Vec3<f32>(250.0f, -250.0f, 0.0f), Vec2<f32>(1.0f, 1.0f) },
-			{ Vec3<f32>(250.0f, 250.0f, 0.0f), Vec2<f32>(1.0f, 0.0f) },
-		};
-
-		D3D11_BUFFER_DESC bufferDescription = {};
-		bufferDescription.Usage = D3D11_USAGE_DEFAULT;
-		bufferDescription.ByteWidth = sizeof(exampleVertices);
-		bufferDescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-
-		D3D11_SUBRESOURCE_DATA subresourceData = {};
-		subresourceData.pSysMem = exampleVertices;
-
-		this->device->CreateBuffer(
-			&bufferDescription, 
-			&subresourceData, 
-			&this->vertexBuffer
-		);
 	}
 };
