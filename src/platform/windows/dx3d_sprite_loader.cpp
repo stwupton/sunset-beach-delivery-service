@@ -18,24 +18,27 @@ struct Dx3dSpriteInfo {
 class Dx3dSpriteLoader {
 protected:
 	ID3D11Device *device;
+	IWICImagingFactory *imagingFactory;
 
 public:
-	void initialise(ID3D11Device *device) {
-		this->device = device;
+	~Dx3dSpriteLoader() {
+		RELEASE_COM_OBJ(this->imagingFactory)
 	}
 
-	// TODO(steven): Clean up
-  Dx3dSpriteInfo load(LPCWSTR fileName) {
-		Dx3dSpriteInfo spriteInfo = {};
+	void initialise(ID3D11Device *device) {
+		this->device = device;
 
-		IWICImagingFactory *imagingFactory;
 		CoCreateInstance(
 			CLSID_WICImagingFactory, 
 			NULL, 
 			CLSCTX_INPROC_SERVER, 
 			__uuidof(IWICImagingFactory), 
-			(void**)&imagingFactory
+			(void**)&this->imagingFactory
 		);
+	}
+
+  Dx3dSpriteInfo load(LPCWSTR fileName) {
+		Dx3dSpriteInfo spriteInfo = {};
 
 		IWICBitmapDecoder *bitmapDecoder;
 		imagingFactory->CreateDecoderFromFilename(
@@ -52,117 +55,32 @@ public:
 		WICPixelFormatGUID wicPixelFormat;
 		frameDecode->GetPixelFormat(&wicPixelFormat);
 
-		bool formatConverted = false;
-		DXGI_FORMAT dxgiFormat = this->wic2DxgiFormat(wicPixelFormat);
-
-		if (dxgiFormat == DXGI_FORMAT_UNKNOWN) {
-			formatConverted = true;
-			wicPixelFormat = this->convertWic(wicPixelFormat);
-		}
-
-		dxgiFormat = this->wic2DxgiFormat(wicPixelFormat);
-		assert(dxgiFormat != DXGI_FORMAT_UNKNOWN);
-
-		UINT bitsPerPixel = 0;
-		{
-			IWICComponentInfo *componentInfo;
-			imagingFactory->CreateComponentInfo(wicPixelFormat, &componentInfo);
-
-			IWICPixelFormatInfo *formatInfo;
-			componentInfo->QueryInterface(__uuidof(IWICPixelFormatInfo), (void**)&formatInfo); 
-
-			formatInfo->GetBitsPerPixel(&bitsPerPixel);
-
-			RELEASE_COM_OBJ(componentInfo)
-			RELEASE_COM_OBJ(formatInfo)
-		}
+		DXGI_FORMAT dxgiFormat;
+		const bool formatConverted = this->getDxgiFormat(wicPixelFormat, dxgiFormat);
+		const UINT bitsPerPixel = this->getBitsPerPixel(wicPixelFormat);
 
 		UINT width = 0, height = 0;
 		frameDecode->GetSize(&width, &height);
 
-		{
-			f32 halfWidth = (f32)width * 0.5;
-			f32 halfHeight = (f32)height * 0.5;
-			SpriteVertex vertices[] = {
-				{ Vec3<f32>(-halfWidth, -halfHeight, 0.0f), Vec2<f32>(0.0f, 1.0f) },
-				{ Vec3<f32>(-halfWidth, halfHeight, 0.0f), Vec2<f32>(0.0f, 0.0f) },
-				{ Vec3<f32>(halfWidth, -halfHeight, 0.0f), Vec2<f32>(1.0f, 1.0f) },
-				{ Vec3<f32>(halfWidth, halfHeight, 0.0f), Vec2<f32>(1.0f, 0.0f) },
-			};
-
-			D3D11_BUFFER_DESC bufferDescription = {};
-			bufferDescription.Usage = D3D11_USAGE_DEFAULT;
-			bufferDescription.ByteWidth = sizeof(vertices);
-			bufferDescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-
-			D3D11_SUBRESOURCE_DATA subresourceData = {};
-			subresourceData.pSysMem = vertices;
-
-			HRESULT result = this->device->CreateBuffer(
-				&bufferDescription, 
-				&subresourceData, 
-				&spriteInfo.vertexBuffer
-			);
-			assert(SUCCEEDED(result));
-		}
+		spriteInfo.vertexBuffer = this->createVertexBuffer(width, height);
 
 		const UINT stride = bitsPerPixel / 8; 
+		const UINT rowStride = stride * width;
 		const UINT bufferSize = width * height * stride;
+		// TODO(steven): Re-use this buffer?
 		BYTE *buffer = (BYTE*)malloc(bufferSize);
-
-		if (formatConverted) {
-			IWICFormatConverter *formatConverter;
-			imagingFactory->CreateFormatConverter(&formatConverter);
-
-			formatConverter->Initialize(
-				frameDecode, 
-				wicPixelFormat, 
-				WICBitmapDitherTypeErrorDiffusion, 
-				0, 
-				0, 
-				WICBitmapPaletteTypeCustom
-			);
-			formatConverter->CopyPixels(NULL, stride * width, bufferSize, buffer);
-
-			RELEASE_COM_OBJ(formatConverter);
-		} else {
-			frameDecode->CopyPixels(NULL, stride * width, bufferSize, buffer);
-		}
-
-		D3D11_TEXTURE2D_DESC textureDescription = {};
-		textureDescription.Width = width;
-		textureDescription.Height = height;
-		textureDescription.MipLevels = 1;
-		textureDescription.ArraySize = 1;
-		textureDescription.Format = dxgiFormat;
-		textureDescription.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		textureDescription.SampleDesc.Count = 1;
-		textureDescription.SampleDesc.Quality = 0;
-		textureDescription.Usage = D3D11_USAGE_DEFAULT;
-
-		D3D11_SUBRESOURCE_DATA subresourceData = {};
-		subresourceData.pSysMem = buffer;
-		subresourceData.SysMemPitch = width * stride;
-
-		this->device->CreateTexture2D(
-			&textureDescription, 
-			&subresourceData, 
-			&spriteInfo.texture2d
+		this->createTextureBuffer(
+			frameDecode, 
+			buffer, 
+			bufferSize, 
+			rowStride, 
+			wicPixelFormat, 
+			formatConverted
 		);
 
-		D3D11_SHADER_RESOURCE_VIEW_DESC resourceViewDescription = {};
-		resourceViewDescription.Format = dxgiFormat;
-		resourceViewDescription.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-		resourceViewDescription.Texture2D.MipLevels = 1;
+		spriteInfo.texture2d = this->createTexture2d(buffer, dxgiFormat, width, height, rowStride);
+		spriteInfo.texture2dView = this->createTexture2dView(spriteInfo.texture2d, dxgiFormat);
 
-		HRESULT result = this->device->CreateShaderResourceView(
-			spriteInfo.texture2d, 
-			&resourceViewDescription, 
-			&spriteInfo.texture2dView
-		);
-		assert(SUCCEEDED(result));
-
-		RELEASE_COM_OBJ(imagingFactory)
 		RELEASE_COM_OBJ(bitmapDecoder)
 		RELEASE_COM_OBJ(frameDecode)
 		free(buffer);
@@ -180,7 +98,7 @@ public:
 	}
 
 protected:
-	WICPixelFormatGUID convertWic(const WICPixelFormatGUID &pixelFormat) {
+	WICPixelFormatGUID convertWic(const WICPixelFormatGUID &pixelFormat) const {
 		if (pixelFormat == GUID_WICPixelFormatBlackWhite) return GUID_WICPixelFormat8bppGray;
 		if (pixelFormat == GUID_WICPixelFormat1bppIndexed) return GUID_WICPixelFormat32bppRGBA; 
 		if (pixelFormat == GUID_WICPixelFormat2bppIndexed) return GUID_WICPixelFormat32bppRGBA; 
@@ -245,5 +163,145 @@ protected:
 		if (pixelFormat == GUID_WICPixelFormat96bppRGBFloat) return DXGI_FORMAT_R32G32B32_FLOAT;
 
 		return DXGI_FORMAT_UNKNOWN;
+	}
+
+	ID3D11Buffer *createVertexBuffer(UINT width, UINT height) const {
+		f32 halfWidth = (f32)width * 0.5;
+		f32 halfHeight = (f32)height * 0.5;
+		SpriteVertex vertices[] = {
+			{ Vec3<f32>(-halfWidth, -halfHeight, 0.0f), Vec2<f32>(0.0f, 1.0f) },
+			{ Vec3<f32>(-halfWidth, halfHeight, 0.0f), Vec2<f32>(0.0f, 0.0f) },
+			{ Vec3<f32>(halfWidth, -halfHeight, 0.0f), Vec2<f32>(1.0f, 1.0f) },
+			{ Vec3<f32>(halfWidth, halfHeight, 0.0f), Vec2<f32>(1.0f, 0.0f) },
+		};
+
+		D3D11_BUFFER_DESC bufferDescription = {};
+		bufferDescription.Usage = D3D11_USAGE_DEFAULT;
+		bufferDescription.ByteWidth = sizeof(vertices);
+		bufferDescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+
+		D3D11_SUBRESOURCE_DATA subresourceData = {};
+		subresourceData.pSysMem = vertices;
+
+		ID3D11Buffer *vertexBuffer;
+		HRESULT result = this->device->CreateBuffer(
+			&bufferDescription, 
+			&subresourceData, 
+			&vertexBuffer
+		);
+		assert(SUCCEEDED(result));
+
+		return vertexBuffer;
+	}
+
+	ID3D11Texture2D *createTexture2d(
+		BYTE *buffer, 
+		const DXGI_FORMAT dxgiFormat, 
+		const UINT width, 
+		const UINT height,
+		const UINT rowStride
+	) const {
+		D3D11_TEXTURE2D_DESC textureDescription = {};
+		textureDescription.Width = width;
+		textureDescription.Height = height;
+		textureDescription.MipLevels = 1;
+		textureDescription.ArraySize = 1;
+		textureDescription.Format = dxgiFormat;
+		textureDescription.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		textureDescription.SampleDesc.Count = 1;
+		textureDescription.SampleDesc.Quality = 0;
+		textureDescription.Usage = D3D11_USAGE_DEFAULT;
+
+		D3D11_SUBRESOURCE_DATA subresourceData = {};
+		subresourceData.pSysMem = buffer;
+		subresourceData.SysMemPitch = rowStride;
+
+		ID3D11Texture2D *texture2d;
+		HRESULT result = this->device->CreateTexture2D(
+			&textureDescription, 
+			&subresourceData, 
+			&texture2d
+		);
+		assert(SUCCEEDED(result));
+
+		return texture2d;
+	}
+
+	ID3D11ShaderResourceView *createTexture2dView(
+		ID3D11Texture2D *texture2d, 
+		DXGI_FORMAT dxgiFormat
+	) const {
+		D3D11_SHADER_RESOURCE_VIEW_DESC resourceViewDescription = {};
+		resourceViewDescription.Format = dxgiFormat;
+		resourceViewDescription.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		resourceViewDescription.Texture2D.MipLevels = 1;
+
+		ID3D11ShaderResourceView *texture2dView;
+		HRESULT result = this->device->CreateShaderResourceView(
+			texture2d, 
+			&resourceViewDescription, 
+			&texture2dView
+		);
+		assert(SUCCEEDED(result));
+
+		return texture2dView;
+	}
+
+	void createTextureBuffer(
+		IWICBitmapFrameDecode *frameDecode, 
+		BYTE *buffer, 
+		const UINT bufferSize, 
+		const UINT rowStride, 
+		const WICPixelFormatGUID &wicPixelFormat, 
+		const bool formatConverted
+	) const {
+		if (formatConverted) {
+			IWICFormatConverter *formatConverter;
+			imagingFactory->CreateFormatConverter(&formatConverter);
+
+			formatConverter->Initialize(
+				frameDecode, 
+				wicPixelFormat, 
+				WICBitmapDitherTypeErrorDiffusion, 
+				0, 
+				0, 
+				WICBitmapPaletteTypeCustom
+			);
+			formatConverter->CopyPixels(NULL, rowStride, bufferSize, buffer);
+
+			RELEASE_COM_OBJ(formatConverter);
+		} else {
+			frameDecode->CopyPixels(NULL, rowStride, bufferSize, buffer);
+		}
+	}
+
+	UINT getBitsPerPixel(const WICPixelFormatGUID &wicPixelFormat) const {
+		IWICComponentInfo *componentInfo;
+		imagingFactory->CreateComponentInfo(wicPixelFormat, &componentInfo);
+
+		IWICPixelFormatInfo *formatInfo;
+		componentInfo->QueryInterface(__uuidof(IWICPixelFormatInfo), (void**)&formatInfo); 
+
+		UINT bitsPerPixel;
+		formatInfo->GetBitsPerPixel(&bitsPerPixel);
+
+		RELEASE_COM_OBJ(componentInfo)
+		RELEASE_COM_OBJ(formatInfo)
+
+		return bitsPerPixel;
+	}
+
+	bool getDxgiFormat(WICPixelFormatGUID &wicPixelFormat, DXGI_FORMAT &dxgiFormat) const {
+		bool wicFormatConverted = false;
+
+		dxgiFormat = this->wic2DxgiFormat(wicPixelFormat);
+		if (dxgiFormat == DXGI_FORMAT_UNKNOWN) {
+			wicPixelFormat = this->convertWic(wicPixelFormat);
+			wicFormatConverted = true;
+
+			dxgiFormat = this->wic2DxgiFormat(wicPixelFormat);
+			assert(dxgiFormat != DXGI_FORMAT_UNKNOWN);
+		}
+		return wicFormatConverted;
 	}
 };

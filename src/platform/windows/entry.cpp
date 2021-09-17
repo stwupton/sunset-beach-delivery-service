@@ -92,6 +92,7 @@ INT WINAPI wWinMain(
 
 	Dx3dSpriteInfo sprites[] = {
 		loader->load(L"assets/img/starry_background.jpg"),
+		loader->load(L"assets/img/ship.png")
 	};
 	
 	const u8 spriteLength = sizeof(sprites) / sizeof(Dx3dSpriteInfo);
