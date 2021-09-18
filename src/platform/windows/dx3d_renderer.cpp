@@ -134,7 +134,7 @@ protected:
 	void createConstantBuffers() {
 		const f32 x0 = 2.0f / screenWidth;
 		const f32 y1 = 2.0f / screenHeight;
-		Mat4x4<f32> ortho = Mat4x4(
+		Mat4x4<f32> ortho = Mat4x4<f32>(
 			x0, 0.0f, 0.0f, 0.0f,
 			0.0f, y1, 0.0f, 0.0f,
 			0.0f, 0.0f, 1.0f, 0.0f,
