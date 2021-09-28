@@ -9,11 +9,21 @@
 #include <combaseapi.h>
 #include <wincodec.h>
 
+#include "sprite.cpp"
 #include "types.hpp"
 #include "platform/windows/dx3d_sprite_loader.cpp"
 #include "platform/windows/window_config.hpp"
 #include "platform/windows/utils.cpp"
 #include "platform/windows/sprite_vertex.hpp"
+
+// TODO(steven): Move somewhere else and rename
+struct ConstantBuffer {
+	Mat4x4<f32> projection;
+};
+
+struct SpriteInfoBuffer {
+	Mat4x4<f32> transform;
+};
 
 class Dx3dRenderer {
 public:
@@ -29,7 +39,8 @@ protected:
 	ID3D11PixelShader *pixelShader;
 	ID3D11InputLayout *vertexBufferLayout;
 	ID3D11BlendState *blendState;
-	ID3D11Buffer *orthoProjectionBuffer;
+	ID3D11Buffer *spriteInfoBuffer;
+	ID3D11Buffer *constantBuffer;
 
 public:
 	~Dx3dRenderer() {
@@ -54,23 +65,31 @@ public:
 	}
 
 	// TODO(steven): delete
-	void testRender(Dx3dSpriteInfo *spriteInfoBuffer, UINT bufferLength) const {
+	void testRender(Sprite *sprites, UINT bufferLength) const {
 		const Rgba clearColor(0.0f, 0.2f, 0.4f, 1.0f);
 		this->deviceContext->ClearRenderTargetView(this->renderView, (f32*)&clearColor);
 
-		this->deviceContext->VSSetConstantBuffers(0, 1, &this->orthoProjectionBuffer);
+		this->deviceContext->VSSetConstantBuffers(0, 1, &this->constantBuffer);
+		this->deviceContext->VSSetConstantBuffers(1, 1, &this->spriteInfoBuffer);
 
 		this->deviceContext->OMSetBlendState(this->blendState, 0, 0xffffffff);
 		this->deviceContext->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
 		for (UINT i = 0; i < bufferLength; i++) {
-			const Dx3dSpriteInfo &info = spriteInfoBuffer[i];
+			const Sprite &sprite = sprites[i];
+			const Dx3dSpriteResource *info = (Dx3dSpriteResource*)sprite.textureReference;
 
 			const UINT stride = sizeof(SpriteVertex);
 			const UINT offset = 0;
-			this->deviceContext->IASetVertexBuffers(0, 1, &info.vertexBuffer, &stride, &offset);
+			this->deviceContext->IASetVertexBuffers(0, 1, &info->vertexBuffer, &stride, &offset);
 
-			this->deviceContext->PSSetShaderResources(0, 1, &info.texture2dView);
+			D3D11_MAPPED_SUBRESOURCE mappedResource;
+			this->deviceContext->Map(this->spriteInfoBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+			SpriteInfoBuffer *buffer = (SpriteInfoBuffer*)mappedResource.pData;
+			buffer->transform = sprite.transform;
+			this->deviceContext->Unmap(this->spriteInfoBuffer, 0);
+
+			this->deviceContext->PSSetShaderResources(0, 1, &info->texture2dView);
 			this->deviceContext->Draw(4, 0);
 		}
 
@@ -132,29 +151,64 @@ protected:
 	}
 
 	void createConstantBuffers() {
-		const f32 x0 = 2.0f / screenWidth;
-		const f32 y1 = 2.0f / screenHeight;
-		Mat4x4<f32> ortho = Mat4x4(
-			x0, 0.0f, 0.0f, 0.0f,
-			0.0f, y1, 0.0f, 0.0f,
-			0.0f, 0.0f, 1.0f, 0.0f,
-			0.0f, 0.0f, 0.0f, 1.0f
-		);
+		{
+			ConstantBuffer buffer = {};
 
-		D3D11_BUFFER_DESC bufferDescription = {};
-		bufferDescription.Usage = D3D11_USAGE_DYNAMIC;
-		bufferDescription.ByteWidth = sizeof(ortho);
-		bufferDescription.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		bufferDescription.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+			const f32 left = -((f32)screenWidth / 2);
+			const f32 right = (f32)screenWidth / 2;
+			const f32 top = (f32)screenHeight / 2;
+			const f32 bottom = -((f32)screenHeight / 2);
+			const f32 front = -1.0f;
+			const f32 back = 1.0f;
 
-		D3D11_SUBRESOURCE_DATA subresourceData = {};
-		subresourceData.pSysMem = &ortho;
+			const f32 x0 = 2.0f / (right - left);
+			const f32 y1 = 2.0f / (top - bottom);
+			const f32 z2 = 2.0f / (back - front);
+			const f32 x3 = -(right + left) / (right - left);
+			const f32 y3 = -(top + bottom) / (top - bottom);
+			const f32 z3 = -(back + front) / (back - front);
 
-		this->device->CreateBuffer(
-			&bufferDescription, 
-			&subresourceData, 
-			&this->orthoProjectionBuffer
-		);
+			buffer.projection = Mat4x4<f32>(
+				x0, 0.0f, 0.0f, x3,
+				0.0f, y1, 0.0f, y3,
+				0.0f, 0.0f, z2, z3,
+				0.0f, 0.0f, 0.0f, 1.0f
+			);
+
+			D3D11_BUFFER_DESC bufferDescription = {};
+			bufferDescription.Usage = D3D11_USAGE_DYNAMIC;
+			bufferDescription.ByteWidth = sizeof(buffer);
+			bufferDescription.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+			bufferDescription.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+			D3D11_SUBRESOURCE_DATA subresourceData = {};
+			subresourceData.pSysMem = &buffer;
+
+			this->device->CreateBuffer(
+				&bufferDescription, 
+				&subresourceData, 
+				&this->constantBuffer
+			);
+		}
+
+		{
+			SpriteInfoBuffer buffer = {};
+
+			D3D11_BUFFER_DESC bufferDescription = {};
+			bufferDescription.Usage = D3D11_USAGE_DYNAMIC;
+			bufferDescription.ByteWidth = sizeof(buffer);
+			bufferDescription.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+			bufferDescription.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+			D3D11_SUBRESOURCE_DATA subresourceData = {};
+			subresourceData.pSysMem = &buffer;
+
+			this->device->CreateBuffer(
+				&bufferDescription, 
+				&subresourceData, 
+				&this->spriteInfoBuffer
+			);
+		}
 	}
 
 	void createDeviceAndSwapChain(HWND windowHandle) {

@@ -9,7 +9,7 @@
 #include "platform/windows/utils.cpp"
 #include "platform/windows/sprite_vertex.hpp"
 
-struct Dx3dSpriteInfo {
+struct Dx3dSpriteResource {
 	ID3D11Texture2D *texture2d;
 	ID3D11ShaderResourceView *texture2dView;
 	ID3D11Buffer *vertexBuffer;
@@ -37,8 +37,8 @@ public:
 		);
 	}
 
-  Dx3dSpriteInfo load(LPCWSTR fileName) {
-		Dx3dSpriteInfo spriteInfo = {};
+  Dx3dSpriteResource load(LPCWSTR fileName) {
+		Dx3dSpriteResource spriteInfo = {};
 
 		IWICBitmapDecoder *bitmapDecoder;
 		imagingFactory->CreateDecoderFromFilename(
@@ -88,9 +88,9 @@ public:
 		return spriteInfo;
 	}
 
-	void unload(Dx3dSpriteInfo *spriteInfoBuffer, u16 bufferLength) {
+	void unload(Dx3dSpriteResource *spriteInfoBuffer, u16 bufferLength) {
 		for (u16 i = 0; i < bufferLength; i++) {
-			Dx3dSpriteInfo &info = spriteInfoBuffer[i];
+			Dx3dSpriteResource &info = spriteInfoBuffer[i];
 			RELEASE_COM_OBJ(info.texture2d)
 			RELEASE_COM_OBJ(info.texture2dView)
 			RELEASE_COM_OBJ(info.vertexBuffer)

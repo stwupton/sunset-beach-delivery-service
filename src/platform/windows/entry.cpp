@@ -6,6 +6,7 @@
 
 #include "dx3d_renderer.cpp"
 #include "dx3d_sprite_loader.cpp"
+#include "sprite.cpp"
 #include "types.hpp"
 #include "platform/windows/utils.cpp"
 #include "platform/windows/window_config.hpp"
@@ -90,13 +91,22 @@ INT WINAPI wWinMain(
 	CoInitialize(NULL);
 	createWin32Window(instanceHandle, showFlag);
 
-	Dx3dSpriteInfo sprites[] = {
-		loader->load(L"assets/img/starry_background.jpg"),
-		loader->load(L"assets/img/ship.png")
+	const Dx3dSpriteResource starryBackground = loader->load(L"assets/img/starry_background.jpg");
+	const Dx3dSpriteResource ship = loader->load(L"assets/img/ship.png");
+
+	Mat4x4<f32> shipTransform;
+	shipTransform = shipTransform.translate(200.0f, 200.0f);
+	shipTransform = shipTransform.scale(0.5f, 0.5f);
+
+	Mat4x4<f32> starryBackgroundTransform;
+	starryBackgroundTransform = starryBackgroundTransform.scale(1.3f, 1.3f);
+
+	Sprite sprites[] = { 
+		{ starryBackgroundTransform, (void*)&starryBackground },
+		{ shipTransform, (void*)&ship }, 
 	};
-	
-	const u8 spriteLength = sizeof(sprites) / sizeof(Dx3dSpriteInfo);
-	
+	const u8 spriteLength = sizeof(sprites) / sizeof(Sprite);
+
 	MSG message = {};
 	while (!shouldClose) {
 		renderer->testRender(sprites, spriteLength);
@@ -107,5 +117,6 @@ INT WINAPI wWinMain(
 		}
 	}
 
-	loader->unload(sprites, spriteLength);
+	Dx3dSpriteResource toUnload[] = { starryBackground, ship };
+	loader->unload(toUnload, 2);
 }

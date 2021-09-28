@@ -4,6 +4,10 @@ cbuffer VsConstantBuffer : register(b0) {
 	float4x4 projection;
 }
 
+cbuffer VsSpriteInfoBuffer : register(b1) {
+	float4x4 transform;
+}
+
 struct VertexInput {
 	float4 position : POSITION;
 	float2 textureCoord : TEXCOORD;
@@ -16,7 +20,7 @@ struct PixelInput {
 
 PixelInput vertex(VertexInput input) {
 	PixelInput output;
-	output.position = mul(input.position, projection);
+	output.position = mul(projection, mul(transform, input.position));
 	output.textureCoord = input.textureCoord;
 	return output;
 }
