@@ -2,6 +2,8 @@
 
 #include <cstdio>
 
+#include <cmath>
+
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include <malloc.h>
@@ -64,8 +66,7 @@ public:
 		this->createConstantBuffers();
 	}
 
-	// TODO(steven): delete
-	void testRender(Sprite *sprites, UINT bufferLength) const {
+	void renderSprites(Sprite *sprites, UINT bufferLength) const {
 		const Rgba clearColor(0.0f, 0.2f, 0.4f, 1.0f);
 		this->deviceContext->ClearRenderTargetView(this->renderView, (f32*)&clearColor);
 
@@ -86,7 +87,13 @@ public:
 			D3D11_MAPPED_SUBRESOURCE mappedResource;
 			this->deviceContext->Map(this->spriteInfoBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 			SpriteInfoBuffer *buffer = (SpriteInfoBuffer*)mappedResource.pData;
-			buffer->transform = sprite.transform;
+
+			Mat4x4<f32> transform;
+			transform = transform.translate(sprite.position.x, sprite.position.y, sprite.position.z);
+			transform = transform.scale(sprite.scale.x, sprite.scale.y);
+			transform = transform.rotate(-sprite.angle * M_PI / 180);
+
+			buffer->transform = transform;
 			this->deviceContext->Unmap(this->spriteInfoBuffer, 0);
 
 			this->deviceContext->PSSetShaderResources(0, 1, &info->texture2dView);
@@ -163,7 +170,7 @@ protected:
 
 			const f32 x0 = 2.0f / (right - left);
 			const f32 y1 = 2.0f / (top - bottom);
-			const f32 z2 = 2.0f / (back - front);
+			const f32 z2 = -2.0f / (back - front);
 			const f32 x3 = -(right + left) / (right - left);
 			const f32 y3 = -(top + bottom) / (top - bottom);
 			const f32 z3 = -(back + front) / (back - front);

@@ -3,6 +3,8 @@
 #include "types.hpp"
 
 struct Sprite {
-	Mat4x4<f32> transform;
+	Vec3<f32> position;
+	Vec2<f32> scale;
+	f32 angle;
 	void *textureReference;
 };

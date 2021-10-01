@@ -91,26 +91,25 @@ INT WINAPI wWinMain(
 	CoInitialize(NULL);
 	createWin32Window(instanceHandle, showFlag);
 
-	const Dx3dSpriteResource starryBackground = loader->load(L"assets/img/starry_background.jpg");
-	const Dx3dSpriteResource ship = loader->load(L"assets/img/ship.png");
+	const Dx3dSpriteResource starryBackgroundTexture = loader->load(L"assets/img/starry_background.jpg");
+	const Dx3dSpriteResource shipTexture = loader->load(L"assets/img/ship.png");
 
-	Mat4x4<f32> shipTransform;
-	shipTransform = shipTransform.translate(200.0f, 200.0f);
-	shipTransform = shipTransform.scale(0.5f, 0.5f);
-	shipTransform = shipTransform.rotate(1.0f);
+	Sprite ship;
+	ship.textureReference = (void*)&shipTexture;
+	ship.position = Vec3<f32>(200.0f, 200.0f);
+	ship.scale = Vec2<f32>(0.5f, 0.5f);
+	ship.angle = -95.0f;
 
-	Mat4x4<f32> starryBackgroundTransform;
-	starryBackgroundTransform = starryBackgroundTransform.scale(1.3f, 1.3f);
+	Sprite background;
+	background.textureReference = (void*)&starryBackgroundTexture;
+	background.scale = Vec2<f32>(1.3f, 1.3f);
 
-	Sprite sprites[] = { 
-		{ starryBackgroundTransform, (void*)&starryBackground },
-		{ shipTransform, (void*)&ship }, 
-	};
+	Sprite sprites[] = { background, ship };
 	const u8 spriteLength = sizeof(sprites) / sizeof(Sprite);
 
 	MSG message = {};
 	while (!shouldClose) {
-		renderer->testRender(sprites, spriteLength);
+		renderer->renderSprites(sprites, spriteLength);
 		
 		while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
 			TranslateMessage(&message);
@@ -118,6 +117,6 @@ INT WINAPI wWinMain(
 		}
 	}
 
-	Dx3dSpriteResource toUnload[] = { starryBackground, ship };
+	Dx3dSpriteResource toUnload[] = { starryBackgroundTexture, shipTexture };
 	loader->unload(toUnload, 2);
 }

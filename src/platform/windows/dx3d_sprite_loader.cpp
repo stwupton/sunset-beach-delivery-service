@@ -56,7 +56,7 @@ public:
 		frameDecode->GetPixelFormat(&wicPixelFormat);
 
 		DXGI_FORMAT dxgiFormat;
-		const bool formatConverted = this->getDxgiFormat(wicPixelFormat, dxgiFormat);
+		const bool formatConverted = this->getDxgiFormat(&wicPixelFormat, &dxgiFormat);
 		const UINT bitsPerPixel = this->getBitsPerPixel(wicPixelFormat);
 
 		UINT width = 0, height = 0;
@@ -291,17 +291,23 @@ protected:
 		return bitsPerPixel;
 	}
 
-	bool getDxgiFormat(WICPixelFormatGUID &wicPixelFormat, DXGI_FORMAT &dxgiFormat) const {
-		bool wicFormatConverted = false;
+	bool getDxgiFormat(WICPixelFormatGUID *wicPixelFormat, DXGI_FORMAT *dxgiFormat) const {
+		bool wicConverted = false;
+		WICPixelFormatGUID wic = *wicPixelFormat;
+		DXGI_FORMAT dxgi = *dxgiFormat;
 
-		dxgiFormat = this->wic2DxgiFormat(wicPixelFormat);
-		if (dxgiFormat == DXGI_FORMAT_UNKNOWN) {
-			wicPixelFormat = this->convertWic(wicPixelFormat);
-			wicFormatConverted = true;
+		dxgi = this->wic2DxgiFormat(wic);
+		if (dxgi == DXGI_FORMAT_UNKNOWN) {
+			wic = this->convertWic(wic);
+			wicConverted = true;
 
-			dxgiFormat = this->wic2DxgiFormat(wicPixelFormat);
-			assert(dxgiFormat != DXGI_FORMAT_UNKNOWN);
+			dxgi = this->wic2DxgiFormat(wic);
+			assert(dxgi != DXGI_FORMAT_UNKNOWN);
 		}
-		return wicFormatConverted;
+
+		*wicPixelFormat = wic;
+		*dxgiFormat = dxgi;
+
+		return wicConverted;
 	}
 };
