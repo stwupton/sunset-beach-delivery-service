@@ -1,3 +1,5 @@
+#include <cmath>
+
 #pragma once
 
 typedef signed char s8;
@@ -32,7 +34,7 @@ struct Mat4x4 {
 		this->w0 = w0; this->w1 = w1; this->w2 = w2; this->w3 = w3;
 	}
 
-	Mat4x4<T> scale(T x = 1, T y = 1, T z = 1, T w = 1) {
+	Mat4x4<T> scale(T x = 1, T y = 1, T z = 1, T w = 1) const {
 		Mat4x4<f32> result = *this;
 		result.x0 = x;
 		result.y1 = y;
@@ -41,11 +43,34 @@ struct Mat4x4 {
 		return result;
 	}
 
-	Mat4x4<T> translate(T x = 0, T y = 0, T z = 0) {
+	Mat4x4<T> translate(T x = 0, T y = 0, T z = 0) const {
 		Mat4x4<T> result = *this;
 		result.x3 = result.x0 * x + result.x1 * y + result.x2 * z + result.x3; 
 		result.y3 = result.y0 * x + result.y1 * y + result.y2 * z + result.y3; 
 		result.z3 = result.z0 * x + result.z1 * y + result.z2 * z + result.z3; 
+		return result;
+	}
+
+	Mat4x4<T> rotate(T angle) const {
+		const T c = cos(angle);
+		const T s = sin(angle);
+
+		Mat4x4<T> rotate;
+		rotate.x0 = c;
+		rotate.y0 = s;
+
+		rotate.x1 = -s;
+		rotate.y1 = c;
+
+		Mat4x4<T> result = *this;
+		result.x0 = this->x0 * rotate.x0 + this->x1 * rotate.y0;
+		result.y0 = this->y0 * rotate.x0 + this->y1 * rotate.y0;
+		result.z0 = this->z0 * rotate.x0 + this->z1 * rotate.y0;
+
+		result.x1 = this->x0 * rotate.x1 + this->x1 * rotate.y1;
+		result.y1 = this->y0 * rotate.x1 + this->y1 * rotate.y1;
+		result.z1 = this->z0 * rotate.x1 + this->z1 * rotate.y1;
+
 		return result;
 	}
 };

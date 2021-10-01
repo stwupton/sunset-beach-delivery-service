@@ -6,10 +6,10 @@
 
 // NOTE(steven): Buffer size of 500 characters is completely arbitrary, 
 // increase if needed
-#define LOG(_x, ...)                    \
-{                                       \
-	WCHAR _buffer[500];                   \
-	swprintf_s(_buffer, _x, __VA_ARGS__); \
+#define LOG(_x, ...)                     \
+{                                        \
+	WCHAR _buffer[500];                    \
+	swprintf_s(_buffer, _x, __VA_ARGS__);  \
 	OutputDebugString(_buffer);            \
 }
 

@@ -97,6 +97,7 @@ INT WINAPI wWinMain(
 	Mat4x4<f32> shipTransform;
 	shipTransform = shipTransform.translate(200.0f, 200.0f);
 	shipTransform = shipTransform.scale(0.5f, 0.5f);
+	shipTransform = shipTransform.rotate(1.0f);
 
 	Mat4x4<f32> starryBackgroundTransform;
 	starryBackgroundTransform = starryBackgroundTransform.scale(1.3f, 1.3f);
