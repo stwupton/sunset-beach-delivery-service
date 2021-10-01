@@ -6,8 +6,10 @@
 
 #include "dx3d_renderer.cpp"
 #include "dx3d_sprite_loader.cpp"
+#include "input.hpp"
 #include "sprite.cpp"
 #include "types.hpp"
+#include "platform/windows/input_processor.cpp"
 #include "platform/windows/utils.cpp"
 #include "platform/windows/window_config.hpp"
 
@@ -15,6 +17,8 @@
 static bool shouldClose = false;
 static Dx3dRenderer *renderer = new Dx3dRenderer();
 static Dx3dSpriteLoader *loader = new Dx3dSpriteLoader();
+static Input *input = new Input();
+static InputProcessor *inputProcessor = new InputProcessor();
 
 LRESULT CALLBACK eventHandler(
 	HWND windowHandle, 
@@ -38,6 +42,14 @@ LRESULT CALLBACK eventHandler(
 			delete renderer;
 			PostQuitMessage(0);
 			return 0;
+		} break;
+
+		case WM_LBUTTONDOWN: {
+			input->primaryButtonDown = true;
+		} break;
+
+		case WM_LBUTTONUP: {
+			input->primaryButtonDown = false;
 		} break;
 
 		default: {
@@ -115,6 +127,8 @@ INT WINAPI wWinMain(
 			TranslateMessage(&message);
 			DispatchMessage(&message);
 		}
+
+		inputProcessor->process(input);
 	}
 
 	Dx3dSpriteResource toUnload[] = { starryBackgroundTexture, shipTexture };
