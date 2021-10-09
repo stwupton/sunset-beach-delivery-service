@@ -29,6 +29,7 @@ The entry point is the platform layer which:
 ### MSVC
 ```
 cl src/main.cpp /DWIN32 /DUNICODE /I src/ /link user32.lib gdi32.lib d3d11.lib ole32.lib d3dcompiler.lib dxgi.lib
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\Llvm\x64\bin\clang-cl.exe /c /I"D:\GitHub Repos\sunset-beach-delivery-service\src" /Z7 /nologo /W1 /WX- /diagnostics:column /Od /D WIN32 /D UNICODE /D _USE_MATH_DEFINES /EHsc /MDd /GS /fp:precise /Fo"x64\Debug\\" /Gd /TP -m64  src\main.cpp
 ```
 
 ### Clang
