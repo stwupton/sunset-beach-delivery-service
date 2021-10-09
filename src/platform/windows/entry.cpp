@@ -19,6 +19,7 @@ static Dx3dRenderer *renderer = new Dx3dRenderer();
 static Dx3dSpriteLoader *loader = new Dx3dSpriteLoader();
 static Input *input = new Input();
 static InputProcessor *inputProcessor = new InputProcessor();
+static f32 delta;
 
 LRESULT CALLBACK eventHandler(
 	HWND windowHandle, 
@@ -108,12 +109,13 @@ INT WINAPI wWinMain(
 
 	Sprite ship;
 	ship.textureReference = (void*)&shipTexture;
-	ship.position = Vec3<f32>(200.0f, 200.0f);
+	ship.position = Vec3<f32>(200.0f, 200.0f, 0.4f);
 	ship.scale = Vec2<f32>(0.5f, 0.5f);
 	ship.angle = -95.0f;
 
 	Sprite background;
 	background.textureReference = (void*)&starryBackgroundTexture;
+	background.position = Vec3<f32>(0.0f, 0.0f, 0.9f);
 	background.scale = Vec2<f32>(1.3f, 1.3f);
 
 	Sprite sprites[] = { background, ship };
@@ -129,6 +131,31 @@ INT WINAPI wWinMain(
 		}
 
 		inputProcessor->process(input);
+
+		// TODO(steven): Move elsewhere, maybe a gameloop class?
+		{
+			static LARGE_INTEGER previousCounter;
+			LARGE_INTEGER counter;
+			LARGE_INTEGER frequency;
+			
+			QueryPerformanceCounter(&counter);
+			QueryPerformanceFrequency(&frequency);
+
+			if (previousCounter.QuadPart == 0) {
+				previousCounter = counter;
+				continue;
+			}
+
+			const f32 diff = counter.QuadPart - previousCounter.QuadPart;
+			previousCounter = counter;
+
+			delta = diff / frequency.QuadPart;
+		}
+
+		sprites[1].position.x -= 100.0f * delta;
+
+		const u8 fps = 1.0 / delta;
+		LOG(L"FPS: %u\n", fps);
 	}
 
 	Dx3dSpriteResource toUnload[] = { starryBackgroundTexture, shipTexture };
