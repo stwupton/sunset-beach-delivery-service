@@ -32,6 +32,8 @@ public:
 	ID3D11Device *device;
 
 protected:
+	ID3D11DepthStencilState *depthStencilState;
+	ID3D11DepthStencilView *depthStencilView;
 	ID3D11DeviceContext *deviceContext;
 	ID3D11RenderTargetView *renderView; 
 	IDXGISwapChain *swapChain;
@@ -57,12 +59,15 @@ public:
 		RELEASE_COM_OBJ(this->device)
 		RELEASE_COM_OBJ(this->deviceContext)
 		RELEASE_COM_OBJ(this->renderView)
+		RELEASE_COM_OBJ(this->depthStencilState)
+		RELEASE_COM_OBJ(this->depthStencilView)
 	}
 
 	void initialise(HWND windowHandle) {
 		this->createDeviceAndSwapChain(windowHandle);
 		this->compileShaders();
 		this->createBlendState();
+		this->createDepthBuffer();
 		this->createConstantBuffers();
 	}
 
@@ -70,10 +75,20 @@ public:
 		const Rgba clearColor(0.0f, 0.2f, 0.4f, 1.0f);
 		this->deviceContext->ClearRenderTargetView(this->renderView, (f32*)&clearColor);
 
+		this->deviceContext->ClearDepthStencilView(
+			this->depthStencilView, 
+			D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 
+			1.0f, 
+			0
+		);
+
 		this->deviceContext->VSSetConstantBuffers(0, 1, &this->constantBuffer);
 		this->deviceContext->VSSetConstantBuffers(1, 1, &this->spriteInfoBuffer);
 
 		this->deviceContext->OMSetBlendState(this->blendState, 0, 0xffffffff);
+		this->deviceContext->OMSetDepthStencilState(this->depthStencilState, NULL);
+		this->deviceContext->OMSetRenderTargets(1, &this->renderView, this->depthStencilView);
+
 		this->deviceContext->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
 		for (UINT i = 0; i < bufferLength; i++) {
@@ -170,7 +185,7 @@ protected:
 
 			const f32 x0 = 2.0f / (right - left);
 			const f32 y1 = 2.0f / (top - bottom);
-			const f32 z2 = -2.0f / (back - front);
+			const f32 z2 = 2.0f / (back - front);
 			const f32 x3 = -(right + left) / (right - left);
 			const f32 y3 = -(top + bottom) / (top - bottom);
 			const f32 z3 = -(back + front) / (back - front);
@@ -218,6 +233,42 @@ protected:
 		}
 	}
 
+	void createDepthBuffer() {
+		D3D11_TEXTURE2D_DESC depthStencilResourceDescription = {};
+		depthStencilResourceDescription.Width = screenWidth;
+		depthStencilResourceDescription.Height = screenHeight;
+		depthStencilResourceDescription.MipLevels = 1;
+		depthStencilResourceDescription.ArraySize = 1;
+		depthStencilResourceDescription.Format = DXGI_FORMAT_D16_UNORM;
+		depthStencilResourceDescription.SampleDesc.Count = 4;
+		depthStencilResourceDescription.SampleDesc.Quality = 0;
+		depthStencilResourceDescription.Usage = D3D11_USAGE_DEFAULT;
+		depthStencilResourceDescription.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+
+		ID3D11Texture2D *depthStencil;
+		this->device->CreateTexture2D(&depthStencilResourceDescription, NULL, &depthStencil);
+
+		D3D11_DEPTH_STENCIL_DESC depthStencilDescription = {};
+		depthStencilDescription.DepthEnable = true;
+		depthStencilDescription.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+		depthStencilDescription.DepthFunc = D3D11_COMPARISON_LESS;
+
+		this->device->CreateDepthStencilState(&depthStencilDescription, &this->depthStencilState);
+
+		D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDescription = {};
+		depthStencilViewDescription.Format = DXGI_FORMAT_D16_UNORM;
+		depthStencilViewDescription.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DMS;
+		depthStencilViewDescription.Texture2D.MipSlice = 0;
+
+		this->device->CreateDepthStencilView(
+			depthStencil,
+			&depthStencilViewDescription, 
+			&this->depthStencilView
+		);
+
+		RELEASE_COM_OBJ(depthStencil)
+	}
+
 	void createDeviceAndSwapChain(HWND windowHandle) {
 		DXGI_SWAP_CHAIN_DESC swapChainDescription = {};
 		swapChainDescription.BufferCount = 1;
@@ -231,7 +282,7 @@ protected:
 		swapChainDescription.SampleDesc.Count = 4;
 		swapChainDescription.SampleDesc.Quality = 0;
 		swapChainDescription.Windowed = true;
-		swapChainDescription.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+		swapChainDescription.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; 
 
 		// TODO(steven): Printing the adapters for now. Come back and check if we
 		// have any use for them.
@@ -266,7 +317,6 @@ protected:
 		ID3D11Texture2D *backBuffer;
 		this->swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
 		this->device->CreateRenderTargetView(backBuffer, NULL, &this->renderView);
-		this->deviceContext->OMSetRenderTargets(1, &this->renderView, NULL);
 		RELEASE_COM_OBJ(backBuffer)
 
 		D3D11_VIEWPORT viewport = {};
@@ -274,6 +324,8 @@ protected:
 		viewport.TopLeftY = 0;
 		viewport.Width = screenWidth;
 		viewport.Height = screenHeight;
+		viewport.MinDepth = 0.0f;
+		viewport.MaxDepth = 1.0f;
 		this->deviceContext->RSSetViewports(1, &viewport);
 	}
 };
