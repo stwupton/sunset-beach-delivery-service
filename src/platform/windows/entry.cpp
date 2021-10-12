@@ -4,7 +4,7 @@
 
 #include <Windows.h>
 
-#include "dx3d_renderer.cpp"
+#include "directx_renderer.cpp"
 #include "dx3d_sprite_loader.cpp"
 #include "input.hpp"
 #include "sprite.cpp"
@@ -15,7 +15,7 @@
 
 // TODO(steven): Move elsewhere
 static bool shouldClose = false;
-static Dx3dRenderer *renderer = new Dx3dRenderer();
+static DirectXRenderer *renderer = new DirectXRenderer();
 static Dx3dSpriteLoader *loader = new Dx3dSpriteLoader();
 static Input *input = new Input();
 static InputProcessor *inputProcessor = new InputProcessor();
@@ -101,7 +101,9 @@ INT WINAPI wWinMain(
 	PWSTR cmdArgs, 
 	INT showFlag
 ) {
-	CoInitialize(NULL);
+	HRESULT result = CoInitialize(NULL);
+	ASSERT_HRESULT(result)
+	
 	createWin32Window(instanceHandle, showFlag);
 
 	const Dx3dSpriteResource starryBackgroundTexture = loader->load(L"assets/img/starry_background.jpg");
@@ -123,7 +125,14 @@ INT WINAPI wWinMain(
 
 	MSG message = {};
 	while (!shouldClose) {
-		renderer->renderSprites(sprites, spriteLength);
+		renderer->drawSprtes(sprites, spriteLength);
+
+		u8 fps = 1 / delta;
+		WCHAR text[100] = {};
+		swprintf_s(text, L"FPS: %d", fps);
+		renderer->drawText(text, 30.0f, 0.0f, 0.0f, 300.0f, 40.0f);
+
+		renderer->finish();
 		
 		while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
 			TranslateMessage(&message);
@@ -153,9 +162,6 @@ INT WINAPI wWinMain(
 		}
 
 		sprites[1].position.x -= 100.0f * delta;
-
-		const u8 fps = 1.0 / delta;
-		LOG(L"FPS: %u\n", fps);
 	}
 
 	Dx3dSpriteResource toUnload[] = { starryBackgroundTexture, shipTexture };

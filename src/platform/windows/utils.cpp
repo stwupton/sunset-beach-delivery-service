@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cstdio>
+#include <cassert>
 
 #include <Windows.h>
+#include <comdef.h>
 
 // NOTE(steven): Buffer size of 500 characters is completely arbitrary, 
 // increase if needed
@@ -12,6 +14,13 @@
 	swprintf_s(_buffer, _x, __VA_ARGS__);  \
 	OutputDebugString(_buffer);            \
 }
+
+#define ASSERT_HRESULT(_result)                                 \
+	if (!SUCCEEDED(_result)) {                                    \
+		_com_error _error(_result);                                 \
+		LOG(L"HRESULT Error Message: %s\n", _error.ErrorMessage()); \
+		assert(SUCCEEDED(_result));                                 \
+	}
 
 // TODO(steven): Keeping for now as it's useful for the render work that I'm 
 // doing but it should be removed at some point

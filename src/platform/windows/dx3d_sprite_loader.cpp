@@ -28,32 +28,36 @@ public:
 	void initialise(ID3D11Device *device) {
 		this->device = device;
 
-		CoCreateInstance(
+		HRESULT result = CoCreateInstance(
 			CLSID_WICImagingFactory, 
 			NULL, 
 			CLSCTX_INPROC_SERVER, 
 			__uuidof(IWICImagingFactory), 
 			(void**)&this->imagingFactory
 		);
+		ASSERT_HRESULT(result)
 	}
 
   Dx3dSpriteResource load(LPCWSTR fileName) {
 		Dx3dSpriteResource spriteInfo = {};
 
 		IWICBitmapDecoder *bitmapDecoder;
-		imagingFactory->CreateDecoderFromFilename(
+		HRESULT result = imagingFactory->CreateDecoderFromFilename(
 			fileName, 
 			NULL, 
 			GENERIC_READ, 
 			WICDecodeMetadataCacheOnLoad, 
 			&bitmapDecoder
 		);
+		ASSERT_HRESULT(result)
 
 		IWICBitmapFrameDecode *frameDecode;
-		bitmapDecoder->GetFrame(0, &frameDecode);
+		result = bitmapDecoder->GetFrame(0, &frameDecode);
+		ASSERT_HRESULT(result)
 
 		WICPixelFormatGUID wicPixelFormat;
-		frameDecode->GetPixelFormat(&wicPixelFormat);
+		result = frameDecode->GetPixelFormat(&wicPixelFormat);
+		ASSERT_HRESULT(result)
 
 		DXGI_FORMAT dxgiFormat;
 		const bool formatConverted = this->getDxgiFormat(&wicPixelFormat, &dxgiFormat);
@@ -189,7 +193,7 @@ protected:
 			&subresourceData, 
 			&vertexBuffer
 		);
-		assert(SUCCEEDED(result));
+		ASSERT_HRESULT(result)
 
 		return vertexBuffer;
 	}
@@ -222,7 +226,7 @@ protected:
 			&subresourceData, 
 			&texture2d
 		);
-		assert(SUCCEEDED(result));
+		ASSERT_HRESULT(result)
 
 		return texture2d;
 	}
@@ -242,7 +246,7 @@ protected:
 			&resourceViewDescription, 
 			&texture2dView
 		);
-		assert(SUCCEEDED(result));
+		ASSERT_HRESULT(result)
 
 		return texture2dView;
 	}
@@ -257,9 +261,10 @@ protected:
 	) const {
 		if (formatConverted) {
 			IWICFormatConverter *formatConverter;
-			imagingFactory->CreateFormatConverter(&formatConverter);
+			HRESULT result = imagingFactory->CreateFormatConverter(&formatConverter);
+			ASSERT_HRESULT(result)
 
-			formatConverter->Initialize(
+			result = formatConverter->Initialize(
 				frameDecode, 
 				wicPixelFormat, 
 				WICBitmapDitherTypeErrorDiffusion, 
@@ -267,23 +272,30 @@ protected:
 				0, 
 				WICBitmapPaletteTypeCustom
 			);
-			formatConverter->CopyPixels(NULL, rowStride, bufferSize, buffer);
+			ASSERT_HRESULT(result)
+
+			result = formatConverter->CopyPixels(NULL, rowStride, bufferSize, buffer);
+			ASSERT_HRESULT(result)
 
 			RELEASE_COM_OBJ(formatConverter);
 		} else {
-			frameDecode->CopyPixels(NULL, rowStride, bufferSize, buffer);
+			HRESULT result = frameDecode->CopyPixels(NULL, rowStride, bufferSize, buffer);
+			ASSERT_HRESULT(result)
 		}
 	}
 
 	UINT getBitsPerPixel(const WICPixelFormatGUID &wicPixelFormat) const {
 		IWICComponentInfo *componentInfo;
-		imagingFactory->CreateComponentInfo(wicPixelFormat, &componentInfo);
+		HRESULT result = imagingFactory->CreateComponentInfo(wicPixelFormat, &componentInfo);
+		ASSERT_HRESULT(result)
 
 		IWICPixelFormatInfo *formatInfo;
-		componentInfo->QueryInterface(__uuidof(IWICPixelFormatInfo), (void**)&formatInfo); 
+		result = componentInfo->QueryInterface(__uuidof(IWICPixelFormatInfo), (void**)&formatInfo); 
+		ASSERT_HRESULT(result)
 
 		UINT bitsPerPixel;
-		formatInfo->GetBitsPerPixel(&bitsPerPixel);
+		result = formatInfo->GetBitsPerPixel(&bitsPerPixel);
+		ASSERT_HRESULT(result)
 
 		RELEASE_COM_OBJ(componentInfo)
 		RELEASE_COM_OBJ(formatInfo)
