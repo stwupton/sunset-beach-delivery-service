@@ -133,14 +133,14 @@ public:
 			localeName, 
 			&textFormat
 		);
-		ASSERT_HRESULT(result)
+		ASSERT_HRESULT(result);
 
 		D2D1_RECT_F layoutRect = { x, y, x + width, y + height };
 
 		// TODO(steven): Re-use brushes
 		ID2D1SolidColorBrush *redBrush = NULL;
 		result = this->d2dRenderTarget->CreateSolidColorBrush({ 1.0f, 0.0f, 0.0f, 1.0f }, &redBrush);
-		ASSERT_HRESULT(result)
+		ASSERT_HRESULT(result);
 
 		this->d2dRenderTarget->BeginDraw();
 		this->d2dRenderTarget->DrawText(
@@ -154,7 +154,10 @@ public:
 		);
 
 		result = this->d2dRenderTarget->EndDraw();
-		ASSERT_HRESULT(result)
+		ASSERT_HRESULT(result);
+
+		RELEASE_COM_OBJ(redBrush);
+		RELEASE_COM_OBJ(textFormat);
 	}
 
 	void drawSprtes(Sprite *sprites, UINT bufferLength) const {
