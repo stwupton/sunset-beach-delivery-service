@@ -124,7 +124,7 @@ public:
 		return 0;
 	}
 
-	HRESULT PlaySound(TCHAR* strFileName)
+	HRESULT PlaySound(const TCHAR* strFileName)
 	{
 		HRESULT hr = NULL;
 		// https://docs.microsoft.com/en-us/windows/win32/xaudio2/how-to--load-audio-data-files-in-xaudio2
