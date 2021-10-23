@@ -1,6 +1,7 @@
 #pragma once
 
-#include "types.hpp"
+#include "types/core.hpp"
+#include "types/vector.hpp"
 
 struct Input {
 	Vec2<f64> mouse;

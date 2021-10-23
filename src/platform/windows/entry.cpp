@@ -4,20 +4,20 @@
 
 #include <Windows.h>
 
+#include "common/game_data.hpp"
 #include "directx_renderer.cpp"
 #include "dx3d_sprite_loader.cpp"
-#include "input.hpp"
-#include "sprite.cpp"
-#include "types.hpp"
+#include "game/game.cpp"
 #include "platform/windows/input_processor.cpp"
 #include "platform/windows/utils.cpp"
 #include "platform/windows/window_config.hpp"
+#include "types/core.hpp"
+#include "types/vector.hpp"
 
 // TODO(steven): Move elsewhere
 static bool shouldClose = false;
 static DirectXRenderer *renderer = new DirectXRenderer();
 static Dx3dSpriteLoader *loader = new Dx3dSpriteLoader();
-static Input *input = new Input();
 static InputProcessor *inputProcessor = new InputProcessor();
 static f32 delta;
 
@@ -32,6 +32,9 @@ LRESULT CALLBACK eventHandler(
 		case WM_CREATE: {
 			renderer->initialise(windowHandle);
 			loader->initialise(renderer->device);
+
+			CREATESTRUCT *createStruct = (CREATESTRUCT*)lParam;
+			SetWindowLongPtr(windowHandle, GWLP_USERDATA, (LONG_PTR)createStruct->lpCreateParams);
 		} break;
 
 		case WM_CLOSE: {
@@ -46,11 +49,13 @@ LRESULT CALLBACK eventHandler(
 		} break;
 
 		case WM_LBUTTONDOWN: {
-			input->primaryButtonDown = true;
+			GameData *gameData = (GameData*)GetWindowLongPtr(windowHandle, GWLP_USERDATA);
+			gameData->input.primaryButtonDown = true;
 		} break;
 
 		case WM_LBUTTONUP: {
-			input->primaryButtonDown = false;
+			GameData *gameData = (GameData*)GetWindowLongPtr(windowHandle, GWLP_USERDATA);
+			gameData->input.primaryButtonDown = false;
 		} break;
 
 		default: {
@@ -60,7 +65,7 @@ LRESULT CALLBACK eventHandler(
 	return result;
 }
 
-INT createWin32Window(HINSTANCE instanceHandle, INT showFlag) {
+INT createWin32Window(HINSTANCE instanceHandle, INT showFlag, GameData *gameData) {
 	const LPCWSTR className = L"SBDS";
 
 	WNDCLASSEX windowClass = {};
@@ -83,7 +88,7 @@ INT createWin32Window(HINSTANCE instanceHandle, INT showFlag) {
 		NULL,
 		NULL,
 		instanceHandle,
-		NULL
+		(void*)gameData
 	);
 
 	if (windowHandle == NULL) {
@@ -104,42 +109,37 @@ INT WINAPI wWinMain(
 	HRESULT result = CoInitialize(NULL);
 	ASSERT_HRESULT(result)
 	
-	createWin32Window(instanceHandle, showFlag);
+	GameData *gameData = new GameData {};
 
-	const Dx3dSpriteResource starryBackgroundTexture = loader->load(L"assets/img/starry_background.jpg");
-	const Dx3dSpriteResource shipTexture = loader->load(L"assets/img/ship.png");
+	createWin32Window(instanceHandle, showFlag, gameData);
 
-	Sprite ship;
-	ship.textureReference = (void*)&shipTexture;
-	ship.position = Vec3<f32>(200.0f, 200.0f, 0.4f);
-	ship.scale = Vec2<f32>(0.5f, 0.5f);
-	ship.angle = -95.0f;
-
-	Sprite background;
-	background.textureReference = (void*)&starryBackgroundTexture;
-	background.position = Vec3<f32>(0.0f, 0.0f, 0.9f);
-	background.scale = Vec2<f32>(1.3f, 1.3f);
-
-	Sprite sprites[] = { background, ship };
-	const u8 spriteLength = sizeof(sprites) / sizeof(Sprite);
+	Game game;
+	game.load(loader);
+	game.setup();
 
 	MSG message = {};
 	while (!shouldClose) {
-		renderer->drawSprtes(sprites, spriteLength);
+		while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
+			TranslateMessage(&message);
+			DispatchMessage(&message);
+		}
+		inputProcessor->process(&gameData->input);
+
+		u8 spriteLength = 0;
+		Sprite *spriteBuffer = nullptr;
+		game.update(&spriteBuffer, &spriteLength, delta);
+
+		renderer->drawSprtes(spriteBuffer, spriteLength);
 
 		u8 fps = 1 / delta;
 		WCHAR text[100] = {};
 		swprintf_s(text, L"FPS: %d", fps);
 		renderer->drawText(text, 30.0f, 0.0f, 0.0f, 300.0f, 40.0f);
 
-		renderer->finish();
-		
-		while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
-			TranslateMessage(&message);
-			DispatchMessage(&message);
-		}
+		swprintf_s(text, L"Mouse Down: %d", gameData->input.primaryButtonDown);
+		renderer->drawText(text, 30.0f, 0.0f, 40.0f, 300.0f, 40.0f);
 
-		inputProcessor->process(input);
+		renderer->finish();
 
 		// TODO(steven): Move elsewhere, maybe a gameloop class?
 		{
@@ -160,10 +160,7 @@ INT WINAPI wWinMain(
 
 			delta = diff / frequency.QuadPart;
 		}
-
-		sprites[1].position.x -= 100.0f * delta;
 	}
 
-	Dx3dSpriteResource toUnload[] = { starryBackgroundTexture, shipTexture };
-	loader->unload(toUnload, 2);
+	loader->unload();
 }

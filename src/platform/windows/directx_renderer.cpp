@@ -14,8 +14,10 @@
 #include <combaseapi.h>
 #include <wincodec.h>
 
-#include "sprite.cpp"
-#include "types.hpp"
+#include "common/sprite.hpp"
+#include "types/core.hpp"
+#include "types/matrix.hpp"
+#include "types/vector.hpp"
 #include "platform/windows/dx3d_sprite_loader.cpp"
 #include "platform/windows/window_config.hpp"
 #include "platform/windows/utils.cpp"
@@ -133,14 +135,14 @@ public:
 			localeName, 
 			&textFormat
 		);
-		ASSERT_HRESULT(result);
+		ASSERT_HRESULT(result)
 
 		D2D1_RECT_F layoutRect = { x, y, x + width, y + height };
 
 		// TODO(steven): Re-use brushes
 		ID2D1SolidColorBrush *redBrush = NULL;
 		result = this->d2dRenderTarget->CreateSolidColorBrush({ 1.0f, 0.0f, 0.0f, 1.0f }, &redBrush);
-		ASSERT_HRESULT(result);
+		ASSERT_HRESULT(result)
 
 		this->d2dRenderTarget->BeginDraw();
 		this->d2dRenderTarget->DrawText(
@@ -156,8 +158,8 @@ public:
 		result = this->d2dRenderTarget->EndDraw();
 		ASSERT_HRESULT(result);
 
-		RELEASE_COM_OBJ(redBrush);
-		RELEASE_COM_OBJ(textFormat);
+		RELEASE_COM_OBJ(redBrush)
+		RELEASE_COM_OBJ(textFormat)
 	}
 
 	void drawSprtes(Sprite *sprites, UINT bufferLength) const {
@@ -189,15 +191,22 @@ public:
 			this->deviceContext->IASetVertexBuffers(0, 1, &info->vertexBuffer, &stride, &offset);
 
 			D3D11_MAPPED_SUBRESOURCE mappedResource;
-			this->deviceContext->Map(this->spriteInfoBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+			HRESULT result = this->deviceContext->Map(
+				this->spriteInfoBuffer, 
+				NULL, 
+				D3D11_MAP_WRITE_DISCARD, 
+				NULL, 
+				&mappedResource
+			);
+			ASSERT_HRESULT(result)
 			SpriteInfoBuffer *buffer = (SpriteInfoBuffer*)mappedResource.pData;
 
 			Mat4x4<f32> transform;
 			transform = transform.translate(sprite.position.x, sprite.position.y, sprite.position.z);
 			transform = transform.scale(sprite.scale.x, sprite.scale.y);
 			transform = transform.rotate(-sprite.angle * M_PI / 180);
-
 			buffer->transform = transform;
+
 			this->deviceContext->Unmap(this->spriteInfoBuffer, 0);
 
 			this->deviceContext->PSSetShaderResources(0, 1, &info->texture2dView);
@@ -206,6 +215,7 @@ public:
 	}
 
 	void finish() const {
+		// TODO(steven): SyncInterval results in different framerate on different monitors
 		HRESULT result = this->swapChain->Present(2, 0);
 		ASSERT_HRESULT(result)
 	}

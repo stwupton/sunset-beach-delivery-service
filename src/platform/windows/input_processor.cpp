@@ -2,7 +2,7 @@
 
 #include <Windows.h>
 
-#include "input.hpp"
+#include "common/input.hpp"
 
 class InputProcessor {
 public:

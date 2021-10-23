@@ -6,6 +6,7 @@
 #include <d3d11.h>
 #include <malloc.h>
 
+#include "asset_definitions.hpp"
 #include "platform/windows/utils.cpp"
 #include "platform/windows/sprite_vertex.hpp"
 
@@ -19,6 +20,7 @@ class Dx3dSpriteLoader {
 protected:
 	ID3D11Device *device;
 	IWICImagingFactory *imagingFactory;
+	Dx3dSpriteResource resources[AssetId::_length] = {};
 
 public:
 	~Dx3dSpriteLoader() {
@@ -38,7 +40,8 @@ public:
 		ASSERT_HRESULT(result)
 	}
 
-  Dx3dSpriteResource load(LPCWSTR fileName) {
+  Dx3dSpriteResource load(const AssetId &assetId) {
+		LPCWSTR fileName = fileNames[assetId];
 		Dx3dSpriteResource spriteInfo = {};
 
 		IWICBitmapDecoder *bitmapDecoder;
@@ -89,15 +92,16 @@ public:
 		RELEASE_COM_OBJ(frameDecode)
 		free(buffer);
 
+		this->resources[assetId] = spriteInfo;
 		return spriteInfo;
 	}
 
-	void unload(Dx3dSpriteResource *spriteInfoBuffer, u16 bufferLength) {
-		for (u16 i = 0; i < bufferLength; i++) {
-			Dx3dSpriteResource &info = spriteInfoBuffer[i];
-			RELEASE_COM_OBJ(info.texture2d)
-			RELEASE_COM_OBJ(info.texture2dView)
-			RELEASE_COM_OBJ(info.vertexBuffer)
+	void unload() {
+		for (Dx3dSpriteResource &resource : this->resources) {
+			RELEASE_COM_OBJ(resource.texture2d)
+			RELEASE_COM_OBJ(resource.texture2dView)
+			RELEASE_COM_OBJ(resource.vertexBuffer)
+			resource = {};
 		}
 	}
 
