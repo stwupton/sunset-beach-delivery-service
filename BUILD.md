@@ -14,8 +14,9 @@ The entry point is the platform layer which:
 
 ## Required Definitions
 - WIN32
-- UNICODE
-- _USE_MATH_DEFINES
+
+## Optional Definitions
+- NDEBUG (for release builds) 
 
 ## Required Libraries
 - user32
@@ -31,10 +32,10 @@ The entry point is the platform layer which:
 
 ### MSVC
 ```
-cl src/main.cpp /DWIN32 /DUNICODE /D_USE_MATH_DEFINES /DDEBUG /I src/ /link user32.lib gdi32.lib d3d11.lib ole32.lib d3dcompiler.lib d2d1.lib dwrite.lib dxgi.lib
+cl src/main.cpp /DWIN32 /I src/ /link user32.lib gdi32.lib d3d11.lib ole32.lib d3dcompiler.lib d2d1.lib dwrite.lib dxgi.lib
 ```
 
 ### Clang
 ```
-clang++ -g src/main.cpp -Isrc/ -luser32 -lgdi32 -ld3d11 -ld3dcompiler -ld2d1 -ldwrite -ldxgi -lole32 -DUNICODE -DWIN32
+clang++ -g src/main.cpp -Isrc/ -luser32 -lgdi32 -ld3d11 -ld3dcompiler -ld2d1 -ldwrite -ldxgi -lole32 -DWIN32
 ```

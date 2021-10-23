@@ -1,6 +1,6 @@
 #pragma once
 
-#include "types.hpp"
+#include "types/core.hpp"
 
 struct SpriteVertex {
 	Vec3<f32> position;

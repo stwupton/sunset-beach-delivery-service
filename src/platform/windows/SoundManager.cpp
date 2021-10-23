@@ -107,7 +107,7 @@ public:
 		if (FAILED(hr = pXAudio2->CreateMasteringVoice(&pMasterVoice)))
 			return hr;
 
-#if DEBUG
+#ifdef DEBUG
 
 		XAUDIO2_DEBUG_CONFIGURATION flags;
 		flags.TraceMask = XAUDIO2_LOG_ERRORS | XAUDIO2_LOG_DETAIL;
