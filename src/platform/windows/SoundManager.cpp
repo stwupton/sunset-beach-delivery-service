@@ -107,7 +107,7 @@ public:
 		if (FAILED(hr = pXAudio2->CreateMasteringVoice(&pMasterVoice)))
 			return hr;
 
-#ifdef DEBUG
+#if DEBUG
 
 		XAUDIO2_DEBUG_CONFIGURATION flags;
 		flags.TraceMask = XAUDIO2_LOG_ERRORS | XAUDIO2_LOG_DETAIL;
@@ -120,16 +120,6 @@ public:
 		pXAudio2->SetDebugConfiguration(&flags);
 
 #endif // DEBUG
-
-		XAUDIO2_DEBUG_CONFIGURATION flags;
-		flags.TraceMask = XAUDIO2_LOG_ERRORS | XAUDIO2_LOG_DETAIL;
-		flags.BreakMask = XAUDIO2_LOG_ERRORS;
-		flags.LogFileline = true;
-		flags.LogFunctionName = true;
-		flags.LogThreadID = true;
-		flags.LogTiming = true;
-
-		pXAudio2->SetDebugConfiguration(&flags);
 
 		return 0;
 	}

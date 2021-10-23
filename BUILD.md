@@ -31,7 +31,7 @@ The entry point is the platform layer which:
 
 ### MSVC
 ```
-cl src/main.cpp /DWIN32 /DUNICODE /D_USE_MATH_DEFINES /I src/ /link user32.lib gdi32.lib d3d11.lib ole32.lib d3dcompiler.lib d2d1.lib dwrite.lib dxgi.lib
+cl src/main.cpp /DWIN32 /DUNICODE /D_USE_MATH_DEFINES /DDEBUG /I src/ /link user32.lib gdi32.lib d3d11.lib ole32.lib d3dcompiler.lib d2d1.lib dwrite.lib dxgi.lib
 ```
 
 ### Clang
