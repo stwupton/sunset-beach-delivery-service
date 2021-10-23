@@ -5,6 +5,7 @@
 #include <Windows.h>
 
 #include "directx_renderer.cpp"
+#include "SoundManager.cpp"
 #include "dx3d_sprite_loader.cpp"
 #include "input.hpp"
 #include "sprite.cpp"
@@ -17,6 +18,7 @@
 static bool shouldClose = false;
 static DirectXRenderer *renderer = new DirectXRenderer();
 static Dx3dSpriteLoader *loader = new Dx3dSpriteLoader();
+static SoundManager *soundManager = new SoundManager();
 static Input *input = new Input();
 static InputProcessor *inputProcessor = new InputProcessor();
 static f32 delta;
@@ -32,6 +34,8 @@ LRESULT CALLBACK eventHandler(
 		case WM_CREATE: {
 			renderer->initialise(windowHandle);
 			loader->initialise(renderer->device);
+			soundManager->Initialise();
+			soundManager->PlaySoundW(L"assets/music/sound1.wav");
 		} break;
 
 		case WM_CLOSE: {
@@ -133,14 +137,14 @@ INT WINAPI wWinMain(
 		renderer->drawText(text, 30.0f, 0.0f, 0.0f, 300.0f, 40.0f);
 
 		renderer->finish();
-		
+
 		while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
 			TranslateMessage(&message);
 			DispatchMessage(&message);
 		}
 
 		inputProcessor->process(input);
-
+		
 		// TODO(steven): Move elsewhere, maybe a gameloop class?
 		{
 			static LARGE_INTEGER previousCounter;
