@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/sprite.hpp"
+#include "common/ui_element.hpp"
 #include "types/core.hpp"
 
 // TODO(steven): We're in game now, we shouldn't be directly communicating with 
@@ -42,8 +43,46 @@ public:
 		this->background.scale = Vec2<f32>(1.3f, 1.3f);
 	}
 
-	void update(Sprite **spriteBuffer, u8 *spriteLength, f32 delta) {
-		*spriteBuffer = &this->background;
-		*spriteLength = 3;
+	void update(GameState *gameState, f32 delta) {
+		SpriteBuffer &sprites = gameState->sprites;
+		sprites.clear();
+		sprites.push(this->background);
+		sprites.push(this->ship);
+		sprites.push(this->enemyShip);
+
+		UIElementBuffer &uiElements = gameState->uiElements;
+		uiElements.clear();
+
+		WCHAR textBuffer[100] = {};
+
+		u8 fps = 1 / delta;
+		swprintf_s(textBuffer, L"FPS: %d", fps);
+		UIElement fpsCount = {};
+		fpsCount.type = UIType::text;
+		fpsCount.text.text = textBuffer;
+		fpsCount.text.fontSize = 30.0f;
+		fpsCount.text.position = 0;
+		fpsCount.text.width = 300.0f;
+		fpsCount.text.height = 40.0f;
+		uiElements.push(fpsCount);
+
+		swprintf_s(textBuffer, L"Mouse Down: %d", gameState->input.primaryButton.down);
+		UIElement buttonMessage = {};
+		buttonMessage.type = UIType::text;
+		buttonMessage.text.text = textBuffer;
+		buttonMessage.text.fontSize = 30.0f;
+		buttonMessage.text.position = Vec2<f32>(0.0f, 40.0f);
+		buttonMessage.text.width = 300.0f;
+		buttonMessage.text.height = 40.0f;
+		uiElements.push(buttonMessage);
+
+		if (gameState->input.primaryButton.down) {
+			UIElement drawLine = {};
+			drawLine.type = UIType::line;
+			drawLine.line.start = gameState->input.primaryButton.start;
+			drawLine.line.end = gameState->input.mouse;
+			drawLine.line.thickness = 30.0f;
+			uiElements.push(drawLine);
+		}
 	}
 };

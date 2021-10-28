@@ -4,7 +4,7 @@
 
 #include <Windows.h>
 
-#include "common/game_data.hpp"
+#include "common/game_state.hpp"
 #include "directx_renderer.cpp"
 #include "dx3d_sprite_loader.cpp"
 #include "game/game.cpp"
@@ -43,19 +43,7 @@ LRESULT CALLBACK eventHandler(
 		} break;
 
 		case WM_DESTROY: {
-			delete renderer;
 			PostQuitMessage(0);
-			return 0;
-		} break;
-
-		case WM_LBUTTONDOWN: {
-			GameData *gameData = (GameData*)GetWindowLongPtr(windowHandle, GWLP_USERDATA);
-			gameData->input.primaryButtonDown = true;
-		} break;
-
-		case WM_LBUTTONUP: {
-			GameData *gameData = (GameData*)GetWindowLongPtr(windowHandle, GWLP_USERDATA);
-			gameData->input.primaryButtonDown = false;
 		} break;
 
 		default: {
@@ -65,7 +53,7 @@ LRESULT CALLBACK eventHandler(
 	return result;
 }
 
-INT createWin32Window(HINSTANCE instanceHandle, INT showFlag, GameData *gameData) {
+INT createWin32Window(HINSTANCE instanceHandle, INT showFlag, GameState *gameState) {
 	const LPCWSTR className = L"SBDS";
 
 	WNDCLASSEX windowClass = {};
@@ -88,7 +76,7 @@ INT createWin32Window(HINSTANCE instanceHandle, INT showFlag, GameData *gameData
 		NULL,
 		NULL,
 		instanceHandle,
-		(void*)gameData
+		(void*)gameState
 	);
 
 	if (windowHandle == NULL) {
@@ -109,9 +97,9 @@ INT WINAPI wWinMain(
 	HRESULT result = CoInitialize(NULL);
 	ASSERT_HRESULT(result)
 	
-	GameData *gameData = new GameData {};
+	GameState *gameState = new GameState {};
 
-	createWin32Window(instanceHandle, showFlag, gameData);
+	createWin32Window(instanceHandle, showFlag, gameState);
 
 	Game game;
 	game.load(loader);
@@ -123,22 +111,12 @@ INT WINAPI wWinMain(
 			TranslateMessage(&message);
 			DispatchMessage(&message);
 		}
-		inputProcessor->process(&gameData->input);
 
-		u8 spriteLength = 0;
-		Sprite *spriteBuffer = nullptr;
-		game.update(&spriteBuffer, &spriteLength, delta);
+		inputProcessor->process(&gameState->input);
+		game.update(gameState, delta);
 
-		renderer->drawSprtes(spriteBuffer, spriteLength);
-
-		u8 fps = 1 / delta;
-		WCHAR text[100] = {};
-		swprintf_s(text, L"FPS: %d", fps);
-		renderer->drawText(text, 30.0f, 0.0f, 0.0f, 300.0f, 40.0f);
-
-		swprintf_s(text, L"Mouse Down: %d", gameData->input.primaryButtonDown);
-		renderer->drawText(text, 30.0f, 0.0f, 40.0f, 300.0f, 40.0f);
-
+		renderer->drawSprites(gameState->sprites.data, gameState->sprites.length);
+		renderer->drawUI(gameState->uiElements.data, gameState->uiElements.length);
 		renderer->finish();
 
 		// TODO(steven): Move elsewhere, maybe a gameloop class?
@@ -162,5 +140,7 @@ INT WINAPI wWinMain(
 		}
 	}
 
-	loader->unload();
+	delete loader;
+	delete renderer;
+	delete inputProcessor;
 }

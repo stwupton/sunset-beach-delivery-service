@@ -82,6 +82,15 @@ public:
 		this->createDepthBuffer();
 		this->createConstantBuffers();
 		this->create2dTarget();
+
+#ifdef DEBUG
+		ID3D11Debug *debug = nullptr;
+		this->device->QueryInterface(__uuidof(ID3D11Debug), (void**)&debug);
+		debug->ReportLiveDeviceObjects(
+			D3D11_RLDO_SUMMARY |
+			D3D11_RLDO_DETAIL
+		);
+#endif
 	}
 
 	void create2dTarget() {
@@ -118,51 +127,70 @@ public:
 		ASSERT_HRESULT(result)
 	}
 
-	void drawText(const WCHAR *text, f32 fontSize, f32 x, f32 y, f32 width, f32 height) const {
+	void drawUI(UIElement *uiElementBuffer, UINT bufferLength) const {
 		// TODO(steven): Cache this somewhere
 		WCHAR localeName[LOCALE_NAME_MAX_LENGTH];
-    GetUserDefaultLocaleName(localeName, LOCALE_NAME_MAX_LENGTH);
-
-		// TODO(steven): Re-use text formats
-		IDWriteTextFormat *textFormat;
-		HRESULT result = this->dWriteFactory->CreateTextFormat(
-			L"Arial", 
-			nullptr, 
-			DWRITE_FONT_WEIGHT_MEDIUM, 
-			DWRITE_FONT_STYLE_NORMAL, 
-			DWRITE_FONT_STRETCH_MEDIUM, 
-			fontSize, 
-			localeName, 
-			&textFormat
-		);
-		ASSERT_HRESULT(result)
-
-		D2D1_RECT_F layoutRect = { x, y, x + width, y + height };
+		GetUserDefaultLocaleName(localeName, LOCALE_NAME_MAX_LENGTH);
 
 		// TODO(steven): Re-use brushes
 		ID2D1SolidColorBrush *redBrush = NULL;
-		result = this->d2dRenderTarget->CreateSolidColorBrush({ 1.0f, 0.0f, 0.0f, 1.0f }, &redBrush);
+		HRESULT result = this->d2dRenderTarget->CreateSolidColorBrush({ 1.0f, 0.0f, 0.0f, 1.0f }, &redBrush);
 		ASSERT_HRESULT(result)
 
-		this->d2dRenderTarget->BeginDraw();
-		this->d2dRenderTarget->DrawText(
-			text, 
-			wcslen(text), 
-			textFormat, 
-			layoutRect, 
-			redBrush, 
-			D2D1_DRAW_TEXT_OPTIONS_NO_SNAP, 
-			DWRITE_MEASURING_MODE_NATURAL
-		);
+		for (UINT i = 0; i < bufferLength; i++) {
+			const UIElement &element = uiElementBuffer[i];
+			this->d2dRenderTarget->BeginDraw();
 
-		result = this->d2dRenderTarget->EndDraw();
-		ASSERT_HRESULT(result);
+			if (element.type == UIType::text) {
+				// TODO(steven): Re-use text formats
+				IDWriteTextFormat *textFormat;
+				HRESULT result = this->dWriteFactory->CreateTextFormat(
+					L"Arial", 
+					nullptr, 
+					DWRITE_FONT_WEIGHT_MEDIUM, 
+					DWRITE_FONT_STYLE_NORMAL, 
+					DWRITE_FONT_STRETCH_MEDIUM, 
+					element.text.fontSize, 
+					localeName, 
+					&textFormat
+				);
+				ASSERT_HRESULT(result)
+
+				D2D1_RECT_F layoutRect = { 
+					element.text.position.x, 
+					element.text.position.y, 
+					element.text.position.x + element.text.width, 
+					element.text.position.y + element.text.height 
+				};
+
+				this->d2dRenderTarget->DrawText(
+					element.text.text.data, 
+					wcslen(element.text.text.data), 
+					textFormat, 
+					layoutRect, 
+					redBrush, 
+					D2D1_DRAW_TEXT_OPTIONS_NO_SNAP, 
+					DWRITE_MEASURING_MODE_NATURAL
+				);
+
+				RELEASE_COM_OBJ(textFormat)
+			} else if (element.type == UIType::line) {
+				this->d2dRenderTarget->DrawLine(
+					{ element.line.start.x, element.line.start.y },
+					{ element.line.end.x, element.line.end.y },
+					redBrush,
+					element.line.thickness
+				);
+			}
+
+			result = this->d2dRenderTarget->EndDraw();
+			ASSERT_HRESULT(result);
+		}
 
 		RELEASE_COM_OBJ(redBrush)
-		RELEASE_COM_OBJ(textFormat)
 	}
 
-	void drawSprtes(Sprite *sprites, UINT bufferLength) const {
+	void drawSprites(Sprite *sprites, UINT bufferLength) const {
 		const Rgba clearColor(0.0f, 0.2f, 0.4f, 1.0f);
 		this->deviceContext->ClearRenderTargetView(this->renderView, (f32*)&clearColor);
 
