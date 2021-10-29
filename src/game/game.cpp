@@ -57,32 +57,29 @@ public:
 
 		u8 fps = 1 / delta;
 		swprintf_s(textBuffer, L"FPS: %d", fps);
-		UIElement fpsCount = {};
-		fpsCount.type = UIType::text;
-		fpsCount.text.text = textBuffer;
-		fpsCount.text.fontSize = 30.0f;
-		fpsCount.text.position = 0;
-		fpsCount.text.width = 300.0f;
-		fpsCount.text.height = 40.0f;
-		uiElements.push(fpsCount);
+		UITextData fpsCount = {};
+		fpsCount.text = textBuffer;
+		fpsCount.fontSize = 30.0f;
+		fpsCount.position = 0;
+		fpsCount.width = 300.0f;
+		fpsCount.height = 40.0f;
+		uiElements.pushText(fpsCount);
 
 		swprintf_s(textBuffer, L"Mouse Down: %d", gameState->input.primaryButton.down);
-		UIElement buttonMessage = {};
-		buttonMessage.type = UIType::text;
-		buttonMessage.text.text = textBuffer;
-		buttonMessage.text.fontSize = 30.0f;
-		buttonMessage.text.position = Vec2<f32>(0.0f, 40.0f);
-		buttonMessage.text.width = 300.0f;
-		buttonMessage.text.height = 40.0f;
-		uiElements.push(buttonMessage);
+		UITextData buttonMessage = {};
+		buttonMessage.text = textBuffer;
+		buttonMessage.fontSize = 30.0f;
+		buttonMessage.position = Vec2<f32>(0.0f, 40.0f);
+		buttonMessage.width = 300.0f;
+		buttonMessage.height = 40.0f;
+		uiElements.pushText(buttonMessage);
 
 		if (gameState->input.primaryButton.down) {
-			UIElement drawLine = {};
-			drawLine.type = UIType::line;
-			drawLine.line.start = gameState->input.primaryButton.start;
-			drawLine.line.end = gameState->input.mouse;
-			drawLine.line.thickness = 30.0f;
-			uiElements.push(drawLine);
+			UILineData drawLine = {};
+			drawLine.start = gameState->input.primaryButton.start;
+			drawLine.end = gameState->input.mouse;
+			drawLine.thickness = 30.0f;
+			uiElements.pushLine(drawLine);
 		}
 	}
 };

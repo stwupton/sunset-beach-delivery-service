@@ -1,5 +1,6 @@
 #pragma once
 
+#include "types/array.hpp"
 #include "types/string.hpp"
 #include "types/vector.hpp"
 
@@ -21,12 +22,9 @@ struct UILineData {
 	Vec2<f32> end;
 };
 
-// TODO(steven): Revisit this. It's currently done like this so that every element
-// type can fit in the buffer - but can it be done better?
 struct UIElement {
 	UIType type;
-	union {
-		UITextData text;
-		UILineData line;
-	};
+
+	// NOTE(steven): Data should always be the size of the largest ui data structure
+	char data[sizeof(UITextData)];
 };
