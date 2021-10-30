@@ -28,6 +28,9 @@ private:
 	WAVEFORMATEXTENSIBLE wfx = { 0 };
 	XAUDIO2_BUFFER buffer = { 0 };
 
+	static const int voiceBufferSize = 2;
+	IXAudio2SourceVoice* voices[voiceBufferSize] = {};
+
 	HRESULT FindChunk(HANDLE hFile, DWORD fourcc, DWORD& dwChunkSize, DWORD& dwChunkDataPosition)
 	{
 		HRESULT hr = S_OK;
@@ -95,19 +98,37 @@ private:
 	}
 
 public:
+	~SoundManager()
+	{
+		pXAudio2->Release();
+	}
+
 	HRESULT Initialise()
 	{
 		pXAudio2 = nullptr;
 		HRESULT hr;
 
+		// https://docs.microsoft.com/en-us/windows/win32/xaudio2/how-to--initialize-xaudio2
+
+		// This always fails???
+		//// 1. Make sure you have initialized COM. For a Windows Store app, 
+		//// this is done as part of initializing the Windows Runtime. Otherwise, use CoInitializeEx.
+		//hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+		//if (FAILED(hr))
+		//	return hr;
+
+		// 2. Use the XAudio2Create function to create an instance of the XAudio2 engine
 		if (FAILED(hr = XAudio2Create(&pXAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR)))
 			return hr;
 
+		// 3. Use the CreateMasteringVoice method to create a mastering voice.
+		// The mastering voices encapsulates an audio device. It is the ultimate destination for 
+		// all audio that passes through an audio graph.
 		pMasterVoice = nullptr;
 		if (FAILED(hr = pXAudio2->CreateMasteringVoice(&pMasterVoice)))
 			return hr;
 
-#ifdef DEBUG
+#ifdef _DEBUG
 
 		XAUDIO2_DEBUG_CONFIGURATION flags;
 		flags.TraceMask = XAUDIO2_LOG_ERRORS | XAUDIO2_LOG_DETAIL;
@@ -164,27 +185,71 @@ public:
 		BYTE* pDataBuffer = new BYTE[dwChunkSize];
 		ReadChunkData(hFile, pDataBuffer, dwChunkSize, dwChunkPosition);
 
+		// Close hFile stream now that we've loaded all the data into memory
+		CloseHandle(hFile);
+
 		// 6. Populate an XAUDIO2_BUFFER structure.
 		buffer.AudioBytes = dwChunkSize;  //size of the audio buffer in bytes
 		buffer.pAudioData = pDataBuffer;  //buffer containing audio data
 		buffer.Flags = XAUDIO2_END_OF_STREAM; // tell the source voice not to expect any data after this buffer
 
-		// https://docs.microsoft.com/en-us/windows/win32/xaudio2/how-to--play-a-sound-with-xaudio2
-		// 3. Create a source voice by calling the IXAudio2::CreateSourceVoice method on an instance of the XAudio2 engine. 
-		// The format of the voice is specified by the values set in a WAVEFORMATEX structure.
-		IXAudio2SourceVoice* pSourceVoice;
-		if (FAILED(hr = pXAudio2->CreateSourceVoice(&pSourceVoice, (WAVEFORMATEX*)&wfx)))
-			return hr;
+		bool canPlaySound = false;
 
-		// 4. Submit an XAUDIO2_BUFFER to the source voice using the function SubmitSourceBuffer.
-		if (FAILED(hr = pSourceVoice->SubmitSourceBuffer(&buffer)))
-			return hr;
+		int freeVoiceBufferIndex = 0;
 
-		// 5. Use the Start function to start the source voice. Since all XAudio2 voices send their output to the mastering voice by default, 
-		// audio from the source voice automatically makes its way to the audio device selected at initialization. 
-		// In a more complicated audio graph, the source voice would have to specify the voice to which its output should be sent.
-		if (FAILED(hr = pSourceVoice->Start(0)))
-			return hr;
+		for (;freeVoiceBufferIndex < voiceBufferSize; freeVoiceBufferIndex++)
+		{
+			if (voices[freeVoiceBufferIndex] != nullptr)
+			{
+				//XAUDIO2_VOICE_STATE state;
+				//SDL_assert(!_this->enabled);  /* flag that stops playing. */
+				//source->Discontinuity();
+				//source->GetState(&state);
+				//while (state.BuffersQueued > 0) {
+				//	WaitForSingleObjectEx(_this->hidden->semaphore, INFINITE, 0);
+				//	source->GetState(&state);
+				//}
+				XAUDIO2_VOICE_STATE state;
+				voices[freeVoiceBufferIndex]->GetState(&state);
+				if (state.BuffersQueued <= 0)
+				{
+					voices[freeVoiceBufferIndex]->DestroyVoice();
+					voices[freeVoiceBufferIndex] = nullptr;
+					canPlaySound = true;
+					break;
+				}
+			}
+			else
+			{
+				canPlaySound = true;
+				break;
+			}
+		}
+
+		
+
+		if (canPlaySound)
+		{
+			// https://docs.microsoft.com/en-us/windows/win32/xaudio2/how-to--play-a-sound-with-xaudio2
+			// 3. Create a source voice by calling the IXAudio2::CreateSourceVoice method on an instance of the XAudio2 engine. 
+			// The format of the voice is specified by the values set in a WAVEFORMATEX structure.
+			IXAudio2SourceVoice* pSourceVoice;
+			if (FAILED(hr = pXAudio2->CreateSourceVoice(&pSourceVoice, (WAVEFORMATEX*)&wfx)))
+				return hr;
+
+			// 4. Submit an XAUDIO2_BUFFER to the source voice using the function SubmitSourceBuffer.
+			if (FAILED(hr = pSourceVoice->SubmitSourceBuffer(&buffer)))
+				return hr;
+
+			// 5. Use the Start function to start the source voice. Since all XAudio2 voices send their output to the mastering voice by default, 
+			// audio from the source voice automatically makes its way to the audio device selected at initialization. 
+			// In a more complicated audio graph, the source voice would have to specify the voice to which its output should be sent.
+			if (FAILED(hr = pSourceVoice->Start(0)))
+				return hr;
+
+			voices[freeVoiceBufferIndex] = pSourceVoice;
+
+		}
 
 		return 0;
 	}

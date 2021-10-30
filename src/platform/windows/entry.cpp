@@ -35,7 +35,7 @@ LRESULT CALLBACK eventHandler(
 			renderer->initialise(windowHandle);
 			loader->initialise(renderer->device);
 			soundManager->Initialise();
-			soundManager->PlaySoundW(L"assets/music/sound1.wav");
+			//soundManager->PlaySoundW(L"assets/music/sound1.wav");
 
 			CREATESTRUCT *createStruct = (CREATESTRUCT*)lParam;
 			SetWindowLongPtr(windowHandle, GWLP_USERDATA, (LONG_PTR)createStruct->lpCreateParams);
@@ -48,6 +48,7 @@ LRESULT CALLBACK eventHandler(
 
 		case WM_DESTROY: {
 			delete renderer;
+			delete soundManager;
 			PostQuitMessage(0);
 			return 0;
 		} break;
@@ -127,6 +128,12 @@ INT WINAPI wWinMain(
 			TranslateMessage(&message);
 			DispatchMessage(&message);
 		}
+
+		if (shouldClose)
+		{
+			break;
+		}
+
 		inputProcessor->process(&gameData->input);
 
 		u8 spriteLength = 0;
@@ -142,6 +149,13 @@ INT WINAPI wWinMain(
 
 		swprintf_s(text, L"Mouse Down: %d", gameData->input.primaryButtonDown);
 		renderer->drawText(text, 30.0f, 0.0f, 40.0f, 300.0f, 40.0f);
+
+		if (gameData->input.primaryButtonDown)
+		{
+			swprintf_s(text, L"Button is pressed");
+			renderer->drawText(text, 20.0f, 250.0f, 80.0f, 250.0f, 40.0f);
+			soundManager->PlaySound(L"assets/music/sound1.wav");
+		}
 
 		renderer->finish();
 
