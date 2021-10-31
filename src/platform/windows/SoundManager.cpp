@@ -19,6 +19,110 @@
 #define fourccDPDS 'sdpd'
 #endif
 
+
+/*
+XAudio2 Features:
+
+	DSP Effects and Per Voice Filtering:
+		Digital Signal Processing (DSP) effects are the pixel shaders of audio. They handle everything from transforming a sound—turning a pig squeal
+		into a low, scary monster sound—to placing sounds in the game environment using reverb and occlusion or obstruction filtering.
+		XAudio2 provides a flexible and powerful DSP framework. It also provides a built-in filter on every voice, for efficient low/high/band-pass
+		filtering effects.
+		See https://docs.microsoft.com/en-us/windows/win32/xaudio2/xaudio2-audio-effects
+
+	Submixing:
+		Submixing combines several sounds into a single audio stream—for example, an engine sound made up of composite parts,
+		all of which are playing simultaneously. Also, you can use submixing to process and combine similar parts of a game.
+		For example, you could combine all game sound effects to allow a user volume setting to be applied while a separate setting controls
+		music volume. Combined with DSP, submixing provides the type of data routing and processing necessary for today's games.
+		XAudio2 allows for arbitrary levels of submixing, enabling the creation of complex sounds and game mixes.
+		See https://docs.microsoft.com/en-us/windows/win32/xaudio2/xaudio2-audio-graph
+
+	Compressed Audio Support:
+		One of the major feature requests for DirectSound has been for compressed audio support. XAudio2 supports compressed
+		formats—ADPCM—natively with run-time decompression.
+
+	Enhanced Multichannel and Surround Sound Support:
+		Multichannel, 3D, and surround sound support is expanded. 3D and surround sound are now much more flexible and transparent.
+		XAudio2 removes the 6-channel limit on multichannel sounds, and supports multichannel audio on any multichannel-capable audio card.
+		The card does not need to be hardware-accelerat
+
+	Multirate Processing:
+		To help minimize CPU usage, XAudio2 provides the technology to create multiple, low-rate audio processing graphs.
+		This can significantly reduce CPU usage by allowing a game to process audio at the rate of the source material if
+		the rate is less than 48 kHz.
+
+	Nonblocking API Model:
+		With few exceptions, an XAudio2 method call will not block the audio processing engine. This means that a client can safely
+		make a set of method calls at any time without blocking on long-running calls causing delays.
+		The exceptions are the IXAudio2Voice::DestroyVoice method (which may block the engine until the voice being destroyed is
+		finished processing) and the methods that terminate the audio thread: IXAudio2::StopEngine and IXAudio2::Release.
+		Note that while XAudio2 method calls will not block the audio processing engine, the XAudio2 methods contain critical
+		sections and may themselves become blocked in some circumstances.
+*/
+
+//namespace Assets
+//{
+//	const TCHAR* left = L"assets/music/Left.wav";
+//	const TCHAR* right = L"assets/music/Right.wav";
+//	const TCHAR* stereo = L"assets/music/Stero.wav";
+//};
+//namespace Assets
+//{
+//	const wchar_t* left = L"assets/music/Left.wav";
+//	const wchar_t* right = L"assets/music/Right.wav";
+//	const wchar_t* stereo = L"assets/music/Stero.wav";
+//};
+
+
+
+//const TCHAR* fileNames[] = {
+//	Assets::left,
+//	Assets::right,
+//	Assets::stereo
+//};
+
+class VoiceCallback : public IXAudio2VoiceCallback
+{
+public:
+	HANDLE hBufferEndEvent;
+	VoiceCallback() : hBufferEndEvent(CreateEvent(NULL, FALSE, FALSE, NULL)) {}
+	~VoiceCallback()
+	{
+		CloseHandle(hBufferEndEvent);
+	}
+
+	//Called when the voice has just finished playing a contiguous audio stream.
+	void OnStreamEnd()
+	{
+		SetEvent(hBufferEndEvent);
+	}
+
+	//Unused methods are stubs
+	void OnVoiceProcessingPassEnd() { }
+	void OnVoiceProcessingPassStart(UINT32 SamplesRequired) {    }
+	void OnBufferEnd(void* pBufferContext) { }
+	void OnBufferStart(void* pBufferContext) {    }
+	void OnLoopEnd(void* pBufferContext) {    }
+	void OnVoiceError(void* pBufferContext, HRESULT Error) { }
+};
+
+
+TCHAR* waveFileNames[3] = {
+	L"assets/music/Left.wav",
+	L"assets/music/Right.wav",
+	L"assets/music/Stereo.wav"
+};
+/*const wchar_t* left = L"assets/music/Left.wav";
+const wchar_t* right = L"assets/music/Right.wav";
+const wchar_t* stereo = L"assets/music/Stereo.wav";*/
+
+int soundIndex = 0;
+
+VoiceCallback* voiceCallbackPtr;
+VoiceCallback voiceCallback;
+
+
 class SoundManager
 {
 private:
@@ -106,6 +210,7 @@ public:
 	HRESULT Initialise()
 	{
 		pXAudio2 = nullptr;
+		voiceCallbackPtr = nullptr;
 		HRESULT hr;
 
 		// https://docs.microsoft.com/en-us/windows/win32/xaudio2/how-to--initialize-xaudio2
@@ -147,12 +252,53 @@ public:
 
 	HRESULT PlaySound(const TCHAR* strFileName)
 	{
+
+		const TCHAR* fileName;
+
+		// Check if we have an available slot
+		if (voiceCallbackPtr == nullptr)
+		{
+			int length = 3;
+			//strcpy(fileName, fileNames[soundIndex++]);
+			/*wcscpy(fileName, fileNames[soundIndex++]);
+			TCHAR dest[20];
+			_tcscpy_s(dest, _countof(dest), _T("Hello"));
+			int length = (sizeof(fileNames) / sizeof(*fileNames));*/
+			fileName = waveFileNames[soundIndex++];
+
+			/*switch (soundIndex)
+			{
+			case 0:
+				fileName = left;
+				break;
+			case 1:
+				fileName = right;
+				break;
+			case 2:
+				fileName = stereo;
+				break;
+			default:
+				break;
+			}*/
+
+			//soundIndex++;
+
+			if (soundIndex >= length)
+			{
+				soundIndex = 0;
+			}
+		}
+		else
+		{
+			fileName = strFileName;
+		}
+
 		HRESULT hr = NULL;
 		// https://docs.microsoft.com/en-us/windows/win32/xaudio2/how-to--load-audio-data-files-in-xaudio2
 		// 3. Locate the 'RIFF' chunk in the audio file, and check the file type.
 		// Open the file
 		HANDLE hFile = CreateFile(
-			strFileName,
+			fileName,
 			GENERIC_READ,
 			FILE_SHARE_READ,
 			NULL,
@@ -234,8 +380,14 @@ public:
 			// 3. Create a source voice by calling the IXAudio2::CreateSourceVoice method on an instance of the XAudio2 engine. 
 			// The format of the voice is specified by the values set in a WAVEFORMATEX structure.
 			IXAudio2SourceVoice* pSourceVoice;
-			if (FAILED(hr = pXAudio2->CreateSourceVoice(&pSourceVoice, (WAVEFORMATEX*)&wfx)))
+			//if (FAILED(hr = pXAudio2->CreateSourceVoice(&pSourceVoice, (WAVEFORMATEX*)&wfx)))
+			//	return hr;
+			if (FAILED(hr = pXAudio2->CreateSourceVoice(&pSourceVoice, (WAVEFORMATEX*)&wfx,
+				0, XAUDIO2_DEFAULT_FREQ_RATIO, &voiceCallback, NULL, NULL)))
+			{
 				return hr;
+			}
+			voiceCallbackPtr = &voiceCallback;
 
 			// 4. Submit an XAUDIO2_BUFFER to the source voice using the function SubmitSourceBuffer.
 			if (FAILED(hr = pSourceVoice->SubmitSourceBuffer(&buffer)))
@@ -249,7 +401,14 @@ public:
 
 			voices[freeVoiceBufferIndex] = pSourceVoice;
 
+
+			//WaitForSingleObjectEx(voiceCallback.hBufferEndEvent, INFINITE, TRUE);
 		}
+
+		/*else if (!voiceCallbackPtr->hBufferEndEvent)
+		{
+			voiceCallbackPtr = nullptr;
+		}*/
 
 		return 0;
 	}
