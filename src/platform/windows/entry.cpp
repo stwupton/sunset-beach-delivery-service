@@ -31,6 +31,7 @@ LRESULT CALLBACK eventHandler(
 	switch (message) {
 		case WM_CREATE: {
 			renderer->initialise(windowHandle);
+			inputProcessor->initialise(windowHandle);
 			loader->initialise(renderer->device);
 
 			CREATESTRUCT *createStruct = (CREATESTRUCT*)lParam;
