@@ -24,6 +24,7 @@ protected:
 
 public:
 	~Dx3dSpriteLoader() {
+		this->unload();
 		RELEASE_COM_OBJ(this->imagingFactory)
 	}
 
@@ -94,15 +95,6 @@ public:
 
 		this->resources[assetId] = spriteInfo;
 		return spriteInfo;
-	}
-
-	void unload() {
-		for (Dx3dSpriteResource &resource : this->resources) {
-			RELEASE_COM_OBJ(resource.texture2d)
-			RELEASE_COM_OBJ(resource.texture2dView)
-			RELEASE_COM_OBJ(resource.vertexBuffer)
-			resource = {};
-		}
 	}
 
 protected:
@@ -325,5 +317,14 @@ protected:
 		*dxgiFormat = dxgi;
 
 		return wicConverted;
+	}
+
+	void unload() {
+		for (Dx3dSpriteResource &resource : this->resources) {
+			RELEASE_COM_OBJ(resource.texture2d)
+			RELEASE_COM_OBJ(resource.texture2dView)
+			RELEASE_COM_OBJ(resource.vertexBuffer)
+			resource = {};
+		}
 	}
 };
