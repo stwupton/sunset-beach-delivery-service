@@ -48,6 +48,12 @@ LRESULT CALLBACK eventHandler(
 			PostQuitMessage(0);
 		} break;
 
+		case WM_KEYDOWN: { 
+			if (wParam == VK_ESCAPE) {
+				PostMessage(windowHandle, WM_CLOSE, NULL, NULL);
+			}
+		} break;
+
 		default: {
 			result = DefWindowProc(windowHandle, message, wParam, lParam);
 		}
@@ -70,9 +76,10 @@ INT createWin32Window(HINSTANCE instanceHandle, INT showFlag, GameState *gameSta
 		0,
 		className,
 		L"Sunset Beach Delivery Service",
-		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT,
-		CW_USEDEFAULT,
+		WS_POPUP | WS_VISIBLE,
+		// TODO(steven): Get actual monitor size
+		0,
+		0,
 		screenWidth,
 		screenHeight,
 		NULL,
