@@ -9,6 +9,10 @@ struct Array {
 		return this->data[index];
 	}
 
+	T pop() {
+		return this->data[--this->length];
+	}
+
 	void push(T value) {
 		this->data[this->length++] = value;
 	}

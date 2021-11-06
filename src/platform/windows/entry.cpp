@@ -16,6 +16,7 @@
 
 // TODO(steven): Move elsewhere
 static bool shouldClose = false;
+static DirectXResources *directXResources = new DirectXResources {};
 static DirectXRenderer *renderer = new DirectXRenderer();
 static Dx3dSpriteLoader *loader = new Dx3dSpriteLoader();
 static InputProcessor *inputProcessor = new InputProcessor();
@@ -30,9 +31,9 @@ LRESULT CALLBACK eventHandler(
 	INT result = 0;
 	switch (message) {
 		case WM_CREATE: {
-			renderer->initialise(windowHandle);
+			renderer->initialise(windowHandle, directXResources);
 			inputProcessor->initialise(windowHandle);
-			loader->initialise(renderer->device);
+			loader->initialise(directXResources);
 
 			CREATESTRUCT *createStruct = (CREATESTRUCT*)lParam;
 			SetWindowLongPtr(windowHandle, GWLP_USERDATA, (LONG_PTR)createStruct->lpCreateParams);
@@ -103,7 +104,7 @@ INT WINAPI wWinMain(
 	createWin32Window(instanceHandle, showFlag, gameState);
 
 	Game game;
-	game.load(loader);
+	game.load(gameState);
 	game.setup();
 
 	MSG message = {};
@@ -116,6 +117,7 @@ INT WINAPI wWinMain(
 		inputProcessor->process(&gameState->input);
 		game.update(gameState, delta);
 
+		loader->load(&gameState->loadQueue);
 		renderer->drawSprites(gameState->sprites.data, gameState->sprites.length);
 		renderer->drawUI(gameState->uiElements.data, gameState->uiElements.length);
 		renderer->finish();
@@ -144,4 +146,7 @@ INT WINAPI wWinMain(
 	delete loader;
 	delete renderer;
 	delete inputProcessor;
+
+	delete directXResources;
+	delete gameState;
 }

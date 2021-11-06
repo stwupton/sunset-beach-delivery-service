@@ -1,44 +1,35 @@
 #pragma once
 
+#include "common/asset_definitions.hpp"
 #include "common/sprite.hpp"
 #include "common/ui_element.hpp"
 #include "types/core.hpp"
 
-// TODO(steven): We're in game now, we shouldn't be directly communicating with 
-// platform layer systems. Come up with a nice way to send and receive references
-// to loaded texture information.
-#include "platform/windows/dx3d_sprite_loader.cpp"
-
 class Game {
 protected:
-	// TODO(steven): Cache these in the sprite loader instead.
-	Dx3dSpriteResource shipResource;
-	Dx3dSpriteResource enemyShipResource;
-	Dx3dSpriteResource backgroundResource;
-
 	Sprite background;
 	Sprite enemyShip;
 	Sprite ship;
 	
 public:
-	void load(Dx3dSpriteLoader *loader) {
-		this->shipResource = loader->load(AssetId::ship);
-		this->enemyShipResource = loader->load(AssetId::enemyShip);
-		this->backgroundResource = loader->load(AssetId::background);
+	void load(GameState *gameState) {
+		gameState->loadQueue.push(TextureAssetId::ship);
+		gameState->loadQueue.push(TextureAssetId::enemyShip);
+		gameState->loadQueue.push(TextureAssetId::background);
 	}
 
 	void setup() {
-		this->ship.textureReference = (void*)&this->shipResource;
+		this->ship.assetId = TextureAssetId::ship;
 		this->ship.position = Vec3<f32>(0.0f, -300.0f, 0.4f);
 		this->ship.scale = Vec2<f32>(0.5f, 0.5f);
 		this->ship.angle = -95.0f;
 
-		this->enemyShip.textureReference = (void*)&this->enemyShipResource;
+		this->enemyShip.assetId = TextureAssetId::enemyShip;
 		this->enemyShip.position = Vec3<f32>(0.0f, 300.0f, 0.4f);
 		this->enemyShip.scale = Vec2<f32>(0.5f, 0.5f);
 		this->enemyShip.angle = -95.0f;
 
-		this->background.textureReference = (void*)&this->backgroundResource;
+		this->background.assetId = TextureAssetId::background;
 		this->background.position = Vec3<f32>(0.0f, 0.0f, 0.9f);
 		this->background.scale = Vec2<f32>(1.3f, 1.3f);
 	}
@@ -53,7 +44,7 @@ public:
 		UIElementBuffer &uiElements = gameState->uiElements;
 		uiElements.clear();
 
-		WCHAR textBuffer[100] = {};
+		wchar_t textBuffer[100] = {};
 
 		u8 fps = 1 / delta;
 		swprintf_s(textBuffer, L"FPS: %d", fps);

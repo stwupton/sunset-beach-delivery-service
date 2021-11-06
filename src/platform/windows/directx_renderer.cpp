@@ -33,14 +33,12 @@ struct SpriteInfoBuffer {
 };
 
 class DirectXRenderer {
-public:
-	ID3D11Device *device;
-
 protected:
 	ID3D11DepthStencilState *depthStencilState;
 	ID3D11DepthStencilView *depthStencilView;
 	ID3D11DeviceContext *deviceContext;
 	ID3D11RenderTargetView *renderView; 
+	DirectXResources *resources;
 	IDXGISwapChain *swapChain;
 	ID2D1Factory *d2dFactory;
 	ID2D1RenderTarget *d2dRenderTarget;
@@ -65,7 +63,7 @@ public:
 		RELEASE_COM_OBJ(this->pixelShader)
 		RELEASE_COM_OBJ(this->vertexBufferLayout)
 		RELEASE_COM_OBJ(this->swapChain)
-		RELEASE_COM_OBJ(this->device)
+		RELEASE_COM_OBJ(this->resources->device)
 		RELEASE_COM_OBJ(this->deviceContext)
 		RELEASE_COM_OBJ(this->renderView)
 		RELEASE_COM_OBJ(this->depthStencilState)
@@ -75,7 +73,9 @@ public:
 		RELEASE_COM_OBJ(this->dWriteFactory)
 	}
 
-	void initialise(HWND windowHandle) {
+	void initialise(HWND windowHandle, DirectXResources *resources) {
+		this->resources = resources;
+
 		this->createDeviceAndSwapChain(windowHandle);
 		this->compileShaders();
 		this->createBlendState();
@@ -85,7 +85,7 @@ public:
 
 #ifdef DEBUG
 		ID3D11Debug *debug = nullptr;
-		this->device->QueryInterface(__uuidof(ID3D11Debug), (void**)&debug);
+		this->resources->device->QueryInterface(__uuidof(ID3D11Debug), (void**)&debug);
 		debug->ReportLiveDeviceObjects(
 			D3D11_RLDO_SUMMARY |
 			D3D11_RLDO_DETAIL
@@ -216,11 +216,11 @@ public:
 
 		for (UINT i = 0; i < bufferLength; i++) {
 			const Sprite &sprite = sprites[i];
-			const Dx3dSpriteResource *info = (Dx3dSpriteResource*)sprite.textureReference;
+			const Dx3dSpriteResource &textureReference = this->resources->spriteResources[sprite.assetId];
 
 			const UINT stride = sizeof(SpriteVertex);
 			const UINT offset = 0;
-			this->deviceContext->IASetVertexBuffers(0, 1, &info->vertexBuffer, &stride, &offset);
+			this->deviceContext->IASetVertexBuffers(0, 1, &textureReference.vertexBuffer, &stride, &offset);
 
 			D3D11_MAPPED_SUBRESOURCE mappedResource;
 			HRESULT result = this->deviceContext->Map(
@@ -241,7 +241,7 @@ public:
 
 			this->deviceContext->Unmap(this->spriteInfoBuffer, 0);
 
-			this->deviceContext->PSSetShaderResources(0, 1, &info->texture2dView);
+			this->deviceContext->PSSetShaderResources(0, 1, &textureReference.texture2dView);
 			this->deviceContext->Draw(4, 0);
 		}
 	}
@@ -283,7 +283,7 @@ protected:
 		);
 		ASSERT_HRESULT(result)
 
-		result = device->CreateVertexShader(
+		result = this->resources->device->CreateVertexShader(
 			vertexShaderBlob->GetBufferPointer(), 
 			vertexShaderBlob->GetBufferSize(), 
 			NULL, 
@@ -291,7 +291,7 @@ protected:
 		);
 		ASSERT_HRESULT(result)
 
-		result = this->device->CreatePixelShader(
+		result = this->resources->device->CreatePixelShader(
 			pixelShaderBlob->GetBufferPointer(), 
 			pixelShaderBlob->GetBufferSize(), 
 			NULL, 
@@ -307,7 +307,7 @@ protected:
 			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 		};
 
-		result = this->device->CreateInputLayout(
+		result = this->resources->device->CreateInputLayout(
 			inputElementDescriptions,
 			2,
 			vertexShaderBlob->GetBufferPointer(),
@@ -330,7 +330,7 @@ protected:
 		blendDescription.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 		blendDescription.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 
-		HRESULT result = this->device->CreateBlendState(&blendDescription, &this->blendState);
+		HRESULT result = this->resources->device->CreateBlendState(&blendDescription, &this->blendState);
 		ASSERT_HRESULT(result)
 	}
 
@@ -368,7 +368,7 @@ protected:
 			D3D11_SUBRESOURCE_DATA subresourceData = {};
 			subresourceData.pSysMem = &buffer;
 
-			HRESULT result = this->device->CreateBuffer(
+			HRESULT result = this->resources->device->CreateBuffer(
 				&bufferDescription, 
 				&subresourceData, 
 				&this->constantBuffer
@@ -388,7 +388,7 @@ protected:
 			D3D11_SUBRESOURCE_DATA subresourceData = {};
 			subresourceData.pSysMem = &buffer;
 
-			HRESULT result = this->device->CreateBuffer(
+			HRESULT result = this->resources->device->CreateBuffer(
 				&bufferDescription, 
 				&subresourceData, 
 				&this->spriteInfoBuffer
@@ -410,7 +410,7 @@ protected:
 		depthStencilResourceDescription.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 
 		ID3D11Texture2D *depthStencil;
-		HRESULT result = this->device->CreateTexture2D(&depthStencilResourceDescription, NULL, &depthStencil);
+		HRESULT result = this->resources->device->CreateTexture2D(&depthStencilResourceDescription, NULL, &depthStencil);
 		ASSERT_HRESULT(result)
 
 		D3D11_DEPTH_STENCIL_DESC depthStencilDescription = {};
@@ -418,7 +418,7 @@ protected:
 		depthStencilDescription.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
 		depthStencilDescription.DepthFunc = D3D11_COMPARISON_LESS;
 
-		result = this->device->CreateDepthStencilState(&depthStencilDescription, &this->depthStencilState);
+		result = this->resources->device->CreateDepthStencilState(&depthStencilDescription, &this->depthStencilState);
 		ASSERT_HRESULT(result)
 
 		D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDescription = {};
@@ -426,7 +426,7 @@ protected:
 		depthStencilViewDescription.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DMS;
 		depthStencilViewDescription.Texture2D.MipSlice = 0;
 
-		result = this->device->CreateDepthStencilView(
+		result = this->resources->device->CreateDepthStencilView(
 			depthStencil,
 			&depthStencilViewDescription, 
 			&this->depthStencilView
@@ -480,7 +480,7 @@ protected:
 			D3D11_SDK_VERSION,
 			&swapChainDescription,
 			&this->swapChain,
-			&this->device,
+			&this->resources->device,
 			NULL,
 			&this->deviceContext
 		);
@@ -490,7 +490,7 @@ protected:
 		result = this->swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
 		ASSERT_HRESULT(result)
 
-		result = this->device->CreateRenderTargetView(backBuffer, NULL, &this->renderView);
+		result = this->resources->device->CreateRenderTargetView(backBuffer, NULL, &this->renderView);
 		ASSERT_HRESULT(result)
 
 		RELEASE_COM_OBJ(backBuffer)
