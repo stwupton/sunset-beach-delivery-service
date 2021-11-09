@@ -15,6 +15,7 @@
 #include <wincodec.h>
 
 #include "common/sprite.hpp"
+#include "common/ui_element.hpp"
 #include "types/core.hpp"
 #include "types/matrix.hpp"
 #include "types/vector.hpp"
@@ -142,7 +143,7 @@ public:
 			this->d2dRenderTarget->BeginDraw();
 
 			if (element.type == UIType::text) {
-				const UITextData *text = (UITextData*)element.data;
+				const UITextData &text = element.text;
 
 				// TODO(steven): Re-use text formats
 				IDWriteTextFormat *textFormat;
@@ -152,22 +153,22 @@ public:
 					DWRITE_FONT_WEIGHT_MEDIUM, 
 					DWRITE_FONT_STYLE_NORMAL, 
 					DWRITE_FONT_STRETCH_MEDIUM, 
-					text->fontSize, 
+					text.fontSize, 
 					localeName, 
 					&textFormat
 				);
 				ASSERT_HRESULT(result)
 
 				D2D1_RECT_F layoutRect = { 
-					text->position.x, 
-					text->position.y, 
-					text->position.x + text->width, 
-					text->position.y + text->height 
+					text.position.x, 
+					text.position.y, 
+					text.position.x + text.width, 
+					text.position.y + text.height 
 				};
 
 				this->d2dRenderTarget->DrawText(
-					text->text.data, 
-					wcslen(text->text.data), 
+					text.text.data, 
+					wcslen(text.text.data), 
 					textFormat, 
 					layoutRect, 
 					redBrush, 
@@ -177,13 +178,13 @@ public:
 
 				RELEASE_COM_OBJ(textFormat)
 			} else if (element.type == UIType::line) {
-				const UILineData *line = (UILineData*)element.data;
+				const UILineData &line = element.line;
 
 				this->d2dRenderTarget->DrawLine(
-					{ line->start.x, line->start.y },
-					{ line->end.x, line->end.y },
+					{ line.start.x, line.start.y },
+					{ line.end.x, line.end.y },
 					redBrush,
-					line->thickness
+					line.thickness
 				);
 			}
 

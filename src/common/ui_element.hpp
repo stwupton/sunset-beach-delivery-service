@@ -24,7 +24,8 @@ struct UILineData {
 
 struct UIElement {
 	UIType type;
-
-	// NOTE(steven): Data should always be the size of the largest ui data structure
-	char data[sizeof(UITextData)];
+	union {
+		UITextData text;
+		UILineData line;
+	};
 };

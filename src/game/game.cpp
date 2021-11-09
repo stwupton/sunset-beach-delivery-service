@@ -54,7 +54,7 @@ public:
 		fpsCount.position = 0;
 		fpsCount.width = 300.0f;
 		fpsCount.height = 40.0f;
-		uiElements.pushText(fpsCount);
+		uiElements.push(fpsCount);
 
 		swprintf_s(textBuffer, L"Mouse Down: %d", gameState->input.primaryButton.down);
 		UITextData buttonMessage = {};
@@ -63,14 +63,14 @@ public:
 		buttonMessage.position = Vec2<f32>(0.0f, 40.0f);
 		buttonMessage.width = 300.0f;
 		buttonMessage.height = 40.0f;
-		uiElements.pushText(buttonMessage);
+		uiElements.push(buttonMessage);
 
 		if (gameState->input.primaryButton.down) {
 			UILineData drawLine = {};
 			drawLine.start = gameState->input.primaryButton.start;
 			drawLine.end = gameState->input.mouse;
 			drawLine.thickness = 30.0f;
-			uiElements.pushLine(drawLine);
+			uiElements.push(drawLine);
 		}
 	}
 };

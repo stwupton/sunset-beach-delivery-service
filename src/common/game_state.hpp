@@ -11,18 +11,18 @@
 typedef Array<Sprite, 10> SpriteBuffer;
 
 struct UIElementBuffer : Array<UIElement, 10> {
-	void pushText(const UITextData &text) {
+	void push(const UITextData &textData) {
 		UIElement element = {};
 		element.type = UIType::text;
-		memcpy(element.data, &text, sizeof(UITextData));
-		this->push(element);
+		element.text = textData;
+		Array::push(element);
 	}
 
-	void pushLine(const UILineData &line) {
+	void push(const UILineData &lineData) {
 		UIElement element = {};
 		element.type = UIType::line;
-		memcpy(element.data, &line, sizeof(UILineData));
-		this->push(element);
+		element.line = lineData;
+		Array::push(element);
 	}
 };
 
