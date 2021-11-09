@@ -416,7 +416,7 @@ protected:
 		D3D11_DEPTH_STENCIL_DESC depthStencilDescription = {};
 		depthStencilDescription.DepthEnable = true;
 		depthStencilDescription.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-		depthStencilDescription.DepthFunc = D3D11_COMPARISON_LESS;
+		depthStencilDescription.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
 
 		result = this->resources->device->CreateDepthStencilState(&depthStencilDescription, &this->depthStencilState);
 		ASSERT_HRESULT(result)

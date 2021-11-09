@@ -26,8 +26,8 @@ public:
 
 		this->enemyShip.assetId = TextureAssetId::enemyShip;
 		this->enemyShip.position = Vec3<f32>(0.0f, 300.0f, 0.4f);
-		this->enemyShip.scale = Vec2<f32>(0.5f, 0.5f);
-		this->enemyShip.angle = -95.0f;
+		this->enemyShip.scale = Vec2<f32>(0.2f, 0.2f);
+		this->enemyShip.angle = -180.0f;
 
 		this->background.assetId = TextureAssetId::background;
 		this->background.position = Vec3<f32>(0.0f, 0.0f, 0.9f);

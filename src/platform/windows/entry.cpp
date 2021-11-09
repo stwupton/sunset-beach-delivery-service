@@ -5,9 +5,9 @@
 #include <Windows.h>
 
 #include "common/game_state.hpp"
-#include "directx_renderer.cpp"
-#include "dx3d_sprite_loader.cpp"
 #include "game/game.cpp"
+#include "platform/windows/directx_renderer.cpp"
+#include "platform/windows/dx3d_sprite_loader.cpp"
 #include "platform/windows/input_processor.cpp"
 #include "platform/windows/utils.cpp"
 #include "platform/windows/window_config.hpp"
