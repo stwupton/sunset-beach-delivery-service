@@ -55,16 +55,10 @@ protected:
 
 public:
 	~DirectXRenderer() {
-		// Direct3D is incapable of closing down in full screen mode, so we ensure 
-		// that it's in windowed mode here.
-		HRESULT result = this->swapChain->SetFullscreenState(false, NULL);
-		ASSERT_HRESULT(result);
-
 		RELEASE_COM_OBJ(this->vertexShader)
 		RELEASE_COM_OBJ(this->pixelShader)
 		RELEASE_COM_OBJ(this->vertexBufferLayout)
 		RELEASE_COM_OBJ(this->swapChain)
-		RELEASE_COM_OBJ(this->resources->device)
 		RELEASE_COM_OBJ(this->deviceContext)
 		RELEASE_COM_OBJ(this->renderView)
 		RELEASE_COM_OBJ(this->depthStencilState)
@@ -72,6 +66,18 @@ public:
 		RELEASE_COM_OBJ(this->d2dFactory)
 		RELEASE_COM_OBJ(this->d2dRenderTarget)
 		RELEASE_COM_OBJ(this->dWriteFactory)
+		RELEASE_COM_OBJ(this->blendState)
+		RELEASE_COM_OBJ(this->spriteInfoBuffer)
+		RELEASE_COM_OBJ(this->constantBuffer)
+
+#ifdef DEBUG
+		ID3D11Debug *debug = nullptr;
+		this->resources->device->QueryInterface(__uuidof(ID3D11Debug), (void**)&debug);
+		debug->ReportLiveDeviceObjects(D3D11_RLDO_SUMMARY | D3D11_RLDO_DETAIL);
+		RELEASE_COM_OBJ(debug)
+#endif
+
+		RELEASE_COM_OBJ(this->resources->device)
 	}
 
 	void initialise(HWND windowHandle, DirectXResources *resources) {
@@ -83,15 +89,6 @@ public:
 		this->createDepthBuffer();
 		this->createConstantBuffers();
 		this->create2dTarget();
-
-#ifdef DEBUG
-		ID3D11Debug *debug = nullptr;
-		this->resources->device->QueryInterface(__uuidof(ID3D11Debug), (void**)&debug);
-		debug->ReportLiveDeviceObjects(
-			D3D11_RLDO_SUMMARY |
-			D3D11_RLDO_DETAIL
-		);
-#endif
 	}
 
 	void create2dTarget() {
@@ -186,6 +183,16 @@ public:
 					redBrush,
 					line.thickness
 				);
+			} else if (element.type == UIType::circle) {
+				const UICircleData &circle = element.circle;
+
+				D2D1_ELLIPSE ellipse = {
+					{ circle.position.x, circle.position.y },
+					circle.radius,
+					circle.radius
+				};
+
+				this->d2dRenderTarget->DrawEllipse(ellipse, redBrush, 30.0f);
 			}
 
 			result = this->d2dRenderTarget->EndDraw();
@@ -232,12 +239,13 @@ public:
 				&mappedResource
 			);
 			ASSERT_HRESULT(result)
-			SpriteInfoBuffer *buffer = (SpriteInfoBuffer*)mappedResource.pData;
 
 			Mat4x4<f32> transform;
 			transform = transform.translate(sprite.position.x, sprite.position.y, sprite.position.z);
 			transform = transform.scale(sprite.scale.x, sprite.scale.y);
 			transform = transform.rotate(-sprite.angle * M_PI / 180);
+			
+			SpriteInfoBuffer *buffer = (SpriteInfoBuffer*)mappedResource.pData;
 			buffer->transform = transform;
 
 			this->deviceContext->Unmap(this->spriteInfoBuffer, 0);
@@ -450,7 +458,7 @@ protected:
 		swapChainDescription.SampleDesc.Count = 4;
 		swapChainDescription.SampleDesc.Quality = 0;
 		swapChainDescription.Windowed = true;
-		swapChainDescription.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; 
+		swapChainDescription.Flags = 0; 
 
 		// TODO(steven): Printing the adapters for now. Come back and check if we
 		// have any use for them.

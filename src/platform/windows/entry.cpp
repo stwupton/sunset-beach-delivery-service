@@ -112,7 +112,7 @@ INT WINAPI wWinMain(
 
 	Game game;
 	game.load(gameState);
-	game.setup();
+	game.setup(gameState);
 
 	MSG message = {};
 	while (!shouldClose) {

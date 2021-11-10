@@ -5,7 +5,7 @@ struct Array {
 	size_t length = 0;
 	T data[Size];
 
-	T &operator[](size_t index) const {
+	T &operator[](size_t index) {
 		return this->data[index];
 	}
 
