@@ -6,21 +6,15 @@
 #include <d3d11.h>
 #include <malloc.h>
 
-#include "asset_definitions.hpp"
+#include "common/asset_definitions.hpp"
+#include "platform/windows/directx_resources.hpp"
 #include "platform/windows/utils.cpp"
 #include "platform/windows/sprite_vertex.hpp"
 
-struct Dx3dSpriteResource {
-	ID3D11Texture2D *texture2d;
-	ID3D11ShaderResourceView *texture2dView;
-	ID3D11Buffer *vertexBuffer;
-};
-
 class Dx3dSpriteLoader {
 protected:
-	ID3D11Device *device;
 	IWICImagingFactory *imagingFactory;
-	Dx3dSpriteResource resources[AssetId::_length] = {};
+	DirectXResources *resources;
 
 public:
 	~Dx3dSpriteLoader() {
@@ -28,11 +22,11 @@ public:
 		RELEASE_COM_OBJ(this->imagingFactory)
 	}
 
-	void initialise(ID3D11Device *device) {
-		this->device = device;
+	void initialise(DirectXResources *resources) {
+		this->resources = resources;
 
 		HRESULT result = CoCreateInstance(
-			CLSID_WICImagingFactory, 
+			CLSID_WICImagingFactory,
 			NULL, 
 			CLSCTX_INPROC_SERVER, 
 			__uuidof(IWICImagingFactory), 
@@ -41,8 +35,15 @@ public:
 		ASSERT_HRESULT(result)
 	}
 
-  Dx3dSpriteResource load(const AssetId &assetId) {
-		LPCWSTR fileName = fileNames[assetId];
+	// TODO(steven): Load in a seperate thread
+  void load(LoadQueue *loadQueue) {
+		if (loadQueue->length == 0) {
+			return;
+		}
+
+		TextureAssetId assetId = loadQueue->pop();
+
+		LPCWSTR fileName = textureNames[assetId];
 		Dx3dSpriteResource spriteInfo = {};
 
 		IWICBitmapDecoder *bitmapDecoder;
@@ -93,8 +94,7 @@ public:
 		RELEASE_COM_OBJ(frameDecode)
 		free(buffer);
 
-		this->resources[assetId] = spriteInfo;
-		return spriteInfo;
+		this->resources->spriteResources[assetId] = spriteInfo;
 	}
 
 protected:
@@ -184,7 +184,7 @@ protected:
 		subresourceData.pSysMem = vertices;
 
 		ID3D11Buffer *vertexBuffer;
-		HRESULT result = this->device->CreateBuffer(
+		HRESULT result = this->resources->device->CreateBuffer(
 			&bufferDescription, 
 			&subresourceData, 
 			&vertexBuffer
@@ -217,7 +217,7 @@ protected:
 		subresourceData.SysMemPitch = rowStride;
 
 		ID3D11Texture2D *texture2d;
-		HRESULT result = this->device->CreateTexture2D(
+		HRESULT result = this->resources->device->CreateTexture2D(
 			&textureDescription, 
 			&subresourceData, 
 			&texture2d
@@ -237,7 +237,7 @@ protected:
 		resourceViewDescription.Texture2D.MipLevels = 1;
 
 		ID3D11ShaderResourceView *texture2dView;
-		HRESULT result = this->device->CreateShaderResourceView(
+		HRESULT result = this->resources->device->CreateShaderResourceView(
 			texture2d, 
 			&resourceViewDescription, 
 			&texture2dView
@@ -320,7 +320,7 @@ protected:
 	}
 
 	void unload() {
-		for (Dx3dSpriteResource &resource : this->resources) {
+		for (Dx3dSpriteResource &resource : this->resources->spriteResources) {
 			RELEASE_COM_OBJ(resource.texture2d)
 			RELEASE_COM_OBJ(resource.texture2dView)
 			RELEASE_COM_OBJ(resource.vertexBuffer)

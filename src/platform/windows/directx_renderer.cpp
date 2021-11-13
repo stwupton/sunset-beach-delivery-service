@@ -15,6 +15,7 @@
 #include <wincodec.h>
 
 #include "common/sprite.hpp"
+#include "common/ui_element.hpp"
 #include "types/core.hpp"
 #include "types/matrix.hpp"
 #include "types/vector.hpp"
@@ -33,14 +34,12 @@ struct SpriteInfoBuffer {
 };
 
 class DirectXRenderer {
-public:
-	ID3D11Device *device;
-
 protected:
 	ID3D11DepthStencilState *depthStencilState;
 	ID3D11DepthStencilView *depthStencilView;
 	ID3D11DeviceContext *deviceContext;
 	ID3D11RenderTargetView *renderView; 
+	DirectXResources *resources;
 	IDXGISwapChain *swapChain;
 	ID2D1Factory *d2dFactory;
 	ID2D1RenderTarget *d2dRenderTarget;
@@ -56,16 +55,10 @@ protected:
 
 public:
 	~DirectXRenderer() {
-		// Direct3D is incapable of closing down in full screen mode, so we ensure 
-		// that it's in windowed mode here.
-		HRESULT result = this->swapChain->SetFullscreenState(false, NULL);
-		ASSERT_HRESULT(result);
-
 		RELEASE_COM_OBJ(this->vertexShader)
 		RELEASE_COM_OBJ(this->pixelShader)
 		RELEASE_COM_OBJ(this->vertexBufferLayout)
 		RELEASE_COM_OBJ(this->swapChain)
-		RELEASE_COM_OBJ(this->device)
 		RELEASE_COM_OBJ(this->deviceContext)
 		RELEASE_COM_OBJ(this->renderView)
 		RELEASE_COM_OBJ(this->depthStencilState)
@@ -73,24 +66,29 @@ public:
 		RELEASE_COM_OBJ(this->d2dFactory)
 		RELEASE_COM_OBJ(this->d2dRenderTarget)
 		RELEASE_COM_OBJ(this->dWriteFactory)
+		RELEASE_COM_OBJ(this->blendState)
+		RELEASE_COM_OBJ(this->spriteInfoBuffer)
+		RELEASE_COM_OBJ(this->constantBuffer)
+
+#ifdef DEBUG
+		ID3D11Debug *debug = nullptr;
+		this->resources->device->QueryInterface(__uuidof(ID3D11Debug), (void**)&debug);
+		debug->ReportLiveDeviceObjects(D3D11_RLDO_SUMMARY | D3D11_RLDO_DETAIL);
+		RELEASE_COM_OBJ(debug)
+#endif
+
+		RELEASE_COM_OBJ(this->resources->device)
 	}
 
-	void initialise(HWND windowHandle) {
+	void initialise(HWND windowHandle, DirectXResources *resources) {
+		this->resources = resources;
+
 		this->createDeviceAndSwapChain(windowHandle);
 		this->compileShaders();
 		this->createBlendState();
 		this->createDepthBuffer();
 		this->createConstantBuffers();
 		this->create2dTarget();
-
-#ifdef DEBUG
-		ID3D11Debug *debug = nullptr;
-		this->device->QueryInterface(__uuidof(ID3D11Debug), (void**)&debug);
-		debug->ReportLiveDeviceObjects(
-			D3D11_RLDO_SUMMARY |
-			D3D11_RLDO_DETAIL
-		);
-#endif
 	}
 
 	void create2dTarget() {
@@ -142,7 +140,7 @@ public:
 			this->d2dRenderTarget->BeginDraw();
 
 			if (element.type == UIType::text) {
-				const UITextData *text = (UITextData*)element.data;
+				const UITextData &text = element.text;
 
 				// TODO(steven): Re-use text formats
 				IDWriteTextFormat *textFormat;
@@ -152,22 +150,22 @@ public:
 					DWRITE_FONT_WEIGHT_MEDIUM, 
 					DWRITE_FONT_STYLE_NORMAL, 
 					DWRITE_FONT_STRETCH_MEDIUM, 
-					text->fontSize, 
+					text.fontSize, 
 					localeName, 
 					&textFormat
 				);
 				ASSERT_HRESULT(result)
 
 				D2D1_RECT_F layoutRect = { 
-					text->position.x, 
-					text->position.y, 
-					text->position.x + text->width, 
-					text->position.y + text->height 
+					text.position.x, 
+					text.position.y, 
+					text.position.x + text.width, 
+					text.position.y + text.height 
 				};
 
 				this->d2dRenderTarget->DrawText(
-					text->text.data, 
-					wcslen(text->text.data), 
+					text.text.data, 
+					wcslen(text.text.data), 
 					textFormat, 
 					layoutRect, 
 					redBrush, 
@@ -177,14 +175,24 @@ public:
 
 				RELEASE_COM_OBJ(textFormat)
 			} else if (element.type == UIType::line) {
-				const UILineData *line = (UILineData*)element.data;
+				const UILineData &line = element.line;
 
 				this->d2dRenderTarget->DrawLine(
-					{ line->start.x, line->start.y },
-					{ line->end.x, line->end.y },
+					{ line.start.x, line.start.y },
+					{ line.end.x, line.end.y },
 					redBrush,
-					line->thickness
+					line.thickness
 				);
+			} else if (element.type == UIType::circle) {
+				const UICircleData &circle = element.circle;
+
+				D2D1_ELLIPSE ellipse = {
+					{ circle.position.x, circle.position.y },
+					circle.radius,
+					circle.radius
+				};
+
+				this->d2dRenderTarget->DrawEllipse(ellipse, redBrush, 30.0f);
 			}
 
 			result = this->d2dRenderTarget->EndDraw();
@@ -216,11 +224,11 @@ public:
 
 		for (UINT i = 0; i < bufferLength; i++) {
 			const Sprite &sprite = sprites[i];
-			const Dx3dSpriteResource *info = (Dx3dSpriteResource*)sprite.textureReference;
+			const Dx3dSpriteResource &textureReference = this->resources->spriteResources[sprite.assetId];
 
 			const UINT stride = sizeof(SpriteVertex);
 			const UINT offset = 0;
-			this->deviceContext->IASetVertexBuffers(0, 1, &info->vertexBuffer, &stride, &offset);
+			this->deviceContext->IASetVertexBuffers(0, 1, &textureReference.vertexBuffer, &stride, &offset);
 
 			D3D11_MAPPED_SUBRESOURCE mappedResource;
 			HRESULT result = this->deviceContext->Map(
@@ -231,17 +239,18 @@ public:
 				&mappedResource
 			);
 			ASSERT_HRESULT(result)
-			SpriteInfoBuffer *buffer = (SpriteInfoBuffer*)mappedResource.pData;
 
 			Mat4x4<f32> transform;
 			transform = transform.translate(sprite.position.x, sprite.position.y, sprite.position.z);
 			transform = transform.scale(sprite.scale.x, sprite.scale.y);
 			transform = transform.rotate(-sprite.angle * M_PI / 180);
+			
+			SpriteInfoBuffer *buffer = (SpriteInfoBuffer*)mappedResource.pData;
 			buffer->transform = transform;
 
 			this->deviceContext->Unmap(this->spriteInfoBuffer, 0);
 
-			this->deviceContext->PSSetShaderResources(0, 1, &info->texture2dView);
+			this->deviceContext->PSSetShaderResources(0, 1, &textureReference.texture2dView);
 			this->deviceContext->Draw(4, 0);
 		}
 	}
@@ -283,7 +292,7 @@ protected:
 		);
 		ASSERT_HRESULT(result)
 
-		result = device->CreateVertexShader(
+		result = this->resources->device->CreateVertexShader(
 			vertexShaderBlob->GetBufferPointer(), 
 			vertexShaderBlob->GetBufferSize(), 
 			NULL, 
@@ -291,7 +300,7 @@ protected:
 		);
 		ASSERT_HRESULT(result)
 
-		result = this->device->CreatePixelShader(
+		result = this->resources->device->CreatePixelShader(
 			pixelShaderBlob->GetBufferPointer(), 
 			pixelShaderBlob->GetBufferSize(), 
 			NULL, 
@@ -307,7 +316,7 @@ protected:
 			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 		};
 
-		result = this->device->CreateInputLayout(
+		result = this->resources->device->CreateInputLayout(
 			inputElementDescriptions,
 			2,
 			vertexShaderBlob->GetBufferPointer(),
@@ -330,7 +339,7 @@ protected:
 		blendDescription.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 		blendDescription.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 
-		HRESULT result = this->device->CreateBlendState(&blendDescription, &this->blendState);
+		HRESULT result = this->resources->device->CreateBlendState(&blendDescription, &this->blendState);
 		ASSERT_HRESULT(result)
 	}
 
@@ -368,7 +377,7 @@ protected:
 			D3D11_SUBRESOURCE_DATA subresourceData = {};
 			subresourceData.pSysMem = &buffer;
 
-			HRESULT result = this->device->CreateBuffer(
+			HRESULT result = this->resources->device->CreateBuffer(
 				&bufferDescription, 
 				&subresourceData, 
 				&this->constantBuffer
@@ -388,7 +397,7 @@ protected:
 			D3D11_SUBRESOURCE_DATA subresourceData = {};
 			subresourceData.pSysMem = &buffer;
 
-			HRESULT result = this->device->CreateBuffer(
+			HRESULT result = this->resources->device->CreateBuffer(
 				&bufferDescription, 
 				&subresourceData, 
 				&this->spriteInfoBuffer
@@ -410,15 +419,15 @@ protected:
 		depthStencilResourceDescription.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 
 		ID3D11Texture2D *depthStencil;
-		HRESULT result = this->device->CreateTexture2D(&depthStencilResourceDescription, NULL, &depthStencil);
+		HRESULT result = this->resources->device->CreateTexture2D(&depthStencilResourceDescription, NULL, &depthStencil);
 		ASSERT_HRESULT(result)
 
 		D3D11_DEPTH_STENCIL_DESC depthStencilDescription = {};
 		depthStencilDescription.DepthEnable = true;
 		depthStencilDescription.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-		depthStencilDescription.DepthFunc = D3D11_COMPARISON_LESS;
+		depthStencilDescription.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
 
-		result = this->device->CreateDepthStencilState(&depthStencilDescription, &this->depthStencilState);
+		result = this->resources->device->CreateDepthStencilState(&depthStencilDescription, &this->depthStencilState);
 		ASSERT_HRESULT(result)
 
 		D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDescription = {};
@@ -426,7 +435,7 @@ protected:
 		depthStencilViewDescription.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DMS;
 		depthStencilViewDescription.Texture2D.MipSlice = 0;
 
-		result = this->device->CreateDepthStencilView(
+		result = this->resources->device->CreateDepthStencilView(
 			depthStencil,
 			&depthStencilViewDescription, 
 			&this->depthStencilView
@@ -449,7 +458,7 @@ protected:
 		swapChainDescription.SampleDesc.Count = 4;
 		swapChainDescription.SampleDesc.Quality = 0;
 		swapChainDescription.Windowed = true;
-		swapChainDescription.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; 
+		swapChainDescription.Flags = 0; 
 
 		// TODO(steven): Printing the adapters for now. Come back and check if we
 		// have any use for them.
@@ -480,7 +489,7 @@ protected:
 			D3D11_SDK_VERSION,
 			&swapChainDescription,
 			&this->swapChain,
-			&this->device,
+			&this->resources->device,
 			NULL,
 			&this->deviceContext
 		);
@@ -490,7 +499,7 @@ protected:
 		result = this->swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
 		ASSERT_HRESULT(result)
 
-		result = this->device->CreateRenderTargetView(backBuffer, NULL, &this->renderView);
+		result = this->resources->device->CreateRenderTargetView(backBuffer, NULL, &this->renderView);
 		ASSERT_HRESULT(result)
 
 		RELEASE_COM_OBJ(backBuffer)

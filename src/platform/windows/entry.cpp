@@ -5,10 +5,9 @@
 #include <Windows.h>
 
 #include "common/game_state.hpp"
-#include "directx_renderer.cpp"
-#include "SoundManager.cpp"
-#include "dx3d_sprite_loader.cpp"
 #include "game/game.cpp"
+#include "platform/windows/directx_renderer.cpp"
+#include "platform/windows/dx3d_sprite_loader.cpp"
 #include "platform/windows/input_processor.cpp"
 #include "platform/windows/utils.cpp"
 #include "platform/windows/window_config.hpp"
@@ -17,9 +16,9 @@
 
 // TODO(steven): Move elsewhere
 static bool shouldClose = false;
+static DirectXResources *directXResources = new DirectXResources {};
 static DirectXRenderer *renderer = new DirectXRenderer();
 static Dx3dSpriteLoader *loader = new Dx3dSpriteLoader();
-static SoundManager *soundManager = new SoundManager();
 static InputProcessor *inputProcessor = new InputProcessor();
 static f32 delta;
 
@@ -32,11 +31,9 @@ LRESULT CALLBACK eventHandler(
 	INT result = 0;
 	switch (message) {
 		case WM_CREATE: {
-			renderer->initialise(windowHandle);
+			renderer->initialise(windowHandle, directXResources);
 			inputProcessor->initialise(windowHandle);
-			loader->initialise(renderer->device);
-			soundManager->Initialise();
-			//soundManager->PlaySoundW(L"assets/music/sound1.wav");
+			loader->initialise(directXResources);
 
 			CREATESTRUCT *createStruct = (CREATESTRUCT*)lParam;
 			SetWindowLongPtr(windowHandle, GWLP_USERDATA, (LONG_PTR)createStruct->lpCreateParams);
@@ -49,6 +46,12 @@ LRESULT CALLBACK eventHandler(
 
 		case WM_DESTROY: {
 			PostQuitMessage(0);
+		} break;
+
+		case WM_KEYDOWN: { 
+			if (wParam == VK_ESCAPE) {
+				PostMessage(windowHandle, WM_CLOSE, NULL, NULL);
+			}
 		} break;
 
 		default: {
@@ -73,9 +76,10 @@ INT createWin32Window(HINSTANCE instanceHandle, INT showFlag, GameState *gameSta
 		0,
 		className,
 		L"Sunset Beach Delivery Service",
-		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT,
-		CW_USEDEFAULT,
+		WS_POPUP | WS_VISIBLE,
+		// TODO(steven): Get actual monitor size
+		0,
+		0,
 		screenWidth,
 		screenHeight,
 		NULL,
@@ -107,8 +111,8 @@ INT WINAPI wWinMain(
 	createWin32Window(instanceHandle, showFlag, gameState);
 
 	Game game;
-	game.load(loader);
-	game.setup();
+	game.load(gameState);
+	game.setup(gameState);
 
 	MSG message = {};
 	while (!shouldClose) {
@@ -120,11 +124,7 @@ INT WINAPI wWinMain(
 		inputProcessor->process(&gameState->input);
 		game.update(gameState, delta);
 
-		// TODO(ross): Move this into game state at some point
-		if (gameState->input.primaryButton.down) {
-			soundManager->PlaySound(L"assets/music/sound1.wav");
-		}
-
+		loader->load(&gameState->loadQueue);
 		renderer->drawSprites(gameState->sprites.data, gameState->sprites.length);
 		renderer->drawUI(gameState->uiElements.data, gameState->uiElements.length);
 		renderer->finish();
@@ -152,6 +152,8 @@ INT WINAPI wWinMain(
 
 	delete loader;
 	delete renderer;
-	delete soundManager;
 	delete inputProcessor;
+
+	delete directXResources;
+	delete gameState;
 }

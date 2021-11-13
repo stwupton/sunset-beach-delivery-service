@@ -1,5 +1,3 @@
-#include <cmath>
-
 #pragma once
 
 typedef signed char s8;

@@ -1,30 +1,22 @@
 #pragma once
 
+#include <cmath>
+
+#include "common/asset_definitions.hpp"
 #include "common/sprite.hpp"
 #include "common/input.hpp"
-#include "common/ui_element.hpp"
+#include "common/load_queue.cpp"
+#include "common/ship_target.hpp"
+#include "common/ui_element_buffer.cpp"
 #include "types/array.hpp"
 
+typedef Array<ShipTarget, 20> ShipTargets;
 typedef Array<Sprite, 10> SpriteBuffer;
 
-struct UIElementBuffer : Array<UIElement, 10> {
-	void pushText(const UITextData &text) {
-		UIElement element = {};
-		element.type = UIType::text;
-		memcpy(element.data, &text, sizeof(UITextData));
-		this->push(element);
-	}
-
-	void pushLine(const UILineData &line) {
-		UIElement element = {};
-		element.type = UIType::line;
-		memcpy(element.data, &line, sizeof(UILineData));
-		this->push(element);
-	}
-};
-
 struct GameState {
+	Input input;
+	LoadQueue loadQueue;
+	ShipTargets shipTargets;
 	SpriteBuffer sprites;
 	UIElementBuffer uiElements;
-	Input input;
 };

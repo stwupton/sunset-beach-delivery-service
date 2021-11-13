@@ -1,46 +1,49 @@
 #pragma once
 
+#include "common/asset_definitions.hpp"
 #include "common/sprite.hpp"
 #include "common/ui_element.hpp"
 #include "types/core.hpp"
 
-// TODO(steven): We're in game now, we shouldn't be directly communicating with 
-// platform layer systems. Come up with a nice way to send and receive references
-// to loaded texture information.
-#include "platform/windows/dx3d_sprite_loader.cpp"
-
 class Game {
 protected:
-	// TODO(steven): Cache these in the sprite loader instead.
-	Dx3dSpriteResource shipResource;
-	Dx3dSpriteResource enemyShipResource;
-	Dx3dSpriteResource backgroundResource;
-
 	Sprite background;
 	Sprite enemyShip;
 	Sprite ship;
 	
 public:
-	void load(Dx3dSpriteLoader *loader) {
-		this->shipResource = loader->load(AssetId::ship);
-		this->enemyShipResource = loader->load(AssetId::enemyShip);
-		this->backgroundResource = loader->load(AssetId::background);
+	void load(GameState *gameState) {
+		gameState->loadQueue.push(TextureAssetId::ship);
+		gameState->loadQueue.push(TextureAssetId::enemyShip);
+		gameState->loadQueue.push(TextureAssetId::background);
 	}
 
-	void setup() {
-		this->ship.textureReference = (void*)&this->shipResource;
-		this->ship.position = Vec3<f32>(0.0f, -300.0f, 0.4f);
-		this->ship.scale = Vec2<f32>(0.5f, 0.5f);
-		this->ship.angle = -95.0f;
+	void setup(GameState *gameState) {
+		// Sprites
+		{
+			this->ship.assetId = TextureAssetId::ship;
+			this->ship.position = Vec3<f32>(0.0f, -300.0f, 0.4f);
+			this->ship.scale = Vec2<f32>(0.5f, 0.5f);
+			this->ship.angle = -95.0f;
 
-		this->enemyShip.textureReference = (void*)&this->enemyShipResource;
-		this->enemyShip.position = Vec3<f32>(0.0f, 300.0f, 0.4f);
-		this->enemyShip.scale = Vec2<f32>(0.5f, 0.5f);
-		this->enemyShip.angle = -95.0f;
+			this->enemyShip.assetId = TextureAssetId::enemyShip;
+			this->enemyShip.position = Vec3<f32>(0.0f, 300.0f, 0.4f);
+			this->enemyShip.scale = Vec2<f32>(0.2f, 0.2f);
+			this->enemyShip.angle = -180.0f;
 
-		this->background.textureReference = (void*)&this->backgroundResource;
-		this->background.position = Vec3<f32>(0.0f, 0.0f, 0.9f);
-		this->background.scale = Vec2<f32>(1.3f, 1.3f);
+			this->background.assetId = TextureAssetId::background;
+			this->background.position = Vec3<f32>(0.0f, 0.0f, 0.9f);
+			this->background.scale = Vec2<f32>(1.3f, 1.3f);
+		}
+
+		// Ship Targets
+		{
+			ShipTarget target = {};
+			target.maxHealth = target.health = 200;
+			target.party = CombatParty::enemy;
+			target.position = Vec2<f32>(0.0f, 300.0f);
+			gameState->shipTargets.push(target);
+		}
 	}
 
 	void update(GameState *gameState, f32 delta) {
@@ -53,9 +56,9 @@ public:
 		UIElementBuffer &uiElements = gameState->uiElements;
 		uiElements.clear();
 
-		WCHAR textBuffer[100] = {};
+		wchar_t textBuffer[100] = {};
 
-		u8 fps = 1 / delta;
+		u8 fps = round(1 / delta);
 		swprintf_s(textBuffer, L"FPS: %d", fps);
 		UITextData fpsCount = {};
 		fpsCount.text = textBuffer;
@@ -63,7 +66,7 @@ public:
 		fpsCount.position = 0;
 		fpsCount.width = 300.0f;
 		fpsCount.height = 40.0f;
-		uiElements.pushText(fpsCount);
+		uiElements.push(fpsCount);
 
 		swprintf_s(textBuffer, L"Mouse Down: %d", gameState->input.primaryButton.down);
 		UITextData buttonMessage = {};
@@ -72,23 +75,43 @@ public:
 		buttonMessage.position = Vec2<f32>(0.0f, 40.0f);
 		buttonMessage.width = 300.0f;
 		buttonMessage.height = 40.0f;
-		uiElements.pushText(buttonMessage);
+		uiElements.push(buttonMessage);
+
+		const Vec2<f32> mouse = gameState->input.mouse;
+		swprintf_s(textBuffer, L"X: %d, Y: %d", (u32)mouse.x, (u32)mouse.y);
+		UITextData mouseCoords = {};
+		mouseCoords.text = textBuffer;
+		mouseCoords.fontSize = 30.0f;
+		mouseCoords.position = Vec2<f32>(0.0f, 80.0f);
+		mouseCoords.width = 300.0f;
+		mouseCoords.height = 40.0f;
+		uiElements.push(mouseCoords);
 
 		if (gameState->input.primaryButton.down) {
 			UILineData drawLine = {};
 			drawLine.start = gameState->input.primaryButton.start;
 			drawLine.end = gameState->input.mouse;
 			drawLine.thickness = 30.0f;
-			uiElements.pushLine(drawLine);
+			uiElements.push(drawLine);
+		}
 
-			swprintf_s(textBuffer, L"Button is pressed");
-			UITextData debugText = {};
-			debugText.text = textBuffer;
-			debugText.fontSize = 20.0f;
-			debugText.position = Vec2<f32>(250.0f, 80.0f);
-			debugText.width = 250.0f;
-			debugText.height = 40.0f;
-			uiElements.pushText(debugText);
+		// Draw combat ship targets
+		// TODO(steven): Just using debug circles for now, represent them another way
+		for (u8 i = 0; i < gameState->shipTargets.length; i++) {
+			const ShipTarget &target = gameState->shipTargets[i];
+
+			UICircleData targetPoint = {};
+			// TODO(steven): We're converting 3D posiiton to 2D positions here, depending 
+			// on how often we do this, it might be worth making it a util function
+			targetPoint.position = Vec2<f32>(
+				screenWidth * 0.5f + target.position.x,
+				screenHeight * 0.5f - target.position.y
+			);
+			targetPoint.radius = 50.0f;
+			uiElements.push(targetPoint);
+
+			// TODO(steven): Make health bar from lines, will probably require a different
+			// colour other than red
 		}
 	}
 };

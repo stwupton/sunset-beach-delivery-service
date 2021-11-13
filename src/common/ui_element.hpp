@@ -1,12 +1,14 @@
 #pragma once
 
 #include "types/array.hpp"
+#include "types/core.hpp"
 #include "types/string.hpp"
 #include "types/vector.hpp"
 
-enum UIType {
+enum UIType: u8 {
 	text,
-	line
+	line,
+	circle
 };
 
 struct UITextData {
@@ -22,9 +24,16 @@ struct UILineData {
 	Vec2<f32> end;
 };
 
+struct UICircleData {
+	f32 radius;
+	Vec2<f32> position;
+};
+
 struct UIElement {
 	UIType type;
-
-	// NOTE(steven): Data should always be the size of the largest ui data structure
-	char data[sizeof(UITextData)];
+	union {
+		UITextData text;
+		UILineData line;
+		UICircleData circle;
+	};
 };
