@@ -1,5 +1,7 @@
 #pragma once 
 
+#include <cmath>
+
 #include "types/core.hpp"
 
 template<typename T>
@@ -18,6 +20,13 @@ struct Vec2 {
 		return Vec2<T>(
 			this->x + other.x,
 			this->y + other.y
+		);
+	}
+
+	f32 distanceTo(const Vec2<T> &other) const {
+		return sqrt(
+			pow(this->x - other.x, 2) + 
+			pow(this->y - other.y, 2)
 		);
 	}
 };
@@ -40,6 +49,14 @@ struct Vec3 : Vec2<T> {
 			this->x + other.x,
 			this->y + other.y,
 			this->z + other.z
+		);
+	}
+
+	f32 distanceTo(const Vec3<T> &other) const {
+		return sqrt(
+			pow(this->x - other.x, 2) + 
+			pow(this->y - other.y, 2) + 
+			pow(this->z - other.z, 2) 
 		);
 	}
 };

@@ -93,17 +93,9 @@ public:
 		mouseCoords.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
 		uiElements.push(mouseCoords);
 
-		if (gameState->input.primaryButton.down) {
-			UILineData drawLine = {};
-			drawLine.start = gameState->input.primaryButton.start;
-			drawLine.end = gameState->input.mouse;
-			drawLine.thickness = 30.0f;
-			drawLine.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
-			uiElements.push(drawLine);
-		}
-
 		// Draw combat ship targets
 		// TODO(steven): Just using debug circles for now, represent them another way
+		const UICircleData *lockedOnTarget = nullptr;
 		for (u8 i = 0; i < gameState->shipTargets.length; i++) {
 			const ShipTarget &target = gameState->shipTargets[i];
 
@@ -118,6 +110,13 @@ public:
 			targetPoint.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
 			uiElements.push(targetPoint);
 
+			if (gameState->input.primaryButton.down) {
+				const f32 difference = gameState->input.mouse.distanceTo(targetPoint.position);
+				if (difference < targetPoint.radius) {
+					lockedOnTarget = &targetPoint;
+				}
+			}
+
 			UILineData healthBar = {};
 			const f32 healthScale = (f32)target.health / target.maxHealth;
 			healthBar.start = targetPoint.position + Vec2<f32>(-50.0f, -100.0f);
@@ -125,6 +124,21 @@ public:
 			healthBar.color = Rgba(abs(healthScale - 1.0f), healthScale, 0.0f, 1.0f);
 			healthBar.thickness = 20.0f;
 			uiElements.push(healthBar);
+		}
+
+		if (gameState->input.primaryButton.down) {
+			UILineData drawLine = {};
+			drawLine.start = gameState->input.primaryButton.start;
+
+			if (lockedOnTarget != nullptr) {
+				drawLine.end = lockedOnTarget->position;
+			} else {
+				drawLine.end = gameState->input.mouse;
+			}
+
+			drawLine.thickness = 30.0f;
+			drawLine.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
+			uiElements.push(drawLine);
 		}
 	}
 };
