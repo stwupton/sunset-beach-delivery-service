@@ -1,7 +1,9 @@
 #pragma once
 
 #include "common/asset_definitions.hpp"
+#include "common/game_state.hpp"
 #include "common/sprite.hpp"
+#include "common/window_config.hpp"
 #include "common/ui_element.hpp"
 #include "types/core.hpp"
 
@@ -39,7 +41,8 @@ public:
 		// Ship Targets
 		{
 			ShipTarget target = {};
-			target.maxHealth = target.health = 200;
+			target.maxHealth = 200;
+			target.health = 10;
 			target.party = CombatParty::enemy;
 			target.position = Vec2<f32>(0.0f, 300.0f);
 			gameState->shipTargets.push(target);
@@ -66,6 +69,7 @@ public:
 		fpsCount.position = 0;
 		fpsCount.width = 300.0f;
 		fpsCount.height = 40.0f;
+		fpsCount.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
 		uiElements.push(fpsCount);
 
 		swprintf_s(textBuffer, L"Mouse Down: %d", gameState->input.primaryButton.down);
@@ -75,6 +79,7 @@ public:
 		buttonMessage.position = Vec2<f32>(0.0f, 40.0f);
 		buttonMessage.width = 300.0f;
 		buttonMessage.height = 40.0f;
+		buttonMessage.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
 		uiElements.push(buttonMessage);
 
 		const Vec2<f32> mouse = gameState->input.mouse;
@@ -85,6 +90,7 @@ public:
 		mouseCoords.position = Vec2<f32>(0.0f, 80.0f);
 		mouseCoords.width = 300.0f;
 		mouseCoords.height = 40.0f;
+		mouseCoords.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
 		uiElements.push(mouseCoords);
 
 		if (gameState->input.primaryButton.down) {
@@ -92,6 +98,7 @@ public:
 			drawLine.start = gameState->input.primaryButton.start;
 			drawLine.end = gameState->input.mouse;
 			drawLine.thickness = 30.0f;
+			drawLine.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
 			uiElements.push(drawLine);
 		}
 
@@ -108,10 +115,16 @@ public:
 				screenHeight * 0.5f - target.position.y
 			);
 			targetPoint.radius = 50.0f;
+			targetPoint.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
 			uiElements.push(targetPoint);
 
-			// TODO(steven): Make health bar from lines, will probably require a different
-			// colour other than red
+			UILineData healthBar = {};
+			const f32 healthScale = (f32)target.health / target.maxHealth;
+			healthBar.start = targetPoint.position + Vec2<f32>(-50.0f, -100.0f);
+			healthBar.end = healthBar.start + Vec2<f32>(100.0f * healthScale, 0.0f);
+			healthBar.color = Rgba(abs(healthScale - 1.0f), healthScale, 0.0f, 1.0f);
+			healthBar.thickness = 20.0f;
+			uiElements.push(healthBar);
 		}
 	}
 };

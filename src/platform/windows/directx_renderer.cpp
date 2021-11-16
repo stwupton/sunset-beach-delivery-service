@@ -15,14 +15,14 @@
 #include <wincodec.h>
 
 #include "common/sprite.hpp"
+#include "common/window_config.hpp"
 #include "common/ui_element.hpp"
+#include "platform/windows/dx3d_sprite_loader.cpp"
+#include "platform/windows/utils.cpp"
+#include "platform/windows/sprite_vertex.hpp"
 #include "types/core.hpp"
 #include "types/matrix.hpp"
 #include "types/vector.hpp"
-#include "platform/windows/dx3d_sprite_loader.cpp"
-#include "platform/windows/window_config.hpp"
-#include "platform/windows/utils.cpp"
-#include "platform/windows/sprite_vertex.hpp"
 
 // TODO(steven): Move somewhere else and rename
 struct ConstantBuffer {
@@ -43,6 +43,7 @@ protected:
 	IDXGISwapChain *swapChain;
 	ID2D1Factory *d2dFactory;
 	ID2D1RenderTarget *d2dRenderTarget;
+	ID2D1SolidColorBrush *d2dSolidBrush;
 	IDWriteFactory *dWriteFactory;
 
 	// TODO(steven): delete
@@ -65,6 +66,7 @@ public:
 		RELEASE_COM_OBJ(this->depthStencilView)
 		RELEASE_COM_OBJ(this->d2dFactory)
 		RELEASE_COM_OBJ(this->d2dRenderTarget)
+		RELEASE_COM_OBJ(this->d2dSolidBrush)
 		RELEASE_COM_OBJ(this->dWriteFactory)
 		RELEASE_COM_OBJ(this->blendState)
 		RELEASE_COM_OBJ(this->spriteInfoBuffer)
@@ -105,7 +107,7 @@ public:
 
 		D2D1_RENDER_TARGET_PROPERTIES renderProperties = D2D1::RenderTargetProperties(
 			D2D1_RENDER_TARGET_TYPE_HARDWARE,
-			D2D1::PixelFormat(DXGI_FORMAT_R8G8B8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED )
+			D2D1::PixelFormat(DXGI_FORMAT_R8G8B8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED)
 		);
 
 		result = this->d2dFactory->CreateDxgiSurfaceRenderTarget(
@@ -116,6 +118,9 @@ public:
 		ASSERT_HRESULT(result)
 
 		RELEASE_COM_OBJ(backBuffer)
+
+		result = this->d2dRenderTarget->CreateSolidColorBrush({}, &this->d2dSolidBrush);
+		ASSERT_HRESULT(result)
 
 		result = DWriteCreateFactory(
 			DWRITE_FACTORY_TYPE_SHARED, 
@@ -130,14 +135,16 @@ public:
 		WCHAR localeName[LOCALE_NAME_MAX_LENGTH];
 		GetUserDefaultLocaleName(localeName, LOCALE_NAME_MAX_LENGTH);
 
-		// TODO(steven): Re-use brushes
-		ID2D1SolidColorBrush *redBrush = NULL;
-		HRESULT result = this->d2dRenderTarget->CreateSolidColorBrush({ 1.0f, 0.0f, 0.0f, 1.0f }, &redBrush);
-		ASSERT_HRESULT(result)
-
 		for (UINT i = 0; i < bufferLength; i++) {
 			const UIElement &element = uiElementBuffer[i];
 			this->d2dRenderTarget->BeginDraw();
+
+			this->d2dSolidBrush->SetColor({ 
+				element.common.color.r, 
+				element.common.color.g, 
+				element.common.color.b, 
+				element.common.color.a 
+			});
 
 			if (element.type == UIType::text) {
 				const UITextData &text = element.text;
@@ -168,7 +175,7 @@ public:
 					wcslen(text.text.data), 
 					textFormat, 
 					layoutRect, 
-					redBrush, 
+					this->d2dSolidBrush, 
 					D2D1_DRAW_TEXT_OPTIONS_NO_SNAP, 
 					DWRITE_MEASURING_MODE_NATURAL
 				);
@@ -180,7 +187,7 @@ public:
 				this->d2dRenderTarget->DrawLine(
 					{ line.start.x, line.start.y },
 					{ line.end.x, line.end.y },
-					redBrush,
+					this->d2dSolidBrush,
 					line.thickness
 				);
 			} else if (element.type == UIType::circle) {
@@ -192,14 +199,12 @@ public:
 					circle.radius
 				};
 
-				this->d2dRenderTarget->DrawEllipse(ellipse, redBrush, 30.0f);
+				this->d2dRenderTarget->DrawEllipse(ellipse, this->d2dSolidBrush, 30.0f);
 			}
 
-			result = this->d2dRenderTarget->EndDraw();
+			HRESULT result = this->d2dRenderTarget->EndDraw();
 			ASSERT_HRESULT(result);
 		}
-
-		RELEASE_COM_OBJ(redBrush)
 	}
 
 	void drawSprites(Sprite *sprites, UINT bufferLength) const {

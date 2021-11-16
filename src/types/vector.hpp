@@ -6,12 +6,42 @@ template<typename T>
 struct Vec2 { 
 	T x, y;
 	Vec2(T x = 0, T y = 0) : x(x), y(y) {}
+
+	Vec2<T> operator -(const Vec2<T> &other) const {
+		return Vec2<T>(
+			this->x - other.x,
+			this->y - other.y
+		);
+	}
+
+	Vec2<T> operator +(const Vec2<T> &other) const {
+		return Vec2<T>(
+			this->x + other.x,
+			this->y + other.y
+		);
+	}
 };
 
 template<typename T>
 struct Vec3 : Vec2<T> { 
 	T z;
 	Vec3(T x = 0, T y = 0, T z = 0) : Vec2<T>(x, y), z(z) {}
+
+	Vec3<T> operator -(const Vec3<T> &other) const {
+		return Vec3<T>(
+			this->x - other.x,
+			this->y - other.y,
+			this->z - other.z
+		);
+	}
+
+	Vec3<T> operator +(const Vec3<T> &other) const {
+		return Vec3<T>(
+			this->x + other.x,
+			this->y + other.y,
+			this->z + other.z
+		);
+	}
 };
 
 template<typename T>

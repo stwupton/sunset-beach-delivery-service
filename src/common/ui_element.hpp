@@ -11,20 +11,24 @@ enum UIType: u8 {
 	circle
 };
 
-struct UITextData {
+struct UICommonData {
+	Rgba color;
+};
+
+struct UITextData : UICommonData {
 	string16<100> text;
 	f32 fontSize; 
 	Vec2<f32> position;
 	f32 width, height;
 };
 
-struct UILineData {
+struct UILineData : UICommonData {
 	f32 thickness;
 	Vec2<f32> start;
 	Vec2<f32> end;
 };
 
-struct UICircleData {
+struct UICircleData : UICommonData {
 	f32 radius;
 	Vec2<f32> position;
 };
@@ -32,6 +36,7 @@ struct UICircleData {
 struct UIElement {
 	UIType type;
 	union {
+		UICommonData common;
 		UITextData text;
 		UILineData line;
 		UICircleData circle;
