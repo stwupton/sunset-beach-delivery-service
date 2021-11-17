@@ -28,9 +28,16 @@ struct UILineData : UICommonData {
 	Vec2<f32> end;
 };
 
+enum UICircleStyle : u8 {
+	solid,
+	dotted
+};
+
 struct UICircleData : UICommonData {
+	f32 thickness;
 	f32 radius;
 	Vec2<f32> position;
+	UICircleStyle style = UICircleStyle::solid;
 };
 
 struct UIElement {

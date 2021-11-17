@@ -40,12 +40,22 @@ public:
 
 		// Ship Targets
 		{
-			ShipTarget target = {};
-			target.maxHealth = 200;
-			target.health = 10;
-			target.party = CombatParty::enemy;
-			target.position = Vec2<f32>(0.0f, 300.0f);
-			gameState->shipTargets.push(target);
+			gameState->shipTargets.push(
+				{ CombatParty::ally, 100, 100, Vec2<f32>(-300.0f, -200.0f) }
+			);
+			gameState->shipTargets.push(
+				{ CombatParty::enemy, 200, 100, Vec2<f32>(0.0f, 300.0f) }
+			);
+		}
+
+		// Weapons
+		{
+			gameState->weapons.push(
+				{ CombatParty::ally, Vec2<f32>(60.0f, -300.0f) }
+			);
+			gameState->weapons.push(
+				{ CombatParty::enemy, Vec2<f32>(-60.0f, -300.0f) }
+			);
 		}
 	}
 
@@ -56,8 +66,108 @@ public:
 		sprites.push(this->ship);
 		sprites.push(this->enemyShip);
 
+		gameState->uiElements.clear();
+		this->updateDebugUI(gameState, delta);
+		this->handleUserTargeting(gameState);
+	}
+
+protected:
+	void handleUserTargeting(GameState *gameState) const {
 		UIElementBuffer &uiElements = gameState->uiElements;
-		uiElements.clear();
+
+		bool isTargeting = false;	
+		Vec2<f32> targetingWeaponPosition;
+		for (u8 i = 0; i < gameState->weapons.length; i++) {
+			const Weapon &weapon = gameState->weapons[i];
+
+			UICircleData weaponIndicator = {};
+			// TODO(steven): We're converting 3D posiiton to 2D positions here, depending 
+			// on how often we do this, it might be worth making it a util function
+			weaponIndicator.position = Vec2<f32>(
+				screenWidth * 0.5f + weapon.position.x,
+				screenHeight * 0.5f - weapon.position.y
+			);
+			weaponIndicator.thickness = 10.0f;
+			weaponIndicator.radius = 50.0f;
+
+			if (weapon.party == CombatParty::ally) {
+				weaponIndicator.color = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
+			} else {
+				weaponIndicator.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
+			}
+
+			uiElements.push(weaponIndicator);
+
+			if (weapon.party == CombatParty::ally && gameState->input.primaryButton.down) {
+				const f32 difference = gameState->input.primaryButton.start.distanceTo(weaponIndicator.position);
+				if (difference < weaponIndicator.radius) {
+					targetingWeaponPosition = weaponIndicator.position;
+					isTargeting = true;
+				}
+			}
+		}
+
+		// Draw combat ship targets
+		// TODO(steven): Just using debug circles for now, represent them another way
+		bool hasLockOn = false;
+		Vec2<f32> lockOnPosition;
+		for (u8 i = 0; i < gameState->shipTargets.length; i++) {
+			const ShipTarget &target = gameState->shipTargets[i];
+
+			UICircleData targetPoint = {};
+			// TODO(steven): We're converting 3D posiiton to 2D positions here, depending 
+			// on how often we do this, it might be worth making it a util function
+			targetPoint.position = Vec2<f32>(
+				screenWidth * 0.5f + target.position.x,
+				screenHeight * 0.5f - target.position.y
+			);
+			targetPoint.thickness = 10.0f;
+			targetPoint.radius = 50.0f;
+			targetPoint.style = UICircleStyle::dotted;
+
+			if (target.party == CombatParty::ally) {
+				targetPoint.color = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
+			} else {
+				targetPoint.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
+			}
+
+			uiElements.push(targetPoint);
+
+			if (target.party == CombatParty::enemy && gameState->input.primaryButton.down) {
+				const f32 difference = gameState->input.mouse.distanceTo(targetPoint.position);
+				if (difference < targetPoint.radius) {
+					lockOnPosition = targetPoint.position;
+					hasLockOn = true;
+				}
+			}
+
+			UILineData healthBar = {};
+			const f32 healthScale = (f32)target.health / target.maxHealth;
+			healthBar.start = targetPoint.position + Vec2<f32>(-50.0f, -100.0f);
+			healthBar.end = healthBar.start + Vec2<f32>(100.0f * healthScale, 0.0f);
+			healthBar.color = Rgba(abs(healthScale - 1.0f), healthScale, 0.0f, 1.0f);
+			healthBar.thickness = 20.0f;
+			uiElements.push(healthBar);
+		}
+
+		if (isTargeting) {
+			UILineData drawLine = {};
+			drawLine.start = targetingWeaponPosition;
+
+			if (hasLockOn) {
+				drawLine.end = lockOnPosition;
+			} else {
+				drawLine.end = gameState->input.mouse;
+			}
+
+			drawLine.thickness = 30.0f;
+			drawLine.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
+			uiElements.push(drawLine);
+		}
+	}
+
+	void updateDebugUI(GameState *gameState, f32 delta) const {
+		UIElementBuffer &uiElements = gameState->uiElements;
 
 		wchar_t textBuffer[100] = {};
 
@@ -92,53 +202,5 @@ public:
 		mouseCoords.height = 40.0f;
 		mouseCoords.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
 		uiElements.push(mouseCoords);
-
-		// Draw combat ship targets
-		// TODO(steven): Just using debug circles for now, represent them another way
-		const UICircleData *lockedOnTarget = nullptr;
-		for (u8 i = 0; i < gameState->shipTargets.length; i++) {
-			const ShipTarget &target = gameState->shipTargets[i];
-
-			UICircleData targetPoint = {};
-			// TODO(steven): We're converting 3D posiiton to 2D positions here, depending 
-			// on how often we do this, it might be worth making it a util function
-			targetPoint.position = Vec2<f32>(
-				screenWidth * 0.5f + target.position.x,
-				screenHeight * 0.5f - target.position.y
-			);
-			targetPoint.radius = 50.0f;
-			targetPoint.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-			uiElements.push(targetPoint);
-
-			if (gameState->input.primaryButton.down) {
-				const f32 difference = gameState->input.mouse.distanceTo(targetPoint.position);
-				if (difference < targetPoint.radius) {
-					lockedOnTarget = &targetPoint;
-				}
-			}
-
-			UILineData healthBar = {};
-			const f32 healthScale = (f32)target.health / target.maxHealth;
-			healthBar.start = targetPoint.position + Vec2<f32>(-50.0f, -100.0f);
-			healthBar.end = healthBar.start + Vec2<f32>(100.0f * healthScale, 0.0f);
-			healthBar.color = Rgba(abs(healthScale - 1.0f), healthScale, 0.0f, 1.0f);
-			healthBar.thickness = 20.0f;
-			uiElements.push(healthBar);
-		}
-
-		if (gameState->input.primaryButton.down) {
-			UILineData drawLine = {};
-			drawLine.start = gameState->input.primaryButton.start;
-
-			if (lockedOnTarget != nullptr) {
-				drawLine.end = lockedOnTarget->position;
-			} else {
-				drawLine.end = gameState->input.mouse;
-			}
-
-			drawLine.thickness = 30.0f;
-			drawLine.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
-			uiElements.push(drawLine);
-		}
 	}
 };
