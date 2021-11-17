@@ -1,5 +1,6 @@
 #pragma once
 #include <xaudio2.h>
+#include "platform/windows/utils.cpp"
 
 #ifdef _XBOX //Big-Endian
 #define fourccRIFF 'RIFF'
@@ -61,70 +62,36 @@ XAudio2 Features:
 		sections and may themselves become blocked in some circumstances.
 */
 
-//namespace Assets
-//{
-//	const TCHAR* left = L"assets/music/Left.wav";
-//	const TCHAR* right = L"assets/music/Right.wav";
-//	const TCHAR* stereo = L"assets/music/Stero.wav";
-//};
-//namespace Assets
-//{
-//	const wchar_t* left = L"assets/music/Left.wav";
-//	const wchar_t* right = L"assets/music/Right.wav";
-//	const wchar_t* stereo = L"assets/music/Stero.wav";
-//};
 
 
 
-//const TCHAR* fileNames[] = {
-//	Assets::left,
-//	Assets::right,
-//	Assets::stereo
-//};
+class SoundManager {
 
-class VoiceCallback : public IXAudio2VoiceCallback
-{
-public:
-	HANDLE hBufferEndEvent;
-	VoiceCallback() : hBufferEndEvent(CreateEvent(NULL, FALSE, FALSE, NULL)) {}
-	~VoiceCallback()
-	{
-		CloseHandle(hBufferEndEvent);
-	}
+	class VoiceCallback : public IXAudio2VoiceCallback {
+	public:
+		HANDLE hBufferEndEvent;
+		SoundManager* soundManager;
+		VoiceCallback() : hBufferEndEvent(CreateEvent(NULL, FALSE, FALSE, NULL)) {}
+		~VoiceCallback() {
+			CloseHandle(hBufferEndEvent);
+		}
 
-	//Called when the voice has just finished playing a contiguous audio stream.
-	void OnStreamEnd()
-	{
-		SetEvent(hBufferEndEvent);
-	}
+		//Called when the voice has just finished playing a contiguous audio stream.
+		void OnStreamEnd() {
+			SetEvent(hBufferEndEvent);
+			soundManager->ClearCallback();
+		}
 
-	//Unused methods are stubs
-	void OnVoiceProcessingPassEnd() { }
-	void OnVoiceProcessingPassStart(UINT32 SamplesRequired) {    }
-	void OnBufferEnd(void* pBufferContext) { }
-	void OnBufferStart(void* pBufferContext) {    }
-	void OnLoopEnd(void* pBufferContext) {    }
-	void OnVoiceError(void* pBufferContext, HRESULT Error) { }
-};
+		//Unused methods are stubs
+		void OnVoiceProcessingPassEnd() { }
+		void OnVoiceProcessingPassStart(UINT32 SamplesRequired) {    }
+		void OnBufferEnd(void* pBufferContext) { }
+		void OnBufferStart(void* pBufferContext) {    }
+		void OnLoopEnd(void* pBufferContext) {    }
+	private:
+		void OnVoiceError(void* pBufferContext, HRESULT Error) { }
+	};
 
-
-TCHAR* waveFileNames[3] = {
-	L"assets/music/Left.wav",
-	L"assets/music/Right.wav",
-	L"assets/music/Stereo.wav"
-};
-/*const wchar_t* left = L"assets/music/Left.wav";
-const wchar_t* right = L"assets/music/Right.wav";
-const wchar_t* stereo = L"assets/music/Stereo.wav";*/
-
-int soundIndex = 0;
-
-VoiceCallback* voiceCallbackPtr;
-VoiceCallback voiceCallback;
-
-
-class SoundManager
-{
 private:
 	IXAudio2* pXAudio2;
 	IXAudio2MasteringVoice* pMasterVoice;
@@ -132,14 +99,37 @@ private:
 	WAVEFORMATEXTENSIBLE wfx = { 0 };
 	XAUDIO2_BUFFER buffer = { 0 };
 
+	VoiceCallback* voiceCallbackPtr;
+	VoiceCallback voiceCallback;
+
+	int soundIndex = 0;
+
+	// https://docs.microsoft.com/en-us/windows/win32/api/xaudio2/nf-xaudio2-ixaudio2sourcevoice-setfrequencyratio
+	// Frequency adjustment is expressed as source frequency / target frequency. Changing the frequency ratio changes the rate audio 
+	// is played on the voice.A ratio greater than 1.0 will cause the audio to play faster and a ratio less than 1.0 will cause the 
+	// audio to play slower. Additionally, the frequency ratio affects the pitch of audio on the voice. As an example, a value of 1.0 has 
+	// no effect on the audio, whereas a value of 2.0 raises pitch by one octave and 0.5 lowers it by one octave
+	float sourceRate = 1.0f;
+	float targetRate = 1.0f;	
+	//float frequencyRatio;
+
+	/*const wchar_t* left = L"assets/music/Left.wav";
+	const wchar_t* right = L"assets/music/Right.wav";
+	const wchar_t* stereo = L"assets/music/Stereo.wav";*/
+	static const int waveFileCount = 3;
+	WCHAR* waveFileNames[waveFileCount] = {
+		L"assets/music/Left.wav",
+		L"assets/music/Right.wav",
+		L"assets/music/Stereo.wav"
+	};
+
 	static const int voiceBufferSize = 2;
 	IXAudio2SourceVoice* voices[voiceBufferSize] = {};
 
-	HRESULT FindChunk(HANDLE hFile, DWORD fourcc, DWORD& dwChunkSize, DWORD& dwChunkDataPosition)
-	{
+	void FindChunk(HANDLE hFile, DWORD fourcc, DWORD& dwChunkSize, DWORD& dwChunkDataPosition) {
 		HRESULT hr = S_OK;
 		if (INVALID_SET_FILE_POINTER == SetFilePointer(hFile, 0, NULL, FILE_BEGIN))
-			return HRESULT_FROM_WIN32(GetLastError());
+			ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
 
 		DWORD dwChunkType;
 		DWORD dwChunkDataSize;
@@ -148,90 +138,76 @@ private:
 		DWORD bytesRead = 0;
 		DWORD dwOffset = 0;
 
-		while (hr == S_OK)
-		{
+		while (hr == S_OK) {
 			DWORD dwRead;
 			if (0 == ReadFile(hFile, &dwChunkType, sizeof(DWORD), &dwRead, NULL))
-				hr = HRESULT_FROM_WIN32(GetLastError());
+				ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
 
 			if (0 == ReadFile(hFile, &dwChunkDataSize, sizeof(DWORD), &dwRead, NULL))
-				hr = HRESULT_FROM_WIN32(GetLastError());
+				ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
 
-			switch (dwChunkType)
-			{
-			case fourccRIFF:
-				dwRIFFDataSize = dwChunkDataSize;
-				dwChunkDataSize = 4;
-				if (0 == ReadFile(hFile, &dwFileType, sizeof(DWORD), &dwRead, NULL))
-					hr = HRESULT_FROM_WIN32(GetLastError());
-				break;
+			switch (dwChunkType) {
+				case fourccRIFF:
+					dwRIFFDataSize = dwChunkDataSize;
+					dwChunkDataSize = 4;
+					if (0 == ReadFile(hFile, &dwFileType, sizeof(DWORD), &dwRead, NULL))
+						ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
+					break;
 
-			default:
-				if (INVALID_SET_FILE_POINTER == SetFilePointer(hFile, dwChunkDataSize, NULL, FILE_CURRENT))
-					return HRESULT_FROM_WIN32(GetLastError());
+				default:
+					if (INVALID_SET_FILE_POINTER == SetFilePointer(hFile, dwChunkDataSize, NULL, FILE_CURRENT))
+						ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
 			}
 
 			dwOffset += sizeof(DWORD) * 2;
 
-			if (dwChunkType == fourcc)
-			{
+			if (dwChunkType == fourcc) {
 				dwChunkSize = dwChunkDataSize;
 				dwChunkDataPosition = dwOffset;
-				return S_OK;
+				//return S_OK;
+				return;
 			}
 
 			dwOffset += dwChunkDataSize;
 
-			if (bytesRead >= dwRIFFDataSize) return S_FALSE;
+			if (bytesRead >= dwRIFFDataSize)
+				ASSERT_HRESULT(S_FALSE)
 
 		}
 
-		return S_OK;
-
 	}
 
-	HRESULT ReadChunkData(HANDLE hFile, void* buffer, DWORD buffersize, DWORD bufferoffset)
-	{
-		HRESULT hr = S_OK;
+	void ReadChunkData(HANDLE hFile, void* buffer, DWORD buffersize, DWORD bufferoffset) {
+		//HRESULT hr = S_OK;
 		if (INVALID_SET_FILE_POINTER == SetFilePointer(hFile, bufferoffset, NULL, FILE_BEGIN))
-			return HRESULT_FROM_WIN32(GetLastError());
+			ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
 		DWORD dwRead;
 		if (0 == ReadFile(hFile, buffer, buffersize, &dwRead, NULL))
-			hr = HRESULT_FROM_WIN32(GetLastError());
-		return hr;
+			ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
+		
 	}
 
 public:
-	~SoundManager()
-	{
+	~SoundManager()	{
 		pXAudio2->Release();
 	}
 
-	HRESULT Initialise()
-	{
+	void ClearCallback() {
+		//delete voiceCallbackPtr;
+		voiceCallbackPtr = nullptr;
+	}
+
+	void Initialise() {
 		pXAudio2 = nullptr;
 		voiceCallbackPtr = nullptr;
 		HRESULT hr;
 
-		// https://docs.microsoft.com/en-us/windows/win32/xaudio2/how-to--initialize-xaudio2
+		hr = XAudio2Create(&pXAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
+		ASSERT_HRESULT(hr)
 
-		// This always fails???
-		//// 1. Make sure you have initialized COM. For a Windows Store app, 
-		//// this is done as part of initializing the Windows Runtime. Otherwise, use CoInitializeEx.
-		//hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-		//if (FAILED(hr))
-		//	return hr;
-
-		// 2. Use the XAudio2Create function to create an instance of the XAudio2 engine
-		if (FAILED(hr = XAudio2Create(&pXAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR)))
-			return hr;
-
-		// 3. Use the CreateMasteringVoice method to create a mastering voice.
-		// The mastering voices encapsulates an audio device. It is the ultimate destination for 
-		// all audio that passes through an audio graph.
 		pMasterVoice = nullptr;
-		if (FAILED(hr = pXAudio2->CreateMasteringVoice(&pMasterVoice)))
-			return hr;
+		hr = pXAudio2->CreateMasteringVoice(&pMasterVoice);
+		ASSERT_HRESULT(hr)
 
 #ifdef _DEBUG
 
@@ -246,50 +222,21 @@ public:
 		pXAudio2->SetDebugConfiguration(&flags);
 
 #endif // DEBUG
-
-		return 0;
 	}
 
-	HRESULT PlaySound(const TCHAR* strFileName)
-	{
+	void PlaySound(const TCHAR* strFileName) {
 
 		const TCHAR* fileName;
 
 		// Check if we have an available slot
-		if (voiceCallbackPtr == nullptr)
-		{
-			int length = 3;
-			//strcpy(fileName, fileNames[soundIndex++]);
-			/*wcscpy(fileName, fileNames[soundIndex++]);
-			TCHAR dest[20];
-			_tcscpy_s(dest, _countof(dest), _T("Hello"));
-			int length = (sizeof(fileNames) / sizeof(*fileNames));*/
+		if (voiceCallbackPtr == nullptr) {
 			fileName = waveFileNames[soundIndex++];
 
-			/*switch (soundIndex)
-			{
-			case 0:
-				fileName = left;
-				break;
-			case 1:
-				fileName = right;
-				break;
-			case 2:
-				fileName = stereo;
-				break;
-			default:
-				break;
-			}*/
-
-			//soundIndex++;
-
-			if (soundIndex >= length)
-			{
+			if (soundIndex >= waveFileCount) {
 				soundIndex = 0;
 			}
 		}
-		else
-		{
+		else {
 			fileName = strFileName;
 		}
 
@@ -307,10 +254,10 @@ public:
 			NULL);
 
 		if (INVALID_HANDLE_VALUE == hFile)
-			return HRESULT_FROM_WIN32(GetLastError());
+			ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
 
 		if (INVALID_SET_FILE_POINTER == SetFilePointer(hFile, 0, NULL, FILE_BEGIN))
-			return HRESULT_FROM_WIN32(GetLastError());
+			ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
 
 		DWORD dwChunkSize;
 		DWORD dwChunkPosition;
@@ -319,7 +266,7 @@ public:
 		DWORD filetype;
 		ReadChunkData(hFile, &filetype, sizeof(DWORD), dwChunkPosition);
 		if (filetype != fourccWAVE)
-			return S_FALSE;
+			ASSERT_HRESULT(S_FALSE)
 
 		// 4. Locate the 'fmt ' chunk, and copy its contents into a WAVEFORMATEXTENSIBLE structure.
 		FindChunk(hFile, fourccFMT, dwChunkSize, dwChunkPosition);
@@ -343,10 +290,8 @@ public:
 
 		int freeVoiceBufferIndex = 0;
 
-		for (;freeVoiceBufferIndex < voiceBufferSize; freeVoiceBufferIndex++)
-		{
-			if (voices[freeVoiceBufferIndex] != nullptr)
-			{
+		for (;freeVoiceBufferIndex < voiceBufferSize; freeVoiceBufferIndex++) {
+			if (voices[freeVoiceBufferIndex] != nullptr) {
 				//XAUDIO2_VOICE_STATE state;
 				//SDL_assert(!_this->enabled);  /* flag that stops playing. */
 				//source->Discontinuity();
@@ -357,47 +302,41 @@ public:
 				//}
 				XAUDIO2_VOICE_STATE state;
 				voices[freeVoiceBufferIndex]->GetState(&state);
-				if (state.BuffersQueued <= 0)
-				{
+				if (state.BuffersQueued <= 0) {
 					voices[freeVoiceBufferIndex]->DestroyVoice();
 					voices[freeVoiceBufferIndex] = nullptr;
 					canPlaySound = true;
 					break;
 				}
 			}
-			else
-			{
+			else {
 				canPlaySound = true;
 				break;
 			}
 		}
 
-		
-
-		if (canPlaySound)
-		{
+		if (canPlaySound) {
 			// https://docs.microsoft.com/en-us/windows/win32/xaudio2/how-to--play-a-sound-with-xaudio2
 			// 3. Create a source voice by calling the IXAudio2::CreateSourceVoice method on an instance of the XAudio2 engine. 
 			// The format of the voice is specified by the values set in a WAVEFORMATEX structure.
 			IXAudio2SourceVoice* pSourceVoice;
 			//if (FAILED(hr = pXAudio2->CreateSourceVoice(&pSourceVoice, (WAVEFORMATEX*)&wfx)))
 			//	return hr;
-			if (FAILED(hr = pXAudio2->CreateSourceVoice(&pSourceVoice, (WAVEFORMATEX*)&wfx,
-				0, XAUDIO2_DEFAULT_FREQ_RATIO, &voiceCallback, NULL, NULL)))
-			{
-				return hr;
-			}
+			hr = pXAudio2->CreateSourceVoice(&pSourceVoice, (WAVEFORMATEX*)&wfx,
+				0, XAUDIO2_DEFAULT_FREQ_RATIO, &voiceCallback, NULL, NULL);
+			ASSERT_HRESULT(hr)
 			voiceCallbackPtr = &voiceCallback;
+			voiceCallbackPtr->soundManager = this;
 
 			// 4. Submit an XAUDIO2_BUFFER to the source voice using the function SubmitSourceBuffer.
-			if (FAILED(hr = pSourceVoice->SubmitSourceBuffer(&buffer)))
-				return hr;
+			hr = pSourceVoice->SubmitSourceBuffer(&buffer);
+			ASSERT_HRESULT(hr)
 
 			// 5. Use the Start function to start the source voice. Since all XAudio2 voices send their output to the mastering voice by default, 
 			// audio from the source voice automatically makes its way to the audio device selected at initialization. 
 			// In a more complicated audio graph, the source voice would have to specify the voice to which its output should be sent.
-			if (FAILED(hr = pSourceVoice->Start(0)))
-				return hr;
+			hr = pSourceVoice->Start(0);
+			ASSERT_HRESULT(hr)
 
 			voices[freeVoiceBufferIndex] = pSourceVoice;
 
@@ -409,12 +348,26 @@ public:
 		{
 			voiceCallbackPtr = nullptr;
 		}*/
-
-		return 0;
 	}
 
-	void produceSineWave()
+	void SetPitch(float target)
 	{
+		// Frequency adjustment ratio.This value must be between XAUDIO2_MIN_FREQ_RATIOand the MaxFrequencyRatio parameter specified when the 
+		// voice was created(see IXAudio2::CreateSourceVoice). XAUDIO2_MIN_FREQ_RATIO currently is 0.0005, which allows pitch to be lowered 
+		// by up to 11 octaves.
+
+
+		// Input of 0 means 1.0f so always add this on
+		target += 1.0f;
+
+		for (int index = 0; index < voiceBufferSize; index++) {
+			if (voices[index] != nullptr) {
+				voices[index]->SetFrequencyRatio(target);
+			}
+		}
+	}
+
+	void produceSineWave() {
 		// http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1386r0.pdf
 
 		//using namespace std::experimental::audio;

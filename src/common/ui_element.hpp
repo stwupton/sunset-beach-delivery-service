@@ -22,6 +22,12 @@ struct UILineData {
 	f32 thickness;
 	Vec2<f32> start;
 	Vec2<f32> end;
+	f32 length()
+	{
+		f32 xDiff = end.x - start.x;
+		f32 yDiff = end.y - start.y;
+		return sqrt((xDiff * xDiff) + (yDiff * yDiff));
+	}
 };
 
 struct UICircleData {
@@ -31,6 +37,11 @@ struct UICircleData {
 
 struct UIElement {
 	UIType type;
+
+	UIElement(void) :
+		type(UIType::text)
+	{
+	}
 	union {
 		UITextData text;
 		UILineData line;

@@ -5,6 +5,11 @@ struct Array {
 	size_t length = 0;
 	T data[Size];
 
+	Array(void) :
+		length(0)
+	{
+	}
+
 	T &operator[](size_t index) {
 		return this->data[index];
 	}

@@ -5,6 +5,7 @@
 #include <Windows.h>
 
 #include "common/game_state.hpp"
+#include "SoundManager.cpp"
 #include "game/game.cpp"
 #include "platform/windows/directx_renderer.cpp"
 #include "platform/windows/dx3d_sprite_loader.cpp"
@@ -19,44 +20,47 @@ static bool shouldClose = false;
 static DirectXResources *directXResources = new DirectXResources {};
 static DirectXRenderer *renderer = new DirectXRenderer();
 static Dx3dSpriteLoader *loader = new Dx3dSpriteLoader();
+static SoundManager *soundManager = new SoundManager();
 static InputProcessor *inputProcessor = new InputProcessor();
 static f32 delta;
 
 LRESULT CALLBACK eventHandler(
-	HWND windowHandle, 
-	UINT message, 
-	WPARAM wParam, 
+	HWND windowHandle,
+	UINT message,
+	WPARAM wParam,
 	LPARAM lParam
 ) {
 	INT result = 0;
 	switch (message) {
-		case WM_CREATE: {
-			renderer->initialise(windowHandle, directXResources);
-			inputProcessor->initialise(windowHandle);
-			loader->initialise(directXResources);
+	case WM_CREATE: {
+		renderer->initialise(windowHandle, directXResources);
+		inputProcessor->initialise(windowHandle);
+		loader->initialise(directXResources);
+		soundManager->Initialise();
+		//soundManager->PlaySoundW(L"assets/music/sound1.wav");
 
-			CREATESTRUCT *createStruct = (CREATESTRUCT*)lParam;
-			SetWindowLongPtr(windowHandle, GWLP_USERDATA, (LONG_PTR)createStruct->lpCreateParams);
-		} break;
+		CREATESTRUCT *createStruct = (CREATESTRUCT*)lParam;
+		SetWindowLongPtr(windowHandle, GWLP_USERDATA, (LONG_PTR)createStruct->lpCreateParams);
+	} break;
 
-		case WM_CLOSE: {
-			shouldClose = true;
-			DestroyWindow(windowHandle);
-		} break;
+	case WM_CLOSE: {
+		shouldClose = true;
+		DestroyWindow(windowHandle);
+	} break;
 
-		case WM_DESTROY: {
-			PostQuitMessage(0);
-		} break;
+	case WM_DESTROY: {
+		PostQuitMessage(0);
+	} break;
 
-		case WM_KEYDOWN: { 
-			if (wParam == VK_ESCAPE) {
-				PostMessage(windowHandle, WM_CLOSE, NULL, NULL);
-			}
-		} break;
-
-		default: {
-			result = DefWindowProc(windowHandle, message, wParam, lParam);
+	case WM_KEYDOWN: {
+		if (wParam == VK_ESCAPE) {
+			PostMessage(windowHandle, WM_CLOSE, NULL, NULL);
 		}
+	} break;
+
+	default: {
+		result = DefWindowProc(windowHandle, message, wParam, lParam);
+	}
 	}
 	return result;
 }
@@ -98,14 +102,14 @@ INT createWin32Window(HINSTANCE instanceHandle, INT showFlag, GameState *gameSta
 }
 
 INT WINAPI wWinMain(
-	HINSTANCE instanceHandle, 
-	HINSTANCE prevInstanceHandle, 
-	PWSTR cmdArgs, 
+	HINSTANCE instanceHandle,
+	HINSTANCE prevInstanceHandle,
+	PWSTR cmdArgs,
 	INT showFlag
 ) {
 	HRESULT result = CoInitialize(NULL);
 	ASSERT_HRESULT(result)
-	
+
 	GameState *gameState = new GameState {};
 
 	createWin32Window(instanceHandle, showFlag, gameState);
@@ -113,6 +117,7 @@ INT WINAPI wWinMain(
 	Game game;
 	game.load(gameState);
 	game.setup(gameState);
+	game.man = soundManager;
 
 	MSG message = {};
 	while (!shouldClose) {
@@ -125,6 +130,12 @@ INT WINAPI wWinMain(
 		game.update(gameState, delta);
 
 		loader->load(&gameState->loadQueue);
+
+		// TODO(ross): Move this into game state at some point
+		if (gameState->input.primaryButton.down) {
+			soundManager->PlaySound(L"assets/music/sound1.wav");
+		}
+
 		renderer->drawSprites(gameState->sprites.data, gameState->sprites.length);
 		renderer->drawUI(gameState->uiElements.data, gameState->uiElements.length);
 		renderer->finish();
@@ -134,7 +145,7 @@ INT WINAPI wWinMain(
 			static LARGE_INTEGER previousCounter;
 			LARGE_INTEGER counter;
 			LARGE_INTEGER frequency;
-			
+
 			QueryPerformanceCounter(&counter);
 			QueryPerformanceFrequency(&frequency);
 
@@ -152,6 +163,7 @@ INT WINAPI wWinMain(
 
 	delete loader;
 	delete renderer;
+	delete soundManager;
 	delete inputProcessor;
 
 	delete directXResources;
