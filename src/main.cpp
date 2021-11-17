@@ -1,10 +1,10 @@
 #ifndef NDEBUG
-	#define DEBUG
+	#define DEBUG 1
 #endif
 
 #if WIN32 
-	#define UNICODE
-	#define _USE_MATH_DEFINES
+	#define UNICODE 1
+	#define _USE_MATH_DEFINES 1
 	#include "platform/windows/entry.cpp"
 #else
 	#error "No platform macro defined. Available platforms are: WIN32"

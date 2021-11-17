@@ -4,14 +4,6 @@
 #include "types/array.hpp"
 
 struct UIElementBuffer : Array<UIElement, 10> {
-
-	//UIElementBuffer() : Array<UIElement, 10>() {}
-	//UIElementBuffer() = default; // explicitly defaulted, calls A::A()
-
-	int bar;
-	UIElementBuffer(void) : bar(0) {
-	}
-
 	void push(const UITextData &textData) {
 		UIElement element = {};
 		element.type = UIType::text;

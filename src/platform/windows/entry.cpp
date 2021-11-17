@@ -6,12 +6,12 @@
 
 #include "common/game_state.hpp"
 #include "SoundManager.cpp"
+#include "common/window_config.hpp"
 #include "game/game.cpp"
 #include "platform/windows/directx_renderer.cpp"
 #include "platform/windows/dx3d_sprite_loader.cpp"
 #include "platform/windows/input_processor.cpp"
 #include "platform/windows/utils.cpp"
-#include "platform/windows/window_config.hpp"
 #include "types/core.hpp"
 #include "types/vector.hpp"
 

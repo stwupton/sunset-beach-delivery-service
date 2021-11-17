@@ -7,6 +7,7 @@
 #include <malloc.h>
 
 #include "common/asset_definitions.hpp"
+#include "common/load_queue.cpp"
 #include "platform/windows/directx_resources.hpp"
 #include "platform/windows/utils.cpp"
 #include "platform/windows/sprite_vertex.hpp"

@@ -11,38 +11,39 @@ enum UIType: u8 {
 	circle
 };
 
-struct UITextData {
+struct UICommonData {
+	Rgba color;
+};
+
+struct UITextData : UICommonData {
 	string16<100> text;
 	f32 fontSize; 
 	Vec2<f32> position;
 	f32 width, height;
 };
 
-struct UILineData {
+struct UILineData : UICommonData {
 	f32 thickness;
 	Vec2<f32> start;
 	Vec2<f32> end;
-	f32 length()
-	{
-		f32 xDiff = end.x - start.x;
-		f32 yDiff = end.y - start.y;
-		return sqrt((xDiff * xDiff) + (yDiff * yDiff));
-	}
 };
 
-struct UICircleData {
+enum UICircleStyle : u8 {
+	solid,
+	dotted
+};
+
+struct UICircleData : UICommonData {
+	f32 thickness;
 	f32 radius;
 	Vec2<f32> position;
+	UICircleStyle style = UICircleStyle::solid;
 };
 
 struct UIElement {
 	UIType type;
-
-	UIElement(void) :
-		type(UIType::text)
-	{
-	}
 	union {
+		UICommonData common;
 		UITextData text;
 		UILineData line;
 		UICircleData circle;
