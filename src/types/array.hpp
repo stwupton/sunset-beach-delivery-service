@@ -12,6 +12,14 @@ struct Array {
 		return this->data[index];
 	}
 
+	T *begin() {
+		return this->data;
+	}
+
+	T *end() {
+		return &this->data[this->length];
+	}
+
 	T pop() {
 		return this->data[--this->length];
 	}

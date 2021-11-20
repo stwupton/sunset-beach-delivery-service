@@ -72,6 +72,7 @@ public:
 		this->updateDebugUI(gameState, delta);
 		this->handleUserTargeting(gameState);
 		this->renderWeaponsAndTargets(gameState);
+		this->updateWeaponCooldowns(gameState);
 	}
 
 protected:
@@ -80,9 +81,7 @@ protected:
 		Weapon *targetingWeapon = nullptr;
 		Vec2<f32> weaponScreenPosition;
 
-		for (u8 i = 0; i < gameState->weapons.length; i++) {
-			Weapon &weapon = gameState->weapons[i];
-
+		for (Weapon &weapon : gameState->weapons) {
 			if (weapon.party == CombatParty::ally) {
 				if (gameState->input.primaryButton.down) {
 					weaponScreenPosition = gameToScreen(weapon.position);
@@ -103,9 +102,7 @@ protected:
 			ShipTarget *enemyTarget = nullptr;
 			Vec2<f32> targetScreenPosition;
 
-			for (u8 i = 0; i < gameState->shipTargets.length; i++) {
-				ShipTarget &target = gameState->shipTargets[i];
-
+			for (ShipTarget &target : gameState->shipTargets) {
 				if (target.party == CombatParty::enemy && gameState->input.primaryButton.down) {
 					targetScreenPosition = gameToScreen(target.position);
 					const f32 difference = gameState->input.mouse.distanceTo(targetScreenPosition);
@@ -139,9 +136,7 @@ protected:
 		UIElementBuffer &uiElements = gameState->uiElements;
 
 		// Draw weapons
-		for (u8 i = 0; i < gameState->weapons.length; i++) {
-			const Weapon &weapon = gameState->weapons[i];
-
+		for (const Weapon &weapon : gameState->weapons) {
 			UICircleData weaponIndicator = {};
 			weaponIndicator.position = gameToScreen(weapon.position);
 			weaponIndicator.thickness = 10.0f;
@@ -169,9 +164,7 @@ protected:
 
 		// Draw combat ship targets
 		// TODO(steven): Just using debug circles for now, represent them another way
-		for (u8 i = 0; i < gameState->shipTargets.length; i++) {
-			ShipTarget &target = gameState->shipTargets[i];
-
+		for (const ShipTarget &target : gameState->shipTargets) {
 			UICircleData targetPoint = {};
 			targetPoint.position = gameToScreen(target.position);
 			targetPoint.thickness = 10.0f;
@@ -232,5 +225,11 @@ protected:
 		mouseCoords.height = 40.0f;
 		mouseCoords.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
 		uiElements.push(mouseCoords);
+	}
+
+	void updateWeaponCooldowns(GameState *gameState) {
+		for (const Weapon &weapon : gameState->weapons) {
+			u8 i = 0;
+		}
 	}
 };
