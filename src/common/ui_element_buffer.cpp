@@ -3,7 +3,7 @@
 #include "common/ui_element.hpp"
 #include "types/array.hpp"
 
-struct UIElementBuffer : Array<UIElement, 10> {
+struct UIElementBuffer : Array<UIElement, 100> {
 	void push(const UITextData &textData) {
 		UIElement element = {};
 		element.type = UIType::text;

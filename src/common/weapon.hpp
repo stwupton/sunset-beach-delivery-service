@@ -10,6 +10,8 @@ struct Weapon {
 	CombatParty party;
 	Vec3<f32> position;
 	f32 selectRadius;
+	f32 cooldown = 1000.0f;
+	f32 cooldownTick = 0.0f;
 	ShipTarget *target;
 	bool firing = false;
 };

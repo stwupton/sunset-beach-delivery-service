@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cmath>
+
 #include "common/asset_definitions.hpp"
 #include "common/game_state.hpp"
 #include "common/sprite.hpp"
@@ -69,10 +71,11 @@ public:
 		sprites.push(this->enemyShip);
 
 		gameState->uiElements.clear();
-		this->updateDebugUI(gameState, delta);
 		this->handleUserTargeting(gameState);
-		this->renderWeaponsAndTargets(gameState);
-		this->updateWeaponCooldowns(gameState);
+		this->updateWeaponCooldowns(gameState, delta);
+		this->updateProjectiles(gameState, delta);
+		this->renderCombatVisuals(gameState);
+		this->debugUI(gameState, delta);
 	}
 
 protected:
@@ -132,8 +135,22 @@ protected:
 		}
 	}
 
-	void renderWeaponsAndTargets(GameState *gameState) const {
+	void renderCombatVisuals(GameState *gameState) const {
 		UIElementBuffer &uiElements = gameState->uiElements;
+
+		// Draw projectiles
+		for (const Projectile &projectile : gameState->projectiles) {
+			if (projectile.destroyed) {
+				continue;
+			}
+
+			UICircleData bullet = {};
+			bullet.position = gameToScreen(projectile.position);
+			bullet.radius = 1.0f;
+			bullet.thickness = 10.0f;
+			bullet.color = Rgba(0.0f, 0.0f, 1.0f, 1.0f);
+			uiElements.push(bullet);
+		}
 
 		// Draw weapons
 		for (const Weapon &weapon : gameState->weapons) {
@@ -189,7 +206,7 @@ protected:
 		}
 	}
 
-	void updateDebugUI(GameState *gameState, f32 delta) const {
+	void debugUI(GameState *gameState, f32 delta) const {
 		UIElementBuffer &uiElements = gameState->uiElements;
 
 		wchar_t textBuffer[100] = {};
@@ -227,9 +244,50 @@ protected:
 		uiElements.push(mouseCoords);
 	}
 
-	void updateWeaponCooldowns(GameState *gameState) {
-		for (const Weapon &weapon : gameState->weapons) {
-			u8 i = 0;
+	void updateProjectiles(GameState *gameState, f32 delta) const {
+		for (Projectile &projectile : gameState->projectiles) {
+			if (projectile.destroyed) {
+				continue;
+			}
+
+			const f32 distance = projectile.position.distanceTo(projectile.target->position);
+			if (projectile.position.distanceTo(projectile.target->position) < 10.0f) {
+				s32 healthAfterDamage = projectile.target->health - projectile.damage;
+				projectile.target->health = max(0, healthAfterDamage);
+				projectile.destroyed = true;
+				// TODO(steven): Remove projectile from array
+			}
+
+			const Vec3 diff = projectile.target->position - projectile.position;
+			const Vec3 movement = diff.normalized() * projectile.speed * delta;
+			projectile.position += movement;
+		}
+	}
+
+	void updateWeaponCooldowns(GameState *gameState, f32 delta) const {
+		for (Weapon &weapon : gameState->weapons) {
+			if (!weapon.firing) {
+				weapon.cooldownTick = weapon.cooldown;
+				continue;
+			}
+
+			if (weapon.target->health <= 0) {
+				weapon.cooldownTick = 0.0f;
+				weapon.firing = false;
+				continue;
+			}
+
+			weapon.cooldownTick += delta * 1000;
+			if (weapon.cooldownTick >= weapon.cooldown) {
+				weapon.cooldownTick = fmod(weapon.cooldownTick, weapon.cooldown);
+
+				Projectile projectile = {};
+				projectile.damage = 10.0f; // TODO(steven): Currently arbitrary
+				projectile.speed = 100.0f; // TODO(steven): Also arbitrary
+				projectile.target = weapon.target;
+				projectile.position = weapon.position;
+				gameState->projectiles.push(projectile);
+			}
 		}
 	}
 };
