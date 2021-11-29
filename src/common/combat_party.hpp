@@ -2,7 +2,7 @@
 
 #include "types/core.hpp"
 
-enum CombatParty : u8 {
+enum class CombatParty : u8 {
 	ally,
 	enemy,
 	none

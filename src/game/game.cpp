@@ -10,6 +10,7 @@
 #include "game/utils.cpp"
 #include "types/core.hpp"
 #include "types/nullable.cpp"
+#include "utils/reducer.hpp"
 
 class Game {
 protected:
@@ -55,7 +56,7 @@ public:
 		// Weapons
 		{
 			gameState->weapons.push(
-				{ CombatParty::ally, Vec3<f32>(60.0f, -300.0f), 50.0f }
+				{ CombatParty::ally, Vec3<f32>(60.0f, -300.0f), 50.0f, 20, 180.0f }
 			);
 			gameState->weapons.push(
 				{ CombatParty::enemy, Vec3<f32>(-60.0f, -300.0f), 50.0f }
@@ -74,6 +75,9 @@ public:
 		this->handleUserTargeting(gameState);
 		this->updateWeaponCooldowns(gameState, delta);
 		this->updateProjectiles(gameState, delta);
+		this->processEvents(gameState);
+		this->updateTargets(gameState);
+		this->updateAimlessProjectiles(gameState, delta);
 		this->renderCombatVisuals(gameState);
 		this->debugUI(gameState, delta);
 	}
@@ -140,12 +144,18 @@ protected:
 
 		// Draw projectiles
 		for (const Projectile &projectile : gameState->projectiles) {
-			if (projectile.destroyed) {
-				continue;
-			}
-
 			UICircleData bullet = {};
 			bullet.position = gameToScreen(projectile.position);
+			bullet.radius = 1.0f;
+			bullet.thickness = 10.0f;
+			bullet.color = Rgba(0.0f, 0.0f, 1.0f, 1.0f);
+			uiElements.push(bullet);
+		}
+
+		// Draw aimless prjectiles
+		for (const AimlessProjectile &aimless : gameState->aimlessProjectiles) {
+			UICircleData bullet = {};
+			bullet.position = gameToScreen(aimless.position);
 			bullet.radius = 1.0f;
 			bullet.thickness = 10.0f;
 			bullet.color = Rgba(0.0f, 0.0f, 1.0f, 1.0f);
@@ -244,36 +254,95 @@ protected:
 		uiElements.push(mouseCoords);
 	}
 
-	void updateProjectiles(GameState *gameState, f32 delta) const {
-		for (Projectile &projectile : gameState->projectiles) {
-			if (projectile.destroyed) {
-				continue;
+	void processEvents(GameState *gameState) const {
+		for (const TargetDestroyedEvent &event : gameState->events.targetDestroyed) {
+			for (Weapon &weapon : gameState->weapons) {
+				if (weapon.target == event.target) {
+					weapon.firing = false;
+					weapon.target = nullptr;
+					weapon.cooldownTick = weapon.cooldown;
+				}
 			}
 
-			const f32 distance = projectile.position.distanceTo(projectile.target->position);
-			if (projectile.position.distanceTo(projectile.target->position) < 10.0f) {
-				s32 healthAfterDamage = projectile.target->health - projectile.damage;
-				projectile.target->health = max(0, healthAfterDamage);
-				projectile.destroyed = true;
-				// TODO(steven): Remove projectile from array
+			// TODO(steven): Use reducer
+			size_t offset = 0;
+			size_t index = -1;
+			for (Projectile &projectile : gameState->projectiles) {
+				index++;
+
+				if (projectile.target == event.target) {
+					offset++;
+
+					AimlessProjectile aimless = {};
+					aimless.position = projectile.position;
+					aimless.speed = projectile.speed;
+
+					const Vec3 direction = (projectile.target->position - projectile.position).normalized();
+					aimless.direction = direction;
+
+					gameState->aimlessProjectiles.push(aimless);
+				} else {
+					gameState->projectiles.data[index - offset] = projectile;
+				}
 			}
+
+			gameState->projectiles.length -= offset;
+
+			// TODO(steven): Remove targets from the array
+		}
+	}
+
+	void updateAimlessProjectiles(GameState *gameState, f32 delta) const {
+		for (AimlessProjectile &aimless : gameState->aimlessProjectiles) {
+			aimless.position += aimless.direction * aimless.speed * delta;
+		}
+	}
+
+	void updateProjectiles(GameState *gameState, f32 delta) const {
+		Reducer reducer(&gameState->projectiles);
+
+		for (Projectile &projectile : gameState->projectiles) {
+			reducer.next(&projectile);
 
 			const Vec3 diff = projectile.target->position - projectile.position;
-			const Vec3 movement = diff.normalized() * projectile.speed * delta;
-			projectile.position += movement;
+			const Vec3 direction = diff.normalized();
+			const f32 distance = diff.magnitude();
+
+			if (distance < 10.0f) {
+				reducer.remove();
+
+				HealthValue healthAfterDamage = projectile.target->health - projectile.damage;
+
+				projectile.target->health = max(0, healthAfterDamage);
+				if (projectile.target->health == 0) {
+					TargetDestroyedEvent event = {};
+					event.target = projectile.target;
+					gameState->events.targetDestroyed.push(event);
+				}
+			} else {
+				projectile.position += direction * projectile.speed * delta;
+			}
 		}
+
+		reducer.finish();
+	}
+
+	void updateTargets(GameState *gameState) const {
+		Reducer reducer(&gameState->shipTargets);
+
+		for (ShipTarget &target : gameState->shipTargets) {
+			reducer.next(&target);
+			if (target.health == 0) {
+				reducer.remove();
+			}
+		}
+
+		reducer.finish();
 	}
 
 	void updateWeaponCooldowns(GameState *gameState, f32 delta) const {
 		for (Weapon &weapon : gameState->weapons) {
 			if (!weapon.firing) {
-				weapon.cooldownTick = weapon.cooldown;
-				continue;
-			}
-
-			if (weapon.target->health <= 0) {
-				weapon.cooldownTick = 0.0f;
-				weapon.firing = false;
 				continue;
 			}
 
@@ -282,10 +351,15 @@ protected:
 				weapon.cooldownTick = fmod(weapon.cooldownTick, weapon.cooldown);
 
 				Projectile projectile = {};
-				projectile.damage = 10.0f; // TODO(steven): Currently arbitrary
-				projectile.speed = 100.0f; // TODO(steven): Also arbitrary
+				projectile.damage = weapon.damage; // TODO(steven): Currently arbitrary
+				projectile.speed = weapon.projectileSpeed; // TODO(steven): Also arbitrary
 				projectile.target = weapon.target;
 				projectile.position = weapon.position;
+
+				// Set the direction for the projectile to continue if the target was destroyed
+				// const Vec3<f32> diff = projectile.target->position - projectile.position;
+				// projectile.direction = diff.normalized();
+
 				gameState->projectiles.push(projectile);
 			}
 		}
