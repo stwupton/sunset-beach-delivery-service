@@ -1,12 +1,15 @@
 #pragma once
 
+#include <cmath>
+
 #include "common/asset_definitions.hpp"
 #include "common/game_state.hpp"
 #include "common/sprite.hpp"
 #include "common/window_config.hpp"
 #include "common/ui_element.hpp"
+#include "game/utils.cpp"
 #include "types/core.hpp"
-#include "common/window_config.hpp"
+#include "types/nullable.cpp"
 
 class Game {
 private:
@@ -46,20 +49,20 @@ public:
 		// Ship Targets
 		{
 			gameState->shipTargets.push(
-				{ CombatParty::ally, 100, 100, Vec2<f32>(-300.0f, -200.0f) }
+				{ CombatParty::ally, 100, 100, Vec3<f32>(-300.0f, -200.0f), 50.0f }
 			);
 			gameState->shipTargets.push(
-				{ CombatParty::enemy, 200, 100, Vec2<f32>(0.0f, 300.0f) }
+				{ CombatParty::enemy, 200, 100, Vec3<f32>(0.0f, 300.0f), 50.0f }
 			);
 		}
 
 		// Weapons
 		{
 			gameState->weapons.push(
-				{ CombatParty::ally, Vec2<f32>(60.0f, -300.0f) }
+				{ CombatParty::ally, Vec3<f32>(60.0f, -300.0f), 50.0f }
 			);
 			gameState->weapons.push(
-				{ CombatParty::enemy, Vec2<f32>(-60.0f, -300.0f) }
+				{ CombatParty::enemy, Vec3<f32>(-60.0f, -300.0f), 50.0f }
 			);
 		}
 	}
@@ -72,28 +75,93 @@ public:
 		sprites.push(this->enemyShip);
 
 		gameState->uiElements.clear();
-		this->updateDebugUI(gameState, delta);
 		this->handleUserTargeting(gameState);
+		this->updateWeaponCooldowns(gameState, delta);
+		this->updateProjectiles(gameState, delta);
+		this->renderCombatVisuals(gameState);
+		this->debugUI(gameState, delta);
 	}
 
 protected:
+	// TODO(steven): Cleanup
 	void handleUserTargeting(GameState *gameState) const {
+		Weapon *targetingWeapon = nullptr;
+		Vec2<f32> weaponScreenPosition;
+
+		for (Weapon &weapon : gameState->weapons) {
+			if (weapon.party == CombatParty::ally) {
+				if (gameState->input.primaryButton.down) {
+					weaponScreenPosition = gameToScreen(weapon.position);
+					const f32 difference = gameState->input.primaryButton.start.distanceTo(weaponScreenPosition);
+
+					if (difference < weapon.selectRadius) {
+						targetingWeapon = &weapon;
+						weapon.firing = false;
+						break;
+					}
+				} else if (weapon.target != nullptr) {
+					weapon.firing = true;
+				}
+			}
+		}
+
+		if (targetingWeapon != nullptr) {
+			ShipTarget *enemyTarget = nullptr;
+			Vec2<f32> targetScreenPosition;
+
+			for (ShipTarget &target : gameState->shipTargets) {
+				if (target.party == CombatParty::enemy && gameState->input.primaryButton.down) {
+					targetScreenPosition = gameToScreen(target.position);
+					const f32 difference = gameState->input.mouse.distanceTo(targetScreenPosition);
+					if (difference < target.selectRadius) {
+						enemyTarget = &target;
+						break;
+					}
+				}
+			}
+
+			targetingWeapon->target = enemyTarget;
+
+			// Draw targeting line
+			UILineData drawLine = {};
+			drawLine.start = weaponScreenPosition;
+
+			if (targetingWeapon->target != nullptr) {
+				drawLine.end = targetScreenPosition;
+			} else {
+				drawLine.end = gameState->input.mouse;
+				targetingWeapon->firing = false;
+			}
+
+			drawLine.thickness = 10.0f;
+			drawLine.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);			
+			gameState->uiElements.push(drawLine);
+		}
+	}
+
+	void renderCombatVisuals(GameState *gameState) const {
 		UIElementBuffer &uiElements = gameState->uiElements;
 
-		bool isTargeting = false;	
-		Vec2<f32> targetingWeaponPosition;
-		for (u8 i = 0; i < gameState->weapons.length; i++) {
-			const Weapon &weapon = gameState->weapons[i];
+		// Draw projectiles
+		for (const Projectile &projectile : gameState->projectiles) {
+			if (projectile.destroyed) {
+				continue;
+			}
 
+			UICircleData bullet = {};
+			bullet.position = gameToScreen(projectile.position);
+			bullet.radius = 1.0f;
+			bullet.thickness = 10.0f;
+			bullet.color = Rgba(0.0f, 0.0f, 1.0f, 1.0f);
+			uiElements.push(bullet);
+		}
+
+		// Draw weapons
+		for (const Weapon &weapon : gameState->weapons) {
 			UICircleData weaponIndicator = {};
-			// TODO(steven): We're converting 3D posiiton to 2D positions here, depending 
-			// on how often we do this, it might be worth making it a util function
-			weaponIndicator.position = Vec2<f32>(
-				screenWidth * 0.5f + weapon.position.x,
-				screenHeight * 0.5f - weapon.position.y
-			);
+			weaponIndicator.position = gameToScreen(weapon.position);
 			weaponIndicator.thickness = 10.0f;
-			weaponIndicator.radius = 50.0f;
+			weaponIndicator.radius = weapon.selectRadius;
 
 			if (weapon.party == CombatParty::ally) {
 				weaponIndicator.color = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
@@ -103,31 +171,25 @@ protected:
 
 			uiElements.push(weaponIndicator);
 
-			if (weapon.party == CombatParty::ally && gameState->input.primaryButton.down) {
-				const f32 difference = gameState->input.primaryButton.start.distanceTo(weaponIndicator.position);
-				if (difference < weaponIndicator.radius) {
-					targetingWeaponPosition = weaponIndicator.position;
-					isTargeting = true;
-				}
+			if (weapon.firing) {
+				UITextData firingText = {};
+				firingText.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
+				firingText.fontSize = 10.0f;
+				firingText.height = 10.0f;
+				firingText.width = 100.0f;
+				firingText.position = weaponIndicator.position + Vec2<f32>(-15.0f, -10.0f);
+				firingText.text = L"FIRING";
+				uiElements.push(firingText);
 			}
 		}
 
 		// Draw combat ship targets
 		// TODO(steven): Just using debug circles for now, represent them another way
-		bool hasLockOn = false;
-		Vec2<f32> lockOnPosition;
-		for (u8 i = 0; i < gameState->shipTargets.length; i++) {
-			const ShipTarget &target = gameState->shipTargets[i];
-
+		for (const ShipTarget &target : gameState->shipTargets) {
 			UICircleData targetPoint = {};
-			// TODO(steven): We're converting 3D posiiton to 2D positions here, depending 
-			// on how often we do this, it might be worth making it a util function
-			targetPoint.position = Vec2<f32>(
-				screenWidth * 0.5f + target.position.x,
-				screenHeight * 0.5f - target.position.y
-			);
+			targetPoint.position = gameToScreen(target.position);
 			targetPoint.thickness = 10.0f;
-			targetPoint.radius = 50.0f;
+			targetPoint.radius = target.selectRadius;
 			targetPoint.style = UICircleStyle::dotted;
 
 			if (target.party == CombatParty::ally) {
@@ -138,14 +200,6 @@ protected:
 
 			uiElements.push(targetPoint);
 
-			if (target.party == CombatParty::enemy && gameState->input.primaryButton.down) {
-				const f32 difference = gameState->input.mouse.distanceTo(targetPoint.position);
-				if (difference < targetPoint.radius) {
-					lockOnPosition = targetPoint.position;
-					hasLockOn = true;
-				}
-			}
-
 			UILineData healthBar = {};
 			const f32 healthScale = (f32)target.health / target.maxHealth;
 			healthBar.start = targetPoint.position + Vec2<f32>(-50.0f, -100.0f);
@@ -154,24 +208,9 @@ protected:
 			healthBar.thickness = 20.0f;
 			uiElements.push(healthBar);
 		}
-
-		if (isTargeting) {
-			UILineData drawLine = {};
-			drawLine.start = targetingWeaponPosition;
-
-			if (hasLockOn) {
-				drawLine.end = lockOnPosition;
-			} else {
-				drawLine.end = gameState->input.mouse;
-			}
-
-			drawLine.thickness = 30.0f;
-			drawLine.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
-			uiElements.push(drawLine);
-		}
 	}
 
-	void updateDebugUI(GameState *gameState, f32 delta) const {
+	void debugUI(GameState *gameState, f32 delta) const {
 		UIElementBuffer &uiElements = gameState->uiElements;
 
 		wchar_t textBuffer[100] = {};
@@ -222,5 +261,52 @@ protected:
 		debugText.height = 40.0f;
 		debugText.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
 		uiElements.push(debugText);
+	}
+
+	void updateProjectiles(GameState *gameState, f32 delta) const {
+		for (Projectile &projectile : gameState->projectiles) {
+			if (projectile.destroyed) {
+				continue;
+			}
+
+			const f32 distance = projectile.position.distanceTo(projectile.target->position);
+			if (projectile.position.distanceTo(projectile.target->position) < 10.0f) {
+				s32 healthAfterDamage = projectile.target->health - projectile.damage;
+				projectile.target->health = max(0, healthAfterDamage);
+				projectile.destroyed = true;
+				// TODO(steven): Remove projectile from array
+			}
+
+			const Vec3 diff = projectile.target->position - projectile.position;
+			const Vec3 movement = diff.normalized() * projectile.speed * delta;
+			projectile.position += movement;
+		}
+	}
+
+	void updateWeaponCooldowns(GameState *gameState, f32 delta) const {
+		for (Weapon &weapon : gameState->weapons) {
+			if (!weapon.firing) {
+				weapon.cooldownTick = weapon.cooldown;
+				continue;
+			}
+
+			if (weapon.target->health <= 0) {
+				weapon.cooldownTick = 0.0f;
+				weapon.firing = false;
+				continue;
+			}
+
+			weapon.cooldownTick += delta * 1000;
+			if (weapon.cooldownTick >= weapon.cooldown) {
+				weapon.cooldownTick = fmod(weapon.cooldownTick, weapon.cooldown);
+
+				Projectile projectile = {};
+				projectile.damage = 10.0f; // TODO(steven): Currently arbitrary
+				projectile.speed = 100.0f; // TODO(steven): Also arbitrary
+				projectile.target = weapon.target;
+				projectile.position = weapon.position;
+				gameState->projectiles.push(projectile);
+			}
+		}
 	}
 };

@@ -1,12 +1,23 @@
 #pragma once
 
+#include <cassert>
+
 template<typename T, size_t Size>
 struct Array {
 	size_t length = 0;
 	T data[Size];
 
-	T &operator[](size_t index) {
+	T &operator [](size_t index) {
+		assert(index >= 0 && index < Size);
 		return this->data[index];
+	}
+
+	T *begin() {
+		return this->data;
+	}
+
+	T *end() {
+		return &this->data[this->length];
 	}
 
 	T pop() {
@@ -14,6 +25,7 @@ struct Array {
 	}
 
 	void push(T value) {
+		assert(this->length != Size);
 		this->data[this->length++] = value;
 	}
 

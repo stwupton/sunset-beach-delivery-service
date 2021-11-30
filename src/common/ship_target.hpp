@@ -8,5 +8,6 @@ struct ShipTarget {
 	CombatParty party = CombatParty::none;
 	u16 maxHealth = 0;
 	u16 health = 0;
-	Vec2<f32> position;
+	Vec3<f32> position;
+	f32 selectRadius;
 };
