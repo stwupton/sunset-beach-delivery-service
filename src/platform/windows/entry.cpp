@@ -121,13 +121,15 @@ INT WINAPI wWinMain(
 			DispatchMessage(&message);
 		}
 
-		inputProcessor->process(&gameState->input);
-		game.update(gameState, delta);
-
 		loader->load(&gameState->loadQueue);
-		renderer->drawSprites(gameState->sprites.data, gameState->sprites.length);
-		renderer->drawUI(gameState->uiElements.data, gameState->uiElements.length);
-		renderer->finish();
+		if (gameState->loadQueue.length == 0) {
+			inputProcessor->process(&gameState->input);
+			game.update(gameState, delta);
+
+			renderer->drawSprites(gameState->sprites.data, gameState->sprites.length);
+			renderer->drawUI(gameState->uiElements.data, gameState->uiElements.length);
+			renderer->finish();
+		}
 
 		// TODO(steven): Move elsewhere, maybe a gameloop class?
 		{

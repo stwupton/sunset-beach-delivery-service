@@ -8,6 +8,7 @@
 #include "common/input.hpp"
 #include "common/load_queue.cpp"
 #include "common/projectile.hpp"
+#include "common/ship.hpp"
 #include "common/ship_target.hpp"
 #include "common/weapon.hpp"
 #include "common/ui_element_buffer.cpp"
@@ -19,8 +20,7 @@ struct GameState {
 	Input input;
 	LoadQueue loadQueue;
 	Events events;
-	Array<ShipTarget, 20> shipTargets;
-	Array<Weapon, 20> weapons;
+	Array<Ship, 2> ships;
 	Array<Projectile, 100> projectiles;
 	Array<AimlessProjectile, 100> aimlessProjectiles;
 	Array<Sprite, 10> sprites;

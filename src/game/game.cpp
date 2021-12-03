@@ -13,11 +13,6 @@
 #include "utils/reducer.hpp"
 
 class Game {
-protected:
-	Sprite background;
-	Sprite enemyShip;
-	Sprite ship;
-	
 public:
 	void load(GameState *gameState) {
 		gameState->loadQueue.push(TextureAssetId::ship);
@@ -26,50 +21,61 @@ public:
 	}
 
 	void setup(GameState *gameState) {
-		// Sprites
+		// Ally ship
 		{
-			this->ship.assetId = TextureAssetId::ship;
-			this->ship.position = Vec3<f32>(0.0f, -300.0f, 0.4f);
-			this->ship.scale = Vec2<f32>(0.5f, 0.5f);
-			this->ship.angle = -95.0f;
-
-			this->enemyShip.assetId = TextureAssetId::enemyShip;
-			this->enemyShip.position = Vec3<f32>(0.0f, 300.0f, 0.4f);
-			this->enemyShip.scale = Vec2<f32>(0.2f, 0.2f);
-			this->enemyShip.angle = -180.0f;
-
-			this->background.assetId = TextureAssetId::background;
-			this->background.position = Vec3<f32>(0.0f, 0.0f, 0.9f);
-			this->background.scale = Vec2<f32>(1.3f, 1.3f);
-		}
-
-		// Ship Targets
-		{
-			gameState->shipTargets.push(
+			Ship ship = {};
+			ship.assetId = TextureAssetId::ship;
+			ship.position = Vec3<f32>(0.0f, -300.0f, 0.4f);
+			ship.scale = Vec2<f32>(0.5f, 0.5f);
+			ship.angle = -95.0f;
+			
+			ship.targets.push(
 				{ CombatParty::ally, 100, 100, Vec3<f32>(-300.0f, -200.0f), 50.0f }
 			);
-			gameState->shipTargets.push(
-				{ CombatParty::enemy, 200, 100, Vec3<f32>(0.0f, 300.0f), 50.0f }
-			);
-		}
 
-		// Weapons
-		{
-			gameState->weapons.push(
+			ship.weapons.push(
 				{ CombatParty::ally, Vec3<f32>(60.0f, -300.0f), 50.0f, 20, 180.0f }
 			);
-			gameState->weapons.push(
+
+			gameState->ships.push(ship);
+		}
+
+		// Enemy ship
+		{
+			Ship enemyShip = {};
+			enemyShip.assetId = TextureAssetId::enemyShip;
+			enemyShip.position = Vec3<f32>(0.0f, 300.0f, 0.4f);
+			enemyShip.scale = Vec2<f32>(0.2f, 0.2f);
+			enemyShip.angle = -180.0f;
+
+			enemyShip.targets.push(
+				{ CombatParty::enemy, 200, 100, Vec3<f32>(0.0f, 300.0f), 50.0f }
+			);
+
+			enemyShip.weapons.push(
 				{ CombatParty::enemy, Vec3<f32>(-60.0f, -300.0f), 50.0f }
 			);
+
+			gameState->ships.push(enemyShip);
 		}
 	}
 
 	void update(GameState *gameState, f32 delta) {
 		SpriteBuffer &sprites = gameState->sprites;
 		sprites.clear();
-		sprites.push(this->background);
-		sprites.push(this->ship);
-		sprites.push(this->enemyShip);
+
+		// TODO(steven): For some reason, if we add the background after to the sprite buffer
+		// after the ships, the ships cut a rectangle in the background. I suspect we
+		// are doing something wrong in DirectXRenderer.createBlendState().
+		Sprite background = {};
+		background.assetId = TextureAssetId::background;
+		background.position = Vec3<f32>(0.0f, 0.0f, 0.9f);
+		background.scale = Vec2<f32>(1.3f, 1.3f);
+		sprites.push(background);
+
+		for (const Ship &ship : gameState->ships) {
+			sprites.push(ship);
+		}
 
 		gameState->uiElements.clear();
 		this->handleUserTargeting(gameState);
@@ -85,57 +91,59 @@ public:
 protected:
 	// TODO(steven): Cleanup
 	void handleUserTargeting(GameState *gameState) const {
-		Weapon *targetingWeapon = nullptr;
-		Vec2<f32> weaponScreenPosition;
+		for (Ship &ship : gameState->ships) {
+			Weapon *targetingWeapon = nullptr;
+			Vec2<f32> weaponScreenPosition;
 
-		for (Weapon &weapon : gameState->weapons) {
-			if (weapon.party == CombatParty::ally) {
-				if (gameState->input.primaryButton.down) {
-					weaponScreenPosition = gameToScreen(weapon.position);
-					const f32 difference = gameState->input.primaryButton.start.distanceTo(weaponScreenPosition);
+			for (Weapon &weapon : ship.weapons) {
+				if (weapon.party == CombatParty::ally) {
+					if (gameState->input.primaryButton.down) {
+						weaponScreenPosition = gameToScreen(weapon.position);
+						const f32 difference = gameState->input.primaryButton.start.distanceTo(weaponScreenPosition);
 
-					if (difference < weapon.selectRadius) {
-						targetingWeapon = &weapon;
-						weapon.firing = false;
-						break;
-					}
-				} else if (weapon.target != nullptr) {
-					weapon.firing = true;
-				}
-			}
-		}
-
-		if (targetingWeapon != nullptr) {
-			ShipTarget *enemyTarget = nullptr;
-			Vec2<f32> targetScreenPosition;
-
-			for (ShipTarget &target : gameState->shipTargets) {
-				if (target.party == CombatParty::enemy && gameState->input.primaryButton.down) {
-					targetScreenPosition = gameToScreen(target.position);
-					const f32 difference = gameState->input.mouse.distanceTo(targetScreenPosition);
-					if (difference < target.selectRadius) {
-						enemyTarget = &target;
-						break;
+						if (difference < weapon.selectRadius) {
+							targetingWeapon = &weapon;
+							weapon.firing = false;
+							break;
+						}
+					} else if (weapon.target != nullptr) {
+						weapon.firing = true;
 					}
 				}
 			}
 
-			targetingWeapon->target = enemyTarget;
+			if (targetingWeapon != nullptr) {
+				ShipTarget *enemyTarget = nullptr;
+				Vec2<f32> targetScreenPosition;
 
-			// Draw targeting line
-			UILineData drawLine = {};
-			drawLine.start = weaponScreenPosition;
+				for (ShipTarget &target : ship.targets) {
+					if (target.party == CombatParty::enemy && gameState->input.primaryButton.down) {
+						targetScreenPosition = gameToScreen(target.position);
+						const f32 difference = gameState->input.mouse.distanceTo(targetScreenPosition);
+						if (difference < target.selectRadius) {
+							enemyTarget = &target;
+							break;
+						}
+					}
+				}
 
-			if (targetingWeapon->target != nullptr) {
-				drawLine.end = targetScreenPosition;
-			} else {
-				drawLine.end = gameState->input.mouse;
-				targetingWeapon->firing = false;
+				targetingWeapon->target = enemyTarget;
+
+				// Draw targeting line
+				UILineData drawLine = {};
+				drawLine.start = weaponScreenPosition;
+
+				if (targetingWeapon->target != nullptr) {
+					drawLine.end = targetScreenPosition;
+				} else {
+					drawLine.end = gameState->input.mouse;
+					targetingWeapon->firing = false;
+				}
+
+				drawLine.thickness = 10.0f;
+				drawLine.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);			
+				gameState->uiElements.push(drawLine);
 			}
-
-			drawLine.thickness = 10.0f;
-			drawLine.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);			
-			gameState->uiElements.push(drawLine);
 		}
 	}
 
@@ -162,57 +170,59 @@ protected:
 			uiElements.push(bullet);
 		}
 
-		// Draw weapons
-		for (const Weapon &weapon : gameState->weapons) {
-			UICircleData weaponIndicator = {};
-			weaponIndicator.position = gameToScreen(weapon.position);
-			weaponIndicator.thickness = 10.0f;
-			weaponIndicator.radius = weapon.selectRadius;
+		for (Ship &ship : gameState->ships) {
+			// Draw weapons
+			for (const Weapon &weapon : ship.weapons) {
+				UICircleData weaponIndicator = {};
+				weaponIndicator.position = gameToScreen(weapon.position);
+				weaponIndicator.thickness = 10.0f;
+				weaponIndicator.radius = weapon.selectRadius;
 
-			if (weapon.party == CombatParty::ally) {
-				weaponIndicator.color = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
-			} else {
-				weaponIndicator.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
+				if (weapon.party == CombatParty::ally) {
+					weaponIndicator.color = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
+				} else {
+					weaponIndicator.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
+				}
+
+				uiElements.push(weaponIndicator);
+
+				if (weapon.firing) {
+					UITextData firingText = {};
+					firingText.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
+					firingText.fontSize = 10.0f;
+					firingText.height = 10.0f;
+					firingText.width = 100.0f;
+					firingText.position = weaponIndicator.position + Vec2<f32>(-15.0f, -10.0f);
+					firingText.text = L"FIRING";
+					uiElements.push(firingText);
+				}
 			}
 
-			uiElements.push(weaponIndicator);
+			// Draw combat ship targets
+			// TODO(steven): Just using debug circles for now, represent them another way
+			for (const ShipTarget &target : ship.targets) {
+				UICircleData targetPoint = {};
+				targetPoint.position = gameToScreen(target.position);
+				targetPoint.thickness = 10.0f;
+				targetPoint.radius = target.selectRadius;
+				targetPoint.style = UICircleStyle::dotted;
 
-			if (weapon.firing) {
-				UITextData firingText = {};
-				firingText.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
-				firingText.fontSize = 10.0f;
-				firingText.height = 10.0f;
-				firingText.width = 100.0f;
-				firingText.position = weaponIndicator.position + Vec2<f32>(-15.0f, -10.0f);
-				firingText.text = L"FIRING";
-				uiElements.push(firingText);
+				if (target.party == CombatParty::ally) {
+					targetPoint.color = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
+				} else {
+					targetPoint.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
+				}
+
+				uiElements.push(targetPoint);
+
+				UILineData healthBar = {};
+				const f32 healthScale = (f32)target.health / target.maxHealth;
+				healthBar.start = targetPoint.position + Vec2<f32>(-50.0f, -100.0f);
+				healthBar.end = healthBar.start + Vec2<f32>(100.0f * healthScale, 0.0f);
+				healthBar.color = Rgba(abs(healthScale - 1.0f), healthScale, 0.0f, 1.0f);
+				healthBar.thickness = 20.0f;
+				uiElements.push(healthBar);
 			}
-		}
-
-		// Draw combat ship targets
-		// TODO(steven): Just using debug circles for now, represent them another way
-		for (const ShipTarget &target : gameState->shipTargets) {
-			UICircleData targetPoint = {};
-			targetPoint.position = gameToScreen(target.position);
-			targetPoint.thickness = 10.0f;
-			targetPoint.radius = target.selectRadius;
-			targetPoint.style = UICircleStyle::dotted;
-
-			if (target.party == CombatParty::ally) {
-				targetPoint.color = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
-			} else {
-				targetPoint.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
-			}
-
-			uiElements.push(targetPoint);
-
-			UILineData healthBar = {};
-			const f32 healthScale = (f32)target.health / target.maxHealth;
-			healthBar.start = targetPoint.position + Vec2<f32>(-50.0f, -100.0f);
-			healthBar.end = healthBar.start + Vec2<f32>(100.0f * healthScale, 0.0f);
-			healthBar.color = Rgba(abs(healthScale - 1.0f), healthScale, 0.0f, 1.0f);
-			healthBar.thickness = 20.0f;
-			uiElements.push(healthBar);
 		}
 	}
 
@@ -256,11 +266,13 @@ protected:
 
 	void processEvents(GameState *gameState) const {
 		for (const TargetDestroyedEvent &event : gameState->events.targetDestroyed) {
-			for (Weapon &weapon : gameState->weapons) {
-				if (weapon.target == event.target) {
-					weapon.firing = false;
-					weapon.target = nullptr;
-					weapon.cooldownTick = weapon.cooldown;
+			for (Ship &ship : gameState->ships) {
+				for (Weapon &weapon : ship.weapons) {
+					if (weapon.target == event.target) {
+						weapon.firing = false;
+						weapon.target = nullptr;
+						weapon.cooldownTick = weapon.cooldown;
+					}
 				}
 			}
 
@@ -333,35 +345,39 @@ protected:
 	}
 
 	void updateTargets(GameState *gameState) const {
-		Reducer reducer(&gameState->shipTargets);
+		for (Ship &ship : gameState->ships) {
+			Reducer reducer(&ship.targets);
 
-		for (ShipTarget &target : gameState->shipTargets) {
-			reducer.next(&target);
-			if (target.health == 0) {
-				reducer.remove();
+			for (ShipTarget &target : ship.targets) {
+				reducer.next(&target);
+				if (target.health == 0) {
+					reducer.remove();
+				}
 			}
-		}
 
-		reducer.finish();
+			reducer.finish();
+		}
 	}
 
 	void updateWeaponCooldowns(GameState *gameState, f32 delta) const {
-		for (Weapon &weapon : gameState->weapons) {
-			if (!weapon.firing) {
-				continue;
-			}
+		for (Ship &ship : gameState->ships) {
+			for (Weapon &weapon : ship.weapons) {
+				if (!weapon.firing) {
+					continue;
+				}
 
-			weapon.cooldownTick += delta * 1000;
-			if (weapon.cooldownTick >= weapon.cooldown) {
-				weapon.cooldownTick = fmod(weapon.cooldownTick, weapon.cooldown);
+				weapon.cooldownTick += delta * 1000;
+				if (weapon.cooldownTick >= weapon.cooldown) {
+					weapon.cooldownTick = fmod(weapon.cooldownTick, weapon.cooldown);
 
-				Projectile projectile = {};
-				projectile.damage = weapon.damage;
-				projectile.speed = weapon.projectileSpeed;
-				projectile.target = weapon.target;
-				projectile.position = weapon.position;
+					Projectile projectile = {};
+					projectile.damage = weapon.damage;
+					projectile.speed = weapon.projectileSpeed;
+					projectile.target = weapon.target;
+					projectile.position = weapon.position;
 
-				gameState->projectiles.push(projectile);
+					gameState->projectiles.push(projectile);
+				}
 			}
 		}
 	}
