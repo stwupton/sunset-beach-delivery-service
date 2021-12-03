@@ -264,14 +264,12 @@ protected:
 				}
 			}
 
-			// TODO(steven): Use reducer
-			size_t offset = 0;
-			size_t index = -1;
+			Reducer reducer(&gameState->projectiles);
 			for (Projectile &projectile : gameState->projectiles) {
-				index++;
+				reducer.next(&projectile);
 
 				if (projectile.target == event.target) {
-					offset++;
+					reducer.remove();
 
 					AimlessProjectile aimless = {};
 					aimless.position = projectile.position;
@@ -281,21 +279,28 @@ protected:
 					aimless.direction = direction;
 
 					gameState->aimlessProjectiles.push(aimless);
-				} else {
-					gameState->projectiles.data[index - offset] = projectile;
 				}
 			}
 
-			gameState->projectiles.length -= offset;
-
-			// TODO(steven): Remove targets from the array
+			reducer.finish();
 		}
 	}
 
 	void updateAimlessProjectiles(GameState *gameState, f32 delta) const {
+		Reducer reducer(&gameState->aimlessProjectiles);
+
 		for (AimlessProjectile &aimless : gameState->aimlessProjectiles) {
-			aimless.position += aimless.direction * aimless.speed * delta;
+			reducer.next(&aimless);
+
+			aimless.tick += delta * 1000;
+			if (aimless.tick >= aimless.lifetime) {
+				reducer.remove();
+			} else {
+				aimless.position += aimless.direction * aimless.speed * delta;
+			}
 		}
+
+		reducer.finish();
 	}
 
 	void updateProjectiles(GameState *gameState, f32 delta) const {
@@ -351,14 +356,10 @@ protected:
 				weapon.cooldownTick = fmod(weapon.cooldownTick, weapon.cooldown);
 
 				Projectile projectile = {};
-				projectile.damage = weapon.damage; // TODO(steven): Currently arbitrary
-				projectile.speed = weapon.projectileSpeed; // TODO(steven): Also arbitrary
+				projectile.damage = weapon.damage;
+				projectile.speed = weapon.projectileSpeed;
 				projectile.target = weapon.target;
 				projectile.position = weapon.position;
-
-				// Set the direction for the projectile to continue if the target was destroyed
-				// const Vec3<f32> diff = projectile.target->position - projectile.position;
-				// projectile.direction = diff.normalized();
 
 				gameState->projectiles.push(projectile);
 			}
