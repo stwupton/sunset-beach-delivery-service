@@ -65,7 +65,7 @@ struct UIButtonData : UICommonData {
 			state.wasDown && 
 			!state.down &&
 			boxCollision(state.start, this->position, this->width, this->height) &&
-			boxCollision(state.start, this->position, this->width, this->height)
+			boxCollision(state.end, this->position, this->width, this->height)
 		);
 	}
 };
