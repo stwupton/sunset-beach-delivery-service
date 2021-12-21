@@ -12,5 +12,5 @@ struct Dx3dSpriteResource {
 
 struct DirectXResources {
 	ID3D11Device *device;
-	Dx3dSpriteResource spriteResources[TextureAssetId::_length];
+	Dx3dSpriteResource spriteResources[(size_t)TextureAssetId::_length];
 };

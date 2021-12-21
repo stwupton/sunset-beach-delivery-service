@@ -7,9 +7,9 @@
 #include <malloc.h>
 
 #include "common/asset_definitions.hpp"
-#include "common/load_queue.cpp"
+#include "common/load_queue.hpp"
 #include "platform/windows/directx_resources.hpp"
-#include "platform/windows/utils.cpp"
+#include "platform/windows/utils.hpp"
 #include "platform/windows/sprite_vertex.hpp"
 
 class Dx3dSpriteLoader {
@@ -44,7 +44,7 @@ public:
 
 		TextureAssetId assetId = loadQueue->pop();
 
-		LPCWSTR fileName = textureNames[assetId];
+		LPCWSTR fileName = textureNames[(size_t)assetId];
 		Dx3dSpriteResource spriteInfo = {};
 
 		IWICBitmapDecoder *bitmapDecoder;
@@ -95,7 +95,7 @@ public:
 		RELEASE_COM_OBJ(frameDecode)
 		free(buffer);
 
-		this->resources->spriteResources[assetId] = spriteInfo;
+		this->resources->spriteResources[(size_t)assetId] = spriteInfo;
 	}
 
 protected:

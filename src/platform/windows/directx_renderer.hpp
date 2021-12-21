@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdio>
-
 #include <cmath>
 
 #include <d2d1.h>
@@ -9,7 +8,6 @@
 #include <d3dcompiler.h>
 #include <dwrite.h>
 #include <dxgi.h>
-#include <malloc.h>
 #include <Windows.h>
 #include <combaseapi.h>
 #include <wincodec.h>
@@ -17,8 +15,8 @@
 #include "common/sprite.hpp"
 #include "common/window_config.hpp"
 #include "common/ui_element.hpp"
-#include "platform/windows/dx3d_sprite_loader.cpp"
-#include "platform/windows/utils.cpp"
+#include "platform/windows/dx3d_sprite_loader.hpp"
+#include "platform/windows/utils.hpp"
 #include "platform/windows/sprite_vertex.hpp"
 #include "types/core.hpp"
 #include "types/matrix.hpp"
@@ -163,6 +161,26 @@ public:
 				);
 				ASSERT_HRESULT(result)
 
+				// Horizaltal text alignment
+				DWRITE_TEXT_ALIGNMENT textAlignments[] = { 
+					DWRITE_TEXT_ALIGNMENT_LEADING, 
+					DWRITE_TEXT_ALIGNMENT_CENTER, 
+					DWRITE_TEXT_ALIGNMENT_TRAILING 
+				}; 
+				DWRITE_TEXT_ALIGNMENT textAlignment = textAlignments[(size_t)text.horizontalAlignment]; 
+				result = textFormat->SetTextAlignment(textAlignment);
+				ASSERT_HRESULT(result)
+
+				// Vertical text alignment
+				DWRITE_PARAGRAPH_ALIGNMENT paragraphAlignments[] = {
+					DWRITE_PARAGRAPH_ALIGNMENT_NEAR,
+					DWRITE_PARAGRAPH_ALIGNMENT_CENTER,
+					DWRITE_PARAGRAPH_ALIGNMENT_FAR
+				};
+				DWRITE_PARAGRAPH_ALIGNMENT paragraphAlignment = paragraphAlignments[(size_t)text.verticalAlignment];
+				textFormat->SetParagraphAlignment(paragraphAlignment);
+				ASSERT_HRESULT(result)
+
 				D2D1_RECT_F layoutRect = { 
 					text.position.x, 
 					text.position.y, 
@@ -211,6 +229,17 @@ public:
 				this->d2dRenderTarget->DrawEllipse(ellipse, this->d2dSolidBrush, circle.thickness, strokeStyle);
 
 				RELEASE_COM_OBJ(strokeStyle);
+			} else if (element.type == UIType::button) {
+				const UIButtonData &button = element.button;
+
+				D2D1_RECT_F rect = { 
+					button.position.x, 
+					button.position.y, 
+					button.position.x + button.width, 
+					button.position.y + button.height 
+				};
+
+				this->d2dRenderTarget->FillRectangle(rect, this->d2dSolidBrush);
 			}
 
 			HRESULT result = this->d2dRenderTarget->EndDraw();
@@ -240,7 +269,7 @@ public:
 
 		for (UINT i = 0; i < bufferLength; i++) {
 			const Sprite &sprite = sprites[i];
-			const Dx3dSpriteResource &textureReference = this->resources->spriteResources[sprite.assetId];
+			const Dx3dSpriteResource &textureReference = this->resources->spriteResources[(size_t)sprite.assetId];
 
 			const UINT stride = sizeof(SpriteVertex);
 			const UINT offset = 0;

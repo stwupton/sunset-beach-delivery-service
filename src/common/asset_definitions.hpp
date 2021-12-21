@@ -2,7 +2,7 @@
 
 #include "types/core.hpp"
 
-enum TextureAssetId : u8 {
+enum class TextureAssetId : u8 {
 	ship,
 	enemyShip,
 	background,

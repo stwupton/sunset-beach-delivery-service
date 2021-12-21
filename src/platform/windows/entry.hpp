@@ -6,16 +6,18 @@
 
 #include "common/game_state.hpp"
 #include "common/window_config.hpp"
-#include "game/game.cpp"
-#include "platform/windows/directx_renderer.cpp"
-#include "platform/windows/dx3d_sprite_loader.cpp"
-#include "platform/windows/input_processor.cpp"
-#include "platform/windows/utils.cpp"
+#include "editor/editor.hpp"
+#include "game/game.hpp"
+#include "platform/windows/directx_renderer.hpp"
+#include "platform/windows/dx3d_sprite_loader.hpp"
+#include "platform/windows/input_processor.hpp"
+#include "platform/windows/utils.hpp"
 #include "types/core.hpp"
 #include "types/vector.hpp"
 
 // TODO(steven): Move elsewhere
 static bool shouldClose = false;
+static bool editorOpen = false;
 static DirectXResources *directXResources = new DirectXResources {};
 static DirectXRenderer *renderer = new DirectXRenderer();
 static Dx3dSpriteLoader *loader = new Dx3dSpriteLoader();
@@ -49,9 +51,20 @@ LRESULT CALLBACK eventHandler(
 		} break;
 
 		case WM_KEYDOWN: { 
+			GameState *gameState = (GameState*)GetWindowLongPtr(windowHandle, GWLP_USERDATA);
+
 			if (wParam == VK_ESCAPE) {
 				PostMessage(windowHandle, WM_CLOSE, NULL, NULL);
 			}
+
+#ifdef DEBUG
+			if (wParam == 'E') {
+				// Reset to menu whenever we click the E key
+				gameState->editorState.mode = EditorMode::menu;
+
+				editorOpen = !editorOpen;
+			}
+#endif
 		} break;
 
 		default: {
@@ -107,12 +120,13 @@ INT WINAPI wWinMain(
 	ASSERT_HRESULT(result)
 	
 	GameState *gameState = new GameState {};
-
 	createWin32Window(instanceHandle, showFlag, gameState);
 
 	Game game;
 	game.load(gameState);
 	game.setup(gameState);
+
+	Editor editor;
 
 	MSG message = {};
 	while (!shouldClose) {
@@ -124,11 +138,20 @@ INT WINAPI wWinMain(
 		loader->load(&gameState->loadQueue);
 		if (gameState->loadQueue.length == 0) {
 			inputProcessor->process(&gameState->input);
-			game.update(gameState, delta);
+
+			if (editorOpen) {
+				editor.update(gameState);
+			} else {
+				game.update(gameState, delta);
+			}
 
 			renderer->drawSprites(gameState->sprites.data, gameState->sprites.length);
 			renderer->drawUI(gameState->uiElements.data, gameState->uiElements.length);
 			renderer->finish();
+
+			// Reset render buffers
+			gameState->sprites.clear();
+			gameState->uiElements.clear();
 		}
 
 		// TODO(steven): Move elsewhere, maybe a gameloop class?

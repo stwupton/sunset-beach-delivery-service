@@ -3,15 +3,17 @@
 #include "types/core.hpp"
 #include "types/vector.hpp"
 
-struct MouseButtonState { 
-	bool down; 
+struct ButtonState { 
+	bool down;
+	bool wasDown;
 	Vec2<f32> start; 
+	Vec2<f32> end; 
 };
 
 struct Input {
 	Vec2<f32> mouse;
 	Vec2<f32> previousMouse;
-	MouseButtonState primaryButton;
+	ButtonState primaryButton;
 
 	Vec2<f64> mouseMovement() const {
 		return Vec2<f64>(
