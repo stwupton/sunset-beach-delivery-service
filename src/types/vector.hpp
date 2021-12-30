@@ -17,6 +17,10 @@ struct Vec2 {
 		return Vec2<T>(this->x + other.x, this->y + other.y);
 	}
 
+	Vec2<T> operator +=(const Vec2<T> &other) {
+		return *this = *this + other;
+	}
+
 	Vec2<T> operator *(T x) const {
 		return Vec2<T>(this->x * x, this->y * x);
 	}

@@ -37,65 +37,68 @@ public:
 	}
 
 	// TODO(steven): Load in a seperate thread
-  void load(LoadQueue *loadQueue) {
+  void load(TextureLoadQueue *loadQueue) {
 		if (loadQueue->length == 0) {
 			return;
 		}
 
-		TextureAssetId assetId = loadQueue->pop();
+		// NOTE(steven): Increase size of buffer if needed
+		BYTE *buffer = (BYTE*)malloc(100000000);
 
-		LPCWSTR fileName = textureNames[(size_t)assetId];
-		Dx3dSpriteResource spriteInfo = {};
+		for (TextureAssetId assetId : *loadQueue) {
+			LPCWSTR fileName = textureNames[(size_t)assetId];
+			Dx3dSpriteResource spriteInfo = {};
 
-		IWICBitmapDecoder *bitmapDecoder;
-		HRESULT result = imagingFactory->CreateDecoderFromFilename(
-			fileName, 
-			NULL, 
-			GENERIC_READ, 
-			WICDecodeMetadataCacheOnLoad, 
-			&bitmapDecoder
-		);
-		ASSERT_HRESULT(result)
+			IWICBitmapDecoder *bitmapDecoder;
+			HRESULT result = imagingFactory->CreateDecoderFromFilename(
+				fileName, 
+				NULL, 
+				GENERIC_READ, 
+				WICDecodeMetadataCacheOnLoad, 
+				&bitmapDecoder
+			);
+			ASSERT_HRESULT(result)
 
-		IWICBitmapFrameDecode *frameDecode;
-		result = bitmapDecoder->GetFrame(0, &frameDecode);
-		ASSERT_HRESULT(result)
+			IWICBitmapFrameDecode *frameDecode;
+			result = bitmapDecoder->GetFrame(0, &frameDecode);
+			ASSERT_HRESULT(result)
 
-		WICPixelFormatGUID wicPixelFormat;
-		result = frameDecode->GetPixelFormat(&wicPixelFormat);
-		ASSERT_HRESULT(result)
+			WICPixelFormatGUID wicPixelFormat;
+			result = frameDecode->GetPixelFormat(&wicPixelFormat);
+			ASSERT_HRESULT(result)
 
-		DXGI_FORMAT dxgiFormat;
-		const bool formatConverted = this->getDxgiFormat(&wicPixelFormat, &dxgiFormat);
-		const UINT bitsPerPixel = this->getBitsPerPixel(wicPixelFormat);
+			DXGI_FORMAT dxgiFormat;
+			const bool formatConverted = this->getDxgiFormat(&wicPixelFormat, &dxgiFormat);
+			const UINT bitsPerPixel = this->getBitsPerPixel(wicPixelFormat);
 
-		UINT width = 0, height = 0;
-		frameDecode->GetSize(&width, &height);
+			UINT width = 0, height = 0;
+			frameDecode->GetSize(&width, &height);
 
-		spriteInfo.vertexBuffer = this->createVertexBuffer(width, height);
+			spriteInfo.vertexBuffer = this->createVertexBuffer(width, height);
 
-		const UINT stride = bitsPerPixel / 8; 
-		const UINT rowStride = stride * width;
-		const UINT bufferSize = width * height * stride;
-		// TODO(steven): Re-use this buffer?
-		BYTE *buffer = (BYTE*)malloc(bufferSize);
-		this->createTextureBuffer(
-			frameDecode, 
-			buffer, 
-			bufferSize, 
-			rowStride, 
-			wicPixelFormat, 
-			formatConverted
-		);
+			const UINT stride = bitsPerPixel / 8; 
+			const UINT rowStride = stride * width;
+			const UINT bufferSize = width * height * stride;
+			this->createTextureBuffer(
+				frameDecode, 
+				buffer, 
+				bufferSize, 
+				rowStride, 
+				wicPixelFormat, 
+				formatConverted
+			);
 
-		spriteInfo.texture2d = this->createTexture2d(buffer, dxgiFormat, width, height, rowStride);
-		spriteInfo.texture2dView = this->createTexture2dView(spriteInfo.texture2d, dxgiFormat);
+			spriteInfo.texture2d = this->createTexture2d(buffer, dxgiFormat, width, height, rowStride);
+			spriteInfo.texture2dView = this->createTexture2dView(spriteInfo.texture2d, dxgiFormat);
 
-		RELEASE_COM_OBJ(bitmapDecoder)
-		RELEASE_COM_OBJ(frameDecode)
+			RELEASE_COM_OBJ(bitmapDecoder)
+			RELEASE_COM_OBJ(frameDecode)
+
+			this->resources->spriteResources[(size_t)assetId] = spriteInfo;
+		}
+
+		loadQueue->clear();
 		free(buffer);
-
-		this->resources->spriteResources[(size_t)assetId] = spriteInfo;
 	}
 
 protected:

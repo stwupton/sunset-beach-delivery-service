@@ -10,7 +10,9 @@
 #include "game/game.hpp"
 #include "platform/windows/directx_renderer.hpp"
 #include "platform/windows/dx3d_sprite_loader.hpp"
+#include "platform/windows/file_saver.hpp"
 #include "platform/windows/input_processor.hpp"
+#include "platform/windows/template_loader.hpp"
 #include "platform/windows/utils.hpp"
 #include "types/core.hpp"
 #include "types/vector.hpp"
@@ -123,10 +125,12 @@ INT WINAPI wWinMain(
 	createWin32Window(instanceHandle, showFlag, gameState);
 
 	Game game;
+	// TODO(steven): We want to be able to change what assets are loaded as we go instead
+	// of loading all the assets up front.
 	game.load(gameState);
 	game.setup(gameState);
 
-	Editor editor;
+	loadTemplates(gameState);
 
 	MSG message = {};
 	while (!shouldClose) {
@@ -135,12 +139,18 @@ INT WINAPI wWinMain(
 			DispatchMessage(&message);
 		}
 
-		loader->load(&gameState->loadQueue);
-		if (gameState->loadQueue.length == 0) {
+		loader->load(&gameState->textureLoadQueue);
+		if (gameState->textureLoadQueue.length == 0) {
 			inputProcessor->process(&gameState->input);
 
 			if (editorOpen) {
-				editor.update(gameState);
+				Editor::update(gameState);
+
+				SaveData &saveData = gameState->editorState.saveData; 
+				if (saveData.pending) {
+					save(saveData.path.data, saveData.buffer, saveData.size);
+					saveData.pending = false;
+				}
 			} else {
 				game.update(gameState, delta);
 			}

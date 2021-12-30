@@ -15,9 +15,9 @@
 class Game {
 public:
 	void load(GameState *gameState) {
-		gameState->loadQueue.push(TextureAssetId::ship);
-		gameState->loadQueue.push(TextureAssetId::enemyShip);
-		gameState->loadQueue.push(TextureAssetId::background);
+		gameState->textureLoadQueue.push(TextureAssetId::ship);
+		gameState->textureLoadQueue.push(TextureAssetId::enemyShip);
+		gameState->textureLoadQueue.push(TextureAssetId::background);
 	}
 
 	template<typename T, size_t Size>

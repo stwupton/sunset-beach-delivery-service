@@ -2,13 +2,12 @@
 
 #include "common/game_state.hpp"
 #include "types/core.hpp"
-#include "editor/menu.hpp"
-#include "editor/ship.hpp"
+#include "editor/editor_menu.hpp"
+#include "editor/ship_editor.hpp"
 
-class Editor {
-public: 
-	void update(GameState *gameState) const {
-		string16<32> modeNames[] = { L"Menu", L"Ship" };
+namespace Editor {
+	void update(GameState *gameState) {
+		string16<32> modeNames[] = { L"EditorMenu", L"Ship" };
 		string16<32> modeName = modeNames[(size_t)gameState->editorState.mode];
 
 		string16<64> text;
@@ -25,11 +24,12 @@ public:
 		
 		switch (gameState->editorState.mode) {
 			case EditorMode::menu: {
-				Menu::update(gameState);
+				EditorMenu::update(gameState);
 			} break;
 
-			// TODO(steven): 
-			// case EditorMode::ship
+			case EditorMode::ship: {
+				ShipEditor::update(gameState);
+			} break;
 		}
 	}
 };

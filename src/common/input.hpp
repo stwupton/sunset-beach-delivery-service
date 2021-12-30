@@ -14,4 +14,8 @@ struct Input {
 	Vec2<f32> mouse;
 	Vec2<f32> previousMouse;
 	ButtonState primaryButton;
+
+	Vec2<f32> mouseMovement() const {
+		return mouse - previousMouse;
+	}
 };
