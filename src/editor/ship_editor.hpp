@@ -51,25 +51,25 @@ namespace ShipEditor {
 			return;
 		}
 
-		UI_BUTTON(rotButton, L"Rotate", Vec2(100.0f, 100.0f))
+		UIButtonData rotButton = uiButton(L"Rotate", Vec2(100.0f, 100.0f), gameState->input);
 		gameState->uiElements.push(rotButton);
-		if (rotButton.clicked(gameState->input.primaryButton)) {
+		if (rotButton.checkInput(UIButtonInputState::clicked)) {
 			state.mode = ShipEditorMode::rotate;
 		}
 
-		UI_BUTTON(scaleButton, L"Scale", Vec2(100.0f, 250.0f))
+		UIButtonData scaleButton = uiButton(L"Scale", Vec2(100.0f, 250.0f), gameState->input);
 		gameState->uiElements.push(scaleButton);
-		if (scaleButton.clicked(gameState->input.primaryButton)) {
+		if (scaleButton.checkInput(UIButtonInputState::clicked)) {
 			state.mode = ShipEditorMode::scale;
 		}
 
-		UI_BUTTON(saveButton, L"💾", Vec2(100.0f, 880.0f))
+		UIButtonData saveButton = uiButton(L"💾", Vec2(100.0f, 880.0f), gameState->input);
 		gameState->uiElements.push(saveButton);
-		if (saveButton.clicked(gameState->input.primaryButton)) {
+		if (saveButton.checkInput(UIButtonInputState::clicked)) {
 			SaveData &saveData = gameState->editorState.saveData;
 
 			saveData.pending = true;
-			saveData.path = L"assets/data/ship";
+			saveData.path = L"assets/data/templates/ships/ship";
 			// TODO(steven): Obviously dumping the binary data to file is not an ideal 
 			// solution but it works ok for now. Do proper serialisation.
 			memcpy(saveData.buffer, (void*)&state.ship, sizeof(Ship));

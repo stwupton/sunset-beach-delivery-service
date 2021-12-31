@@ -11,6 +11,7 @@ struct ButtonState {
 };
 
 struct Input {
+	wchar_t keyDown = '\0';
 	Vec2<f32> mouse;
 	Vec2<f32> previousMouse;
 	ButtonState primaryButton;

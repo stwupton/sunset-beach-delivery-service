@@ -59,6 +59,13 @@ LRESULT CALLBACK eventHandler(
 				PostMessage(windowHandle, WM_CLOSE, NULL, NULL);
 			}
 
+			if (
+				(wParam >= 'A' && wParam <= 'Z') ||
+				(wParam >= '0' && wParam <= '9')
+			) {
+				gameState->input.keyDown = wParam;
+			}
+
 #ifdef DEBUG
 			if (wParam == 'E') {
 				// Reset to menu whenever we click the E key
@@ -134,6 +141,9 @@ INT WINAPI wWinMain(
 
 	MSG message = {};
 	while (!shouldClose) {
+		// TODO(steven): This is horrible
+		gameState->input.keyDown = '\0';
+
 		while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
 			TranslateMessage(&message);
 			DispatchMessage(&message);

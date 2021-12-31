@@ -55,18 +55,46 @@ struct UIButtonLabelData : UICommonData {
 	string16<32> text;
 };
 
+enum class UIButtonInputState : u8 {
+	none = 0,
+	over = 1 << 1,
+	down = 1 << 2,
+	clicked = 1 << 3
+};
+
 struct UIButtonData : UICommonData {
 	UIButtonLabelData label;
 	Vec2<f32> position;
 	f32 width, height;
+	u8 inputState = (u8)UIButtonInputState::none;
 
-	bool clicked(ButtonState state) const {
-		return (
-			state.wasDown && 
-			!state.down &&
-			boxCollision(state.start, this->position, this->width, this->height) &&
-			boxCollision(state.end, this->position, this->width, this->height)
-		);
+	void handleInput(const Input &input) {
+		this->inputState = 0;
+
+		if (boxCollision(input.mouse, this->position, this->width, this->height)) {
+			this->inputState |= (u8)UIButtonInputState::over;
+
+			const bool startedInButton = boxCollision(
+				input.primaryButton.start, 
+				this->position, 
+				this->width, 
+				this->height
+			);
+
+			if (input.primaryButton.down && startedInButton) {
+				this->inputState |= (u8)UIButtonInputState::down;
+			} else if (
+				input.primaryButton.wasDown && 
+				startedInButton &&
+				boxCollision(input.primaryButton.end, this->position, this->width, this->height)
+			) {
+				this->inputState |= (u8)UIButtonInputState::clicked;
+			}
+		}
+	}
+
+	bool checkInput(UIButtonInputState state) const {
+		return this->inputState & (u8)state;
 	}
 };
 
