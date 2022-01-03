@@ -7,10 +7,10 @@
 
 namespace Editor {
 	void update(GameState *gameState) {
-		string16<32> modeNames[] = { L"EditorMenu", L"ShipEditor" };
-		string16<32> modeName = modeNames[(size_t)gameState->editorState.mode];
+		String16<32> modeNames[] = { L"EditorMenu", L"ShipEditor" };
+		String16<32> modeName = modeNames[(size_t)gameState->editorState.mode];
 
-		string16<64> text;
+		String16<64> text;
 		swprintf_s(text.data, L"Mode: %s", modeName.data);
 
 		// Mode display

@@ -10,7 +10,14 @@ struct ButtonState {
 	Vec2<f32> end; 
 };
 
+enum class Cursor {
+	arrow,
+	pointer,
+	_length
+};
+
 struct Input {
+	Cursor cursor = Cursor::arrow;
 	wchar_t keyDown = '\0';
 	Vec2<f32> mouse;
 	Vec2<f32> previousMouse;

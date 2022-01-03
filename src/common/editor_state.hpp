@@ -2,11 +2,7 @@
 
 #include "common/save_data.hpp"
 #include "common/ship.hpp"
-
-enum class EditorMode {
-	menu,
-	ship
-};
+#include "common/templates.hpp"
 
 enum class ShipEditorMode {
 	none,
@@ -15,8 +11,13 @@ enum class ShipEditorMode {
 };
 
 struct ShipEditorState {
-	Ship ship;
+	TemplateData<Ship> *shipTemplate;
 	ShipEditorMode mode = ShipEditorMode::none;
+};
+
+enum class EditorMode {
+	menu,
+	ship
 };
 
 struct EditorState {

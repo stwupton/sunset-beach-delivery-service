@@ -131,48 +131,43 @@ INT WINAPI wWinMain(
 	GameState *gameState = new GameState {};
 	createWin32Window(instanceHandle, showFlag, gameState);
 
-	Game game;
-	// TODO(steven): We want to be able to change what assets are loaded as we go instead
-	// of loading all the assets up front.
-	game.load(gameState);
-	game.setup(gameState);
+	Game::setup(gameState);
 
 	loadTemplates(gameState);
 
 	MSG message = {};
 	while (!shouldClose) {
-		// TODO(steven): This is horrible
-		gameState->input.keyDown = '\0';
-
 		while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
 			TranslateMessage(&message);
 			DispatchMessage(&message);
 		}
 
 		loader->load(&gameState->textureLoadQueue);
-		if (gameState->textureLoadQueue.length == 0) {
-			inputProcessor->process(&gameState->input);
+		inputProcessor->process(&gameState->input);
 
-			if (editorOpen) {
-				Editor::update(gameState);
+		if (editorOpen) {
+			Editor::update(gameState);
 
-				SaveData &saveData = gameState->editorState.saveData; 
-				if (saveData.pending) {
-					save(saveData.path.data, saveData.buffer, saveData.size);
-					saveData.pending = false;
-				}
-			} else {
-				game.update(gameState, delta);
+			SaveData &saveData = gameState->editorState.saveData; 
+			if (saveData.pending) {
+				save(saveData.path.data, saveData.buffer, saveData.size);
+				saveData.pending = false;
 			}
-
-			renderer->drawSprites(gameState->sprites.data, gameState->sprites.length);
-			renderer->drawUI(gameState->uiElements.data, gameState->uiElements.length);
-			renderer->finish();
-
-			// Reset render buffers
-			gameState->sprites.clear();
-			gameState->uiElements.clear();
+		} else {
+			Game::update(gameState, delta);
 		}
+
+		renderer->drawSprites(gameState->sprites.data, gameState->sprites.length);
+		renderer->drawUI(gameState->uiElements.data, gameState->uiElements.length);
+		renderer->finish();
+
+		// Reset render buffers
+		gameState->sprites.clear();
+		gameState->uiElements.clear();
+
+		inputProcessor->updateCursor(gameState->input.cursor);
+		gameState->input.cursor = Cursor::arrow;
+		gameState->input.keyDown = '\0';
 
 		// TODO(steven): Move elsewhere, maybe a gameloop class?
 		{

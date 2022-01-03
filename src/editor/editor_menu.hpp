@@ -7,7 +7,7 @@
 
 namespace EditorMenu {
 	void update(GameState *gameState) {
-		UIButtonData shipEditorButton = uiButton(L"Ship Editor", Vec2(100.0f, 100.0f), gameState->input);
+		UIButtonData shipEditorButton = uiButton(L"Ship Editor", Vec2(100.0f, 100.0f), &gameState->input);
 		gameState->uiElements.push(shipEditorButton);
 
 		if (shipEditorButton.checkInput(UIButtonInputState::clicked)) {

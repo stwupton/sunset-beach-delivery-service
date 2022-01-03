@@ -152,7 +152,7 @@ public:
 				HRESULT result = this->dWriteFactory->CreateTextFormat(
 					L"Arial", 
 					nullptr, 
-					DWRITE_FONT_WEIGHT_MEDIUM, 
+					DWRITE_FONT_WEIGHT_REGULAR, 
 					DWRITE_FONT_STYLE_NORMAL, 
 					DWRITE_FONT_STRETCH_MEDIUM, 
 					text.fontSize, 

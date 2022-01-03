@@ -11,7 +11,7 @@ struct Weapon {
 	f32 selectRadius;
 	HealthValue damage;
 	f32 projectileSpeed;
-	f32 cooldown = 1000.0f;
+	f32 cooldown = 1.0f;
 	f32 cooldownTick = 0.0f;
 	ShipTarget *target;
 	bool firing = false;

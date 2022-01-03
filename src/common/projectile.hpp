@@ -16,6 +16,6 @@ struct AimlessProjectile {
 	Vec3<f32> position;
 	Vec3<f32> direction;
 	f32 speed = 1.0f;
-	f32 lifetime = 10000.0f;
+	f32 lifetime = 10.0f;
 	f32 tick = 0.0f;
 };

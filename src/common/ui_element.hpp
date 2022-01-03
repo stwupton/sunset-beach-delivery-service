@@ -24,7 +24,7 @@ enum class UITextAlignment {
 };
 
 struct UITextData : UICommonData {
-	string16<100> text;
+	String16<100> text;
 	f32 fontSize; 
 	Vec2<f32> position;
 	f32 width, height;
@@ -52,7 +52,7 @@ struct UICircleData : UICommonData {
 
 struct UIButtonLabelData : UICommonData {
 	f32 fontSize;
-	string16<32> text;
+	String16<32> text;
 };
 
 enum class UIButtonInputState : u8 {

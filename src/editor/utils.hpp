@@ -1,6 +1,6 @@
 #pragma once
 
-UIButtonData uiButton(const wchar_t *label, Vec2<f32> position, const Input &input) {
+UIButtonData uiButton(const wchar_t *label, Vec2<f32> position, Input *input) {
 	UIButtonData button = {};
 	button.label.text = label;
 	button.label.fontSize = 30.0f;
@@ -10,8 +10,9 @@ UIButtonData uiButton(const wchar_t *label, Vec2<f32> position, const Input &inp
 	button.width = 200.0f;
 	button.position = position;
 
-	button.handleInput(input);
+	button.handleInput(*input);
 	if (button.checkInput(UIButtonInputState::over)) {
+		input->cursor = Cursor::pointer;
 		button.color += Rgba(0.1f, 0.1f, 0.1f);
 
 		if (button.checkInput(UIButtonInputState::down)) {
