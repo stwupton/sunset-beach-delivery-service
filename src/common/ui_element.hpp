@@ -6,7 +6,7 @@
 #include "types/vector.hpp"
 #include "utils/collision.hpp"
 
-enum class UIType: u8 {
+enum class UIType : u8 {
 	text,
 	line,
 	circle,
@@ -38,7 +38,7 @@ struct UILineData : UICommonData {
 	Vec2<f32> end;
 };
 
-enum class UICircleStyle : u8 {
+enum class UICircleStrokeStyle : u8 {
 	solid,
 	dotted
 };
@@ -47,7 +47,8 @@ struct UICircleData : UICommonData {
 	f32 thickness;
 	f32 radius;
 	Vec2<f32> position;
-	UICircleStyle style = UICircleStyle::solid;
+	UICircleStrokeStyle strokeStyle = UICircleStrokeStyle::solid;
+	Rgba strokeColor;
 };
 
 struct UIButtonLabelData : UICommonData {

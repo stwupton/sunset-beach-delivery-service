@@ -28,8 +28,8 @@ struct Array {
 		return this->data[--this->length];
 	}
 
-	void push(T value) {
+	T &push(T value) {
 		assert(this->length != Size);
-		this->data[this->length++] = value;
+		return this->data[this->length++] = value;
 	}
 };

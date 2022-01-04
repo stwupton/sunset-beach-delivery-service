@@ -73,6 +73,12 @@ LRESULT CALLBACK eventHandler(
 
 				editorOpen = !editorOpen;
 			}
+
+			if (wParam == VK_OEM_PLUS) {
+				gameState->gameSpeed++;
+			} else if (wParam == VK_OEM_MINUS) {
+				gameState->gameSpeed--;
+			}
 #endif
 		} break;
 

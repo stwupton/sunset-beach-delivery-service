@@ -17,7 +17,6 @@ namespace Combat {
 	void updateAimlessProjectiles(GameState *gameState, f32 delta);
 	void renderCombatVisuals(GameState *gameState);
 	void handleUserTargeting(GameState *gameState);
-	void debugUI(GameState *gameState, f32 delta);
 	void drawWeapon(GameState *gameState, const Weapon &weapon, const Rgba &color);
 	void drawTarget(GameState *gameState, const ShipTarget &target, const Rgba &color);
 	bool isShipAlive(Ship &ship);
@@ -106,7 +105,6 @@ namespace Combat {
 		updateAimlessProjectiles(gameState, delta);
 		renderCombatVisuals(gameState);
 		handleUserTargeting(gameState);
-		debugUI(gameState, delta);
 	}
 
 	// TODO(steven): Cleanup
@@ -174,7 +172,7 @@ namespace Combat {
 			bullet.position = gameToScreen(projectile.position);
 			bullet.radius = 1.0f;
 			bullet.thickness = 10.0f;
-			bullet.color = Rgba(0.0f, 0.0f, 1.0f, 1.0f);
+			bullet.strokeColor = Rgba(0.0f, 0.0f, 1.0f, 1.0f);
 			uiElements.push(bullet);
 		}
 
@@ -184,7 +182,7 @@ namespace Combat {
 			bullet.position = gameToScreen(aimless.position);
 			bullet.radius = 1.0f;
 			bullet.thickness = 10.0f;
-			bullet.color = Rgba(0.0f, 0.0f, 1.0f, 1.0f);
+			bullet.strokeColor = Rgba(0.0f, 0.0f, 1.0f, 1.0f);
 			uiElements.push(bullet);
 		}
 
@@ -223,8 +221,8 @@ namespace Combat {
 		targetPoint.position = gameToScreen(target.position);
 		targetPoint.thickness = 10.0f;
 		targetPoint.radius = target.selectRadius;
-		targetPoint.style = UICircleStyle::dotted;
-		targetPoint.color = color;
+		targetPoint.strokeStyle = UICircleStrokeStyle::dotted;
+		targetPoint.strokeColor = color;
 
 		uiElements.push(targetPoint);
 
@@ -244,7 +242,7 @@ namespace Combat {
 		weaponIndicator.position = gameToScreen(weapon.position);
 		weaponIndicator.thickness = 10.0f;
 		weaponIndicator.radius = weapon.selectRadius;
-		weaponIndicator.color = color;
+		weaponIndicator.strokeColor = color;
 		uiElements.push(weaponIndicator);
 
 		if (weapon.firing) {
@@ -257,44 +255,6 @@ namespace Combat {
 			firingText.text = L"FIRING";
 			uiElements.push(firingText);
 		}
-	}
-
-	void debugUI(GameState *gameState, f32 delta) {
-		UIElementBuffer &uiElements = gameState->uiElements;
-
-		wchar_t textBuffer[100] = {};
-
-		u8 fps = round(1 / delta);
-		swprintf_s(textBuffer, L"FPS: %d", fps);
-		UITextData fpsCount = {};
-		fpsCount.text = textBuffer;
-		fpsCount.fontSize = 30.0f;
-		fpsCount.position = 0;
-		fpsCount.width = 300.0f;
-		fpsCount.height = 40.0f;
-		fpsCount.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
-		uiElements.push(fpsCount);
-
-		swprintf_s(textBuffer, L"Mouse Down: %d", gameState->input.primaryButton.down);
-		UITextData buttonMessage = {};
-		buttonMessage.text = textBuffer;
-		buttonMessage.fontSize = 30.0f;
-		buttonMessage.position = Vec2<f32>(0.0f, 40.0f);
-		buttonMessage.width = 300.0f;
-		buttonMessage.height = 40.0f;
-		buttonMessage.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
-		uiElements.push(buttonMessage);
-
-		const Vec2<f32> mouse = gameState->input.mouse;
-		swprintf_s(textBuffer, L"X: %d, Y: %d", (u32)mouse.x, (u32)mouse.y);
-		UITextData mouseCoords = {};
-		mouseCoords.text = textBuffer;
-		mouseCoords.fontSize = 30.0f;
-		mouseCoords.position = Vec2<f32>(0.0f, 80.0f);
-		mouseCoords.width = 300.0f;
-		mouseCoords.height = 40.0f;
-		mouseCoords.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
-		uiElements.push(mouseCoords);
 	}
 
 	void processEvents(GameState *gameState) {

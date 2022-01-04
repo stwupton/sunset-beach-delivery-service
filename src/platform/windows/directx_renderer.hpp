@@ -217,8 +217,10 @@ public:
 					circle.radius
 				};
 
+				this->d2dRenderTarget->FillEllipse(ellipse, this->d2dSolidBrush);
+
 				D2D1_STROKE_STYLE_PROPERTIES strokeStyleProperties = {};
-				strokeStyleProperties.dashStyle = circle.style == UICircleStyle::solid ? 
+				strokeStyleProperties.dashStyle = circle.strokeStyle == UICircleStrokeStyle::solid ? 
 					D2D1_DASH_STYLE_SOLID : 
 					D2D1_DASH_STYLE_DASH;
 
@@ -226,6 +228,7 @@ public:
 				HRESULT result = this->d2dFactory->CreateStrokeStyle(strokeStyleProperties, nullptr, 0, &strokeStyle);
 				ASSERT_HRESULT(result)
 
+				this->d2dSolidBrush->SetColor((const D2D1_COLOR_F*)&circle.strokeColor);
 				this->d2dRenderTarget->DrawEllipse(ellipse, this->d2dSolidBrush, circle.thickness, strokeStyle);
 
 				RELEASE_COM_OBJ(strokeStyle);
