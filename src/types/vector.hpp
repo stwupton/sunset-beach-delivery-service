@@ -17,6 +17,10 @@ struct Vec2 {
 		return Vec2<T>(this->x + other.x, this->y + other.y);
 	}
 
+	Vec2<T> operator +=(const Vec2<T> &other) {
+		return *this = *this + other;
+	}
+
 	Vec2<T> operator *(T x) const {
 		return Vec2<T>(this->x * x, this->y * x);
 	}
@@ -49,8 +53,7 @@ struct Vec3 : Vec2<T> {
 	}
 
 	Vec3<T> &operator +=(const Vec3<T> &other) {
-		*this = *this + other;
-		return *this;
+		return *this = *this + other;
 	}
 
 	Vec3<T> operator *(T x) const {
@@ -83,4 +86,30 @@ struct Rgb {
 struct Rgba : Rgb {
 	f32 a;
 	Rgba(f32 r = 0, f32 g = 0, f32 b = 0, f32 a = 0) : Rgb(r, g, b), a(a) {}
+
+	Rgba operator +(const Rgba &other) const {
+		return Rgba(
+			this->r + other.r, 
+			this->g + other.g, 
+			this->b + other.b, 
+			this->a + other.a
+		);
+	}
+
+	Rgba operator -(const Rgba &other) const {
+		return Rgba(
+			this->r - other.r, 
+			this->g - other.g, 
+			this->b - other.b, 
+			this->a - other.a
+		);
+	}
+
+	Rgba &operator +=(const Rgba &other) {
+		return *this = *this + other;
+	}
+
+	Rgba &operator -=(const Rgba &other) {
+		return *this = *this - other;
+	}
 };

@@ -6,11 +6,12 @@
 #include "types/array.hpp"
 #include "types/core.hpp"
 
-struct LoadQueue : Array<TextureAssetId, 8> {
+template<typename T, size_t Size>
+struct LoadQueue : Array<T, Size> {
 	u8 toLoad = 0;
 
 	void clear() {
-		Array::clear();
+		Array<T, Size>::clear();
 		this->toLoad = 0;
 	}
 
@@ -18,8 +19,8 @@ struct LoadQueue : Array<TextureAssetId, 8> {
 		return abs((f32)(this->length / this->toLoad) - 1);
 	}
 
-	void push(TextureAssetId id) {
-		Array::push(id);
+	void push(T id) {
+		Array<T, Size>::push(id);
 		toLoad++;
 	}
 };

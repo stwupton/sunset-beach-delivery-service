@@ -3,11 +3,16 @@
 #include <wchar.h>
 
 template<size_t Size>
-struct string16 {
+struct String16 {
 	wchar_t data[Size];
 
+	String16() = default;
+
+	String16(const wchar_t *str) {
+		wcscpy_s(this->data, Size, str);
+	}
+
 	void operator =(const wchar_t *str) {
-		const size_t length = wcslen(str);
-		memcpy(&this->data, str, (length + 1) * sizeof(wchar_t));
+		wcscpy_s(this->data, Size, str);
 	}
 };

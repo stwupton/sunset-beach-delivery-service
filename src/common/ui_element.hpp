@@ -4,22 +4,32 @@
 #include "types/core.hpp"
 #include "types/string.hpp"
 #include "types/vector.hpp"
+#include "utils/collision.hpp"
 
-enum UIType: u8 {
+enum class UIType : u8 {
 	text,
 	line,
-	circle
+	circle,
+	button
 };
 
 struct UICommonData {
 	Rgba color;
 };
 
+enum class UITextAlignment {
+	start,
+	middle,
+	end
+};
+
 struct UITextData : UICommonData {
-	string16<100> text;
+	String16<100> text;
 	f32 fontSize; 
 	Vec2<f32> position;
 	f32 width, height;
+	UITextAlignment horizontalAlignment = UITextAlignment::start;
+	UITextAlignment verticalAlignment = UITextAlignment::start;
 };
 
 struct UILineData : UICommonData {
@@ -28,7 +38,7 @@ struct UILineData : UICommonData {
 	Vec2<f32> end;
 };
 
-enum UICircleStyle : u8 {
+enum class UICircleStrokeStyle : u8 {
 	solid,
 	dotted
 };
@@ -37,7 +47,56 @@ struct UICircleData : UICommonData {
 	f32 thickness;
 	f32 radius;
 	Vec2<f32> position;
-	UICircleStyle style = UICircleStyle::solid;
+	UICircleStrokeStyle strokeStyle = UICircleStrokeStyle::solid;
+	Rgba strokeColor;
+};
+
+struct UIButtonLabelData : UICommonData {
+	f32 fontSize;
+	String16<32> text;
+};
+
+enum class UIButtonInputState : u8 {
+	none = 0,
+	over = 1 << 1,
+	down = 1 << 2,
+	clicked = 1 << 3
+};
+
+struct UIButtonData : UICommonData {
+	UIButtonLabelData label;
+	Vec2<f32> position;
+	f32 width, height;
+	u8 inputState = (u8)UIButtonInputState::none;
+
+	void handleInput(const Input &input) {
+		this->inputState = 0;
+
+		if (boxCollision(input.mouse, this->position, this->width, this->height)) {
+			this->inputState |= (u8)UIButtonInputState::over;
+
+			const bool startedInButton = boxCollision(
+				input.primaryButton.start, 
+				this->position, 
+				this->width, 
+				this->height
+			);
+
+			if (input.primaryButton.down && startedInButton) {
+				this->inputState |= (u8)UIButtonInputState::down;
+			} else if (
+				input.primaryButton.wasDown && 
+				startedInButton &&
+				boxCollision(input.primaryButton.end, this->position, this->width, this->height)
+			) {
+				this->inputState |= (u8)UIButtonInputState::clicked;
+			}
+		}
+	}
+
+	bool checkInput(UIButtonInputState state) const {
+		return this->inputState & (u8)state;
+	}
 };
 
 struct UIElement {
@@ -47,5 +106,6 @@ struct UIElement {
 		UITextData text;
 		UILineData line;
 		UICircleData circle;
+		UIButtonData button;
 	};
 };

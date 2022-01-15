@@ -7,10 +7,14 @@
 class InputProcessor {
 protected:
 	HWND windowHandle;
+	HCURSOR cursors[(size_t)Cursor::_length];
 
 public:
 	void initialise(HWND windowHandle) {
 		this->windowHandle = windowHandle;
+
+		this->cursors[(size_t)Cursor::arrow] = LoadCursor(NULL, IDC_ARROW);
+		this->cursors[(size_t)Cursor::pointer] = LoadCursor(NULL, IDC_HAND);
 	}
 
 	void process(Input *input) {
@@ -20,10 +24,19 @@ public:
 		input->previousMouse = input->mouse;
 		input->mouse = Vec2<f32>(cursorPosition.x, cursorPosition.y);
 
-		const bool wasDown = input->primaryButton.down;
+		input->primaryButton.wasDown = input->primaryButton.down;
 		input->primaryButton.down = GetKeyState(VK_LBUTTON) & 0x80;
-		if (!wasDown && input->primaryButton.down) {
+
+		if (!input->primaryButton.wasDown && input->primaryButton.down) {
 			input->primaryButton.start = input->mouse;
 		}
+
+		if (input->primaryButton.wasDown && !input->primaryButton.down) {
+			input->primaryButton.end = input->mouse;
+		}
+	}
+
+	void updateCursor(const Cursor &cursor) {
+		SetCursor(this->cursors[(size_t)cursor]);
 	}
 };

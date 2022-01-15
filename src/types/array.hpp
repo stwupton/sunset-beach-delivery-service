@@ -16,6 +16,10 @@ struct Array {
 		return this->data;
 	}
 
+	void clear() {
+		this->length = 0;
+	}
+
 	T *end() {
 		return &this->data[this->length];
 	}
@@ -24,12 +28,8 @@ struct Array {
 		return this->data[--this->length];
 	}
 
-	void push(T value) {
+	T &push(T value) {
 		assert(this->length != Size);
-		this->data[this->length++] = value;
-	}
-
-	void clear() {
-		this->length = 0;
+		return this->data[this->length++] = value;
 	}
 };

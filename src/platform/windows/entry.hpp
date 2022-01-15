@@ -7,16 +7,20 @@
 #include "common/game_state.hpp"
 #include "SoundManager.cpp"
 #include "common/window_config.hpp"
-#include "game/game.cpp"
-#include "platform/windows/directx_renderer.cpp"
-#include "platform/windows/dx3d_sprite_loader.cpp"
-#include "platform/windows/input_processor.cpp"
-#include "platform/windows/utils.cpp"
+#include "editor/editor.hpp"
+#include "game/game.hpp"
+#include "platform/windows/directx_renderer.hpp"
+#include "platform/windows/dx3d_sprite_loader.hpp"
+#include "platform/windows/file_saver.hpp"
+#include "platform/windows/input_processor.hpp"
+#include "platform/windows/template_loader.hpp"
+#include "platform/windows/utils.hpp"
 #include "types/core.hpp"
 #include "types/vector.hpp"
 
 // TODO(steven): Move elsewhere
 static bool shouldClose = false;
+static bool editorOpen = false;
 static DirectXResources *directXResources = new DirectXResources {};
 static DirectXRenderer *renderer = new DirectXRenderer();
 static Dx3dSpriteLoader *loader = new Dx3dSpriteLoader();
@@ -52,11 +56,35 @@ LRESULT CALLBACK eventHandler(
 		PostQuitMessage(0);
 	} break;
 
-	case WM_KEYDOWN: {
-		if (wParam == VK_ESCAPE) {
-			PostMessage(windowHandle, WM_CLOSE, NULL, NULL);
-		}
-	} break;
+		case WM_KEYDOWN: { 
+			GameState *gameState = (GameState*)GetWindowLongPtr(windowHandle, GWLP_USERDATA);
+
+			if (wParam == VK_ESCAPE) {
+				PostMessage(windowHandle, WM_CLOSE, NULL, NULL);
+			}
+
+			if (
+				(wParam >= 'A' && wParam <= 'Z') ||
+				(wParam >= '0' && wParam <= '9')
+			) {
+				gameState->input.keyDown = wParam;
+			}
+
+#ifdef DEBUG
+			if (wParam == 'E') {
+				// Reset to menu whenever we click the E key
+				gameState->editorState.mode = EditorMode::menu;
+
+				editorOpen = !editorOpen;
+			}
+
+			if (wParam == VK_OEM_PLUS) {
+				gameState->gameSpeed++;
+			} else if (wParam == VK_OEM_MINUS) {
+				gameState->gameSpeed--;
+			}
+#endif
+		} break;
 
 	default: {
 		result = DefWindowProc(windowHandle, message, wParam, lParam);
@@ -111,13 +139,15 @@ INT WINAPI wWinMain(
 	ASSERT_HRESULT(result)
 
 	GameState *gameState = new GameState {};
-
 	createWin32Window(instanceHandle, showFlag, gameState);
 
-	Game game;
-	game.load(gameState);
-	game.setup(gameState);
-	game.man = soundManager;
+	Game::setup(gameState);
+	//Game game;
+	//game.load(gameState);
+	//game.setup(gameState);
+	//game.man = soundManager; // Rework into setup()
+
+	loadTemplates(gameState);
 
 	MSG message = {};
 	while (!shouldClose) {
@@ -126,19 +156,39 @@ INT WINAPI wWinMain(
 			DispatchMessage(&message);
 		}
 
+		loader->load(&gameState->textureLoadQueue);
 		inputProcessor->process(&gameState->input);
-		game.update(gameState, delta);
 
-		loader->load(&gameState->loadQueue);
+		if (editorOpen) {
+			Editor::update(gameState);
 
-		// TODO(ross): Move this into game state at some point
-		if (gameState->input.primaryButton.down) {
-			soundManager->PlaySound(L"assets/music/sound1.wav");
+			SaveData &saveData = gameState->editorState.saveData; 
+			if (saveData.pending) {
+				save(saveData.path.data, saveData.buffer, saveData.size);
+				saveData.pending = false;
+			}
+		} else {
+			Game::update(gameState, delta);
 		}
+
+		//loader->load(&gameState->loadQueue);
+		// MOVE TO GAME::UPDATE()
+		// TODO(ross): Move this into game state at some point
+		//if (gameState->input.primaryButton.down) {
+		//	soundManager->PlaySound(L"assets/music/sound1.wav");
+		//}
 
 		renderer->drawSprites(gameState->sprites.data, gameState->sprites.length);
 		renderer->drawUI(gameState->uiElements.data, gameState->uiElements.length);
 		renderer->finish();
+
+		// Reset render buffers
+		gameState->sprites.clear();
+		gameState->uiElements.clear();
+
+		inputProcessor->updateCursor(gameState->input.cursor);
+		gameState->input.cursor = Cursor::arrow;
+		gameState->input.keyDown = '\0';
 
 		// TODO(steven): Move elsewhere, maybe a gameloop class?
 		{
