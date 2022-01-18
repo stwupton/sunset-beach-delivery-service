@@ -56,6 +56,7 @@ struct GameState {
 	Templates templates;
 	TextureLoadQueue textureLoadQueue;
 	SoundLoadQueue soundLoadQueue;
+	MusicAssetId pendingMusicItem;
 	UIElementBuffer uiElements;
 
 #ifdef DEBUG

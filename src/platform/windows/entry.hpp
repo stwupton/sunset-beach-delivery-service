@@ -1,11 +1,9 @@
 #pragma once
 
 #include <cstdio>
-
 #include <Windows.h>
 
 #include "common/game_state.hpp"
-#include "SoundManager.hpp"
 #include "common/window_config.hpp"
 #include "editor/editor.hpp"
 #include "game/game.hpp"
@@ -178,7 +176,7 @@ INT WINAPI wWinMain(
 		//if (gameState->input.primaryButton.down) {
 		//	soundManager->PlaySound(L"assets/music/sound1.wav");
 		//}
-		soundManager->process(&gameState->soundLoadQueue);
+		soundManager->process(&gameState->soundLoadQueue, &gameState->pendingMusicItem);
 
 		renderer->drawSprites(gameState->sprites.data, gameState->sprites.length);
 		renderer->drawUI(gameState->uiElements.data, gameState->uiElements.length);
