@@ -7,9 +7,10 @@
 #include "common/sprite.hpp"
 #include "common/window_config.hpp"
 #include "common/ui_element.hpp"
-#include "game/utils.cpp"
+#include "game/utils.hpp"
 #include "types/core.hpp"
-#include "types/nullable.cpp"
+#include "types/nullable.hpp"
+#include "platform/windows/SoundManager.hpp"
 
 class Game {
 private:

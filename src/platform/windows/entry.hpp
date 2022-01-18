@@ -5,7 +5,7 @@
 #include <Windows.h>
 
 #include "common/game_state.hpp"
-#include "SoundManager.cpp"
+#include "SoundManager.hpp"
 #include "common/window_config.hpp"
 #include "editor/editor.hpp"
 #include "game/game.hpp"
@@ -14,6 +14,7 @@
 #include "platform/windows/file_saver.hpp"
 #include "platform/windows/input_processor.hpp"
 #include "platform/windows/template_loader.hpp"
+#include "platform/windows/SoundManager.hpp"
 #include "platform/windows/utils.hpp"
 #include "types/core.hpp"
 #include "types/vector.hpp"
@@ -24,7 +25,8 @@ static bool editorOpen = false;
 static DirectXResources *directXResources = new DirectXResources {};
 static DirectXRenderer *renderer = new DirectXRenderer();
 static Dx3dSpriteLoader *loader = new Dx3dSpriteLoader();
-static SoundManager *soundManager = new SoundManager();
+static SoundManager* soundManager = new SoundManager();
+static SoundResources* soundResources = new SoundResources();
 static InputProcessor *inputProcessor = new InputProcessor();
 static f32 delta;
 
@@ -40,7 +42,7 @@ LRESULT CALLBACK eventHandler(
 		renderer->initialise(windowHandle, directXResources);
 		inputProcessor->initialise(windowHandle);
 		loader->initialise(directXResources);
-		soundManager->Initialise();
+		soundManager->Initialise(soundResources);
 		//soundManager->PlaySoundW(L"assets/music/sound1.wav");
 
 		CREATESTRUCT *createStruct = (CREATESTRUCT*)lParam;
@@ -171,12 +173,12 @@ INT WINAPI wWinMain(
 			Game::update(gameState, delta);
 		}
 
-		//loader->load(&gameState->loadQueue);
 		// MOVE TO GAME::UPDATE()
 		// TODO(ross): Move this into game state at some point
 		//if (gameState->input.primaryButton.down) {
 		//	soundManager->PlaySound(L"assets/music/sound1.wav");
 		//}
+		soundManager->process(&gameState->soundLoadQueue);
 
 		renderer->drawSprites(gameState->sprites.data, gameState->sprites.length);
 		renderer->drawUI(gameState->uiElements.data, gameState->uiElements.length);
@@ -217,5 +219,6 @@ INT WINAPI wWinMain(
 	delete inputProcessor;
 
 	delete directXResources;
+	delete soundResources;
 	delete gameState;
 }

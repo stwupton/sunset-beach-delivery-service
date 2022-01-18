@@ -10,3 +10,6 @@ build/
 /sunset-beach-delivery-service.sln
 /CppProperties.json
 /x64/Release
+/src/platform/windows/SoundManager.cpp.old
+/src/platform/windows/SoundManager.cpp.old.bak
+/src/platform/windows/SoundManager.hpp.bak
