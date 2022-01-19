@@ -32,14 +32,14 @@ std::mutex xAudioMutex;
 XAudio2 Features:
 
 	DSP Effects and Per Voice Filtering:
-		Digital Signal Processing (DSP) effects are the pixel shaders of audio. They handle everything from transforming a sound—turning a pig squeal
-		into a low, scary monster sound—to placing sounds in the game environment using reverb and occlusion or obstruction filtering.
+		Digital Signal Processing (DSP) effects are the pixel shaders of audio. They handle everything from transforming a soundï¿½turning a pig squeal
+		into a low, scary monster soundï¿½to placing sounds in the game environment using reverb and occlusion or obstruction filtering.
 		XAudio2 provides a flexible and powerful DSP framework. It also provides a built-in filter on every voice, for efficient low/high/band-pass
 		filtering effects.
 		See https://docs.microsoft.com/en-us/windows/win32/xaudio2/xaudio2-audio-effects
 
 	Submixing:
-		Submixing combines several sounds into a single audio stream—for example, an engine sound made up of composite parts,
+		Submixing combines several sounds into a single audio streamï¿½for example, an engine sound made up of composite parts,
 		all of which are playing simultaneously. Also, you can use submixing to process and combine similar parts of a game.
 		For example, you could combine all game sound effects to allow a user volume setting to be applied while a separate setting controls
 		music volume. Combined with DSP, submixing provides the type of data routing and processing necessary for today's games.
@@ -48,7 +48,7 @@ XAudio2 Features:
 
 	Compressed Audio Support:
 		One of the major feature requests for DirectSound has been for compressed audio support. XAudio2 supports compressed
-		formats—ADPCM—natively with run-time decompression.
+		formatsï¿½ADPCMï¿½natively with run-time decompression.
 
 	Enhanced Multichannel and Surround Sound Support:
 		Multichannel, 3D, and surround sound support is expanded. 3D and surround sound are now much more flexible and transparent.
@@ -183,6 +183,55 @@ public:
 	//void OnVoiceError(void* pBufferContext, HRESULT Error) {}
 };
 
+void GetWaveInfo(const TCHAR* fileName, WAVEFORMATEXTENSIBLE& wfx, DWORD& filetype, DWORD& waveSize, bool readWaveData,
+	BYTE** waveData, bool storeHandle, HANDLE& hFile, DWORD& waveDataStartPosition)
+{
+	hFile = CreateFile(
+		fileName,
+		GENERIC_READ,
+		FILE_SHARE_READ,
+		NULL,
+		OPEN_EXISTING,
+		0,
+		NULL);
+
+	if (INVALID_HANDLE_VALUE == hFile)
+		ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
+
+	if (INVALID_SET_FILE_POINTER == SetFilePointer(hFile, 0, NULL, FILE_BEGIN))
+		ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
+
+	DWORD dwChunkSize;
+	DWORD dwChunkPosition;
+	//check the file type, should be fourccWAVE or 'XWMA'
+	FindChunk(hFile, fourccRIFF, dwChunkSize, dwChunkPosition);
+	ReadChunkData(hFile, &filetype, sizeof(DWORD), dwChunkPosition);
+	if (filetype != fourccWAVE)
+		ASSERT_HRESULT(S_FALSE)
+
+	wfx = { 0 };
+
+	// 4. Locate the 'fmt ' chunk, and copy its contents into a WAVEFORMATEXTENSIBLE structure.
+	FindChunk(hFile, fourccFMT, dwChunkSize, dwChunkPosition);
+	ReadChunkData(hFile, &wfx, dwChunkSize, dwChunkPosition);
+
+	// 5. Locate the 'data' chunk, and read its contents into a buffer.
+	//fill out the audio data buffer with the contents of the fourccDATA chunk
+	FindChunk(hFile, fourccDATA, waveSize, waveDataStartPosition);
+
+	if (readWaveData)
+	{
+		*waveData = new BYTE[waveSize];
+		ReadChunkData(hFile, *waveData, waveSize, waveDataStartPosition);
+	}
+
+	if (!storeHandle)
+	{
+		// Close hFile stream now that we've loaded all the data into memory
+		CloseHandle(hFile);
+	}
+}
+
 typedef struct StreamMusic
 {
 	//IXAudio2* pXAudio2;
@@ -310,55 +359,6 @@ typedef struct StreamMusic
 	}
 } StreamMusic, * PStreamMusic;
 
-void GetWaveInfo(const TCHAR* fileName, WAVEFORMATEXTENSIBLE& wfx, DWORD& filetype, DWORD& waveSize, bool readWaveData,
-	BYTE* waveData, bool storeHandle, HANDLE& hFile, DWORD& waveDataStartPosition)
-{
-	hFile = CreateFile(
-		fileName,
-		GENERIC_READ,
-		FILE_SHARE_READ,
-		NULL,
-		OPEN_EXISTING,
-		0,
-		NULL);
-
-	if (INVALID_HANDLE_VALUE == hFile)
-		ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
-
-	if (INVALID_SET_FILE_POINTER == SetFilePointer(hFile, 0, NULL, FILE_BEGIN))
-		ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
-
-	DWORD dwChunkSize;
-	DWORD dwChunkPosition;
-	//check the file type, should be fourccWAVE or 'XWMA'
-	FindChunk(hFile, fourccRIFF, dwChunkSize, dwChunkPosition);
-	ReadChunkData(hFile, &filetype, sizeof(DWORD), dwChunkPosition);
-	if (filetype != fourccWAVE)
-		ASSERT_HRESULT(S_FALSE)
-
-	wfx = { 0 };
-
-	// 4. Locate the 'fmt ' chunk, and copy its contents into a WAVEFORMATEXTENSIBLE structure.
-	FindChunk(hFile, fourccFMT, dwChunkSize, dwChunkPosition);
-	ReadChunkData(hFile, &wfx, dwChunkSize, dwChunkPosition);
-
-	// 5. Locate the 'data' chunk, and read its contents into a buffer.
-	//fill out the audio data buffer with the contents of the fourccDATA chunk
-	FindChunk(hFile, fourccDATA, waveSize, waveDataStartPosition);
-
-	if (readWaveData)
-	{
-		waveData = new BYTE[waveSize];
-		ReadChunkData(hFile, waveData, waveSize, waveDataStartPosition);
-	}
-
-	if (!storeHandle)
-	{
-		// Close hFile stream now that we've loaded all the data into memory
-		CloseHandle(hFile);
-	}
-}
-
 PStreamMusic pDataArray[MAX_THREADS];
 DWORD   dwThreadIdArray[MAX_THREADS];
 HANDLE  hThreadArray[MAX_THREADS];
@@ -421,19 +421,19 @@ class SoundManager {
 		}
 
 		//Called when the voice has just finished playing a contiguous audio stream.
-		void OnStreamEnd() {
+		virtual COM_DECLSPEC_NOTHROW void __stdcall OnStreamEnd() override {
 			SetEvent(hBufferEndEvent);
 			soundManager->ClearCallback();
 		}
 
 		//Unused methods are stubs
-		void OnVoiceProcessingPassEnd() { }
-		void OnVoiceProcessingPassStart(UINT32 SamplesRequired) {    }
-		void OnBufferEnd(void* pBufferContext) { }
-		void OnBufferStart(void* pBufferContext) {    }
-		void OnLoopEnd(void* pBufferContext) {    }
+		virtual COM_DECLSPEC_NOTHROW void __stdcall OnVoiceProcessingPassEnd() override { }
+		virtual COM_DECLSPEC_NOTHROW void __stdcall OnVoiceProcessingPassStart(UINT32 SamplesRequired) override {    }
+		virtual COM_DECLSPEC_NOTHROW void __stdcall OnBufferEnd(void* pBufferContext) override { }
+		virtual COM_DECLSPEC_NOTHROW void __stdcall OnBufferStart(void* pBufferContext) override {    }
+		virtual COM_DECLSPEC_NOTHROW void __stdcall OnLoopEnd(void* pBufferContext) override {    }
 	private:
-		void OnVoiceError(void* pBufferContext, HRESULT Error) { }
+		virtual COM_DECLSPEC_NOTHROW void __stdcall OnVoiceError(void* pBufferContext, HRESULT Error) override { }
 	};
 
 private:
@@ -590,7 +590,7 @@ public:
 		DWORD fileType, cbWaveSize, waveStartPos;
 		BYTE* pDataBuffer;
 		HANDLE fileHandle;
-		GetWaveInfo(fileName, wfx, fileType, cbWaveSize, true, pDataBuffer, false, fileHandle, waveStartPos);
+		GetWaveInfo(fileName, wfx, fileType, cbWaveSize, true, &pDataBuffer, false, fileHandle, waveStartPos);
 
 		XAUDIO2_BUFFER buffer = { 0 };
 		// 6. Populate an XAUDIO2_BUFFER structure.

@@ -328,6 +328,8 @@ namespace Combat {
 					TargetDestroyedEvent event = {};
 					event.target = projectile.target;
 					gameState->events.targetDestroyed.push(event);
+
+					gameState->soundLoadQueue.push(SoundAssetId::doomDeath);
 				}
 			} else {
 				projectile.position += direction * projectile.speed * delta;

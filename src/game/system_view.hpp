@@ -63,7 +63,6 @@ namespace SystemView {
 			gameState->pendingMode = GameModeId::combat;
 			gameState->soundLoadQueue.push(SoundAssetId::stereo);
 		}
-
 	}
 
 	void drawCentralStar(GameState *gameState) {
