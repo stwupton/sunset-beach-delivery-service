@@ -5,6 +5,7 @@
 #include "common/asset_definitions.hpp"
 
 struct Dx3dSpriteResource {
+	bool loaded = false;
 	ID3D11Texture2D *texture2d;
 	ID3D11ShaderResourceView *texture2dView;
 	ID3D11Buffer *vertexBuffer;

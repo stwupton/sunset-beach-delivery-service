@@ -59,12 +59,7 @@ LRESULT CALLBACK eventHandler(
 				PostMessage(windowHandle, WM_CLOSE, NULL, NULL);
 			}
 
-			if (
-				(wParam >= 'A' && wParam <= 'Z') ||
-				(wParam >= '0' && wParam <= '9')
-			) {
-				gameState->input.keyDown = wParam;
-			}
+			gameState->input.keyDown = wParam;
 
 #ifdef DEBUG
 			if (wParam == 'E') {

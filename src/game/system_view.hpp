@@ -12,41 +12,12 @@ namespace SystemView {
 	void drawCentralStar(GameState *gameState);
 	void drawLocations(GameState *gameState, f32 delta);
 
-	const f32 starRadius = 50.0f;
+	const f32 scale = 0.2f;
+	const f32 starRadius = 400.0f;
+	const Vec2<f32> starCenter = gameToScreen(Vec3<f32>());
 
 	void setup(GameState *gameState) {
 		gameState->textureLoadQueue.push(TextureAssetId::background);
-
-		SystemLocation location = {};
-		location.name = L"Arrakis";
-		location.color = Rgba(0.8f, 0.64f, 0.3f, 1.0f);
-		location.radius = 5.0f;
-		location.orbitingDistance = 200.0f;
-		location.orbitAngle = 2.5f;
-		gameState->systemLocations.push(location);
-
-		location.name = L"Caladan";
-		location.color = Rgba(0.11f, 0.64f, 0.62f, 1.0f);
-		location.radius = 7.0f;
-		location.orbitingDistance = 500.0f;
-		location.orbitAngle = 1.14f;
-		const SystemLocation &caladan = gameState->systemLocations.push(location);
-
-		location.name = L"Boobies";
-		location.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-		location.radius = 2.0f;
-		location.orbitingDistance = 10.0f;
-		location.orbitAngle = 2.0f;
-		location.orbiting = &caladan;
-		gameState->systemLocations.push(location);
-
-		location.name = L"Space Station";
-		location.color = Rgba(0.6f, 0.6f, 0.6f, 1.0f);
-		location.radius = 3.0f;
-		location.orbitingDistance = 350.0f;
-		location.orbitAngle = 0.1f;
-		location.orbiting = nullptr;
-		gameState->systemLocations.push(location);
 	}
 
 	void update(GameState *gameState, f32 delta) {
@@ -56,6 +27,10 @@ namespace SystemView {
 		background.scale = Vec2<f32>(1.3f, 1.3f);
 		gameState->sprites.push(background);
 
+		if (gameState->input.keyDown == '\t') {
+			gameState->nextMode = GameModeId::systemSelect;
+		}
+
 		drawCentralStar(gameState);
 		drawLocations(gameState, delta);
 	}
@@ -63,43 +38,63 @@ namespace SystemView {
 	void drawCentralStar(GameState *gameState) {
 		UICircleData star = {};
 		star.color = Rgba(0.99f, 1.0f, 0.0f, 1.0f);
-		star.position = gameToScreen(Vec3<f32>());
-		star.radius = starRadius;
+		star.position = starCenter;
+		star.radius = starRadius * scale;
 		gameState->uiElements.push(star);
 	}
 
 	void drawLocations(GameState *gameState, f32 delta) {
-		for (SystemLocation &location : gameState->systemLocations) {
+		u8 moonOffset = 0;
+
+		for (size_t i = 0; i < gameState->systemLocations.length; i++) {
+			SystemLocation &location = gameState->systemLocations[i];
+
+			const f32 locationRadius = location.radius * scale;
+			const f32 locationDistance = location.orbit.distance * scale;
+
 			UICircleData circle = {};
 			circle.color = location.color;
-			circle.radius = location.radius;
+			circle.radius = locationRadius;
 
-			// Calculate position in orbit
-			{
-				location.orbitAngle += location.orbitSpeed * delta / location.orbitingDistance;
-				circle.position = Vec2(1.0f, 0.0f);
+			location.orbit.angle += location.orbit.speed * delta / location.orbit.distance;
+			circle.position = Vec2(1.0f, 0.0f);
 
-				const f32 ca = cos(location.orbitAngle);
-				const f32 sa = sin(location.orbitAngle);
-				circle.position = Vec2(
-					ca * circle.position.x - sa * circle.position.y, 
-					sa * circle.position.x + ca * circle.position.y
-				);
+			const f32 ca = cos(location.orbit.angle);
+			const f32 sa = sin(location.orbit.angle);
+			circle.position = Vec2(
+				ca * circle.position.x - sa * circle.position.y, 
+				sa * circle.position.x + ca * circle.position.y
+			);
 
-				f32 minRadius = starRadius;
-				Vec2 offset = Vec2<f32>();
-				if (location.orbiting != nullptr) {
-					minRadius = location.orbiting->radius;
-					offset = location.orbiting->position;
-				}
+			f32 minRadius = starRadius * scale;
+			Vec2 orbitCenter = starCenter;
+			if (i != 0 && location.isMoon) {
+				const SystemLocation &toOrbit = gameState->systemLocations[i - moonOffset - 1];
+				minRadius = toOrbit.radius * scale;
+				orbitCenter = toOrbit.position;
 
-				circle.position = circle.position * (minRadius + location.orbitingDistance) + offset;
-				location.position = circle.position; // Position used for orbiting moons
-				circle.position = gameToScreen(Vec3(circle.position.x, circle.position.y));
+				moonOffset++;
+			} else {
+				moonOffset = 0;
 			}
 
+			// Orbit path
+			{
+				UICircleData orbitPath = {};
+				orbitPath.strokeColor = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
+				orbitPath.strokeStyle = UICircleStrokeStyle::solid;
+				orbitPath.radius = minRadius + locationDistance;
+				orbitPath.thickness = 1.0f;
+				orbitPath.position = orbitCenter;
+				gameState->uiElements.push(orbitPath);
+			}
+
+			circle.position = circle.position * (minRadius + locationDistance) + orbitCenter;
+			location.position = circle.position; // Position used for orbiting moons
+			circle.position = Vec3(circle.position.x, circle.position.y);
+
 			const f32 distance = gameState->input.mouse.distanceTo(circle.position);
-			const bool mouseIsOver = distance <= location.radius + 10.0f;
+			const bool mouseIsOver = distance <= locationRadius + 10.0f;
 			if (mouseIsOver) {
 				circle.thickness = 1.0f;
 				circle.strokeColor = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
