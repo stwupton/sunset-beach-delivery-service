@@ -32,14 +32,14 @@ std::mutex xAudioMutex;
 XAudio2 Features:
 
 	DSP Effects and Per Voice Filtering:
-		Digital Signal Processing (DSP) effects are the pixel shaders of audio. They handle everything from transforming a sound�turning a pig squeal
-		into a low, scary monster sound�to placing sounds in the game environment using reverb and occlusion or obstruction filtering.
+		Digital Signal Processing (DSP) effects are the pixel shaders of audio. They handle everything from transforming a sound—turning a pig squeal
+		into a low, scary monster sound—to placing sounds in the game environment using reverb and occlusion or obstruction filtering.
 		XAudio2 provides a flexible and powerful DSP framework. It also provides a built-in filter on every voice, for efficient low/high/band-pass
 		filtering effects.
 		See https://docs.microsoft.com/en-us/windows/win32/xaudio2/xaudio2-audio-effects
 
 	Submixing:
-		Submixing combines several sounds into a single audio stream�for example, an engine sound made up of composite parts,
+		Submixing combines several sounds into a single audio stream—for example, an engine sound made up of composite parts,
 		all of which are playing simultaneously. Also, you can use submixing to process and combine similar parts of a game.
 		For example, you could combine all game sound effects to allow a user volume setting to be applied while a separate setting controls
 		music volume. Combined with DSP, submixing provides the type of data routing and processing necessary for today's games.
@@ -48,7 +48,7 @@ XAudio2 Features:
 
 	Compressed Audio Support:
 		One of the major feature requests for DirectSound has been for compressed audio support. XAudio2 supports compressed
-		formats�ADPCM�natively with run-time decompression.
+		formats—ADPCM—natively with run-time decompression.
 
 	Enhanced Multichannel and Surround Sound Support:
 		Multichannel, 3D, and surround sound support is expanded. 3D and surround sound are now much more flexible and transparent.
@@ -138,6 +138,7 @@ BYTE streamBuffers[BUFFERNUM][STREAMBUFFERSIZE];//Buffer array
 #define MAX_THREADS 1
 
 IXAudio2* pMusicEngine = NULL;
+IXAudio2MasteringVoice* pMasterVoice = NULL;
 int currentBufferIndex = 0;
 
 class StreamingVoiceContext : public IXAudio2VoiceCallback
@@ -198,10 +199,10 @@ void GetWaveInfo(const TCHAR* fileName, WAVEFORMATEXTENSIBLE& wfx, DWORD& filety
 	if (INVALID_HANDLE_VALUE == hFile)
 		ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
 
-	if (INVALID_SET_FILE_POINTER == SetFilePointer(hFile, 0, NULL, FILE_BEGIN))
-		ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
+		if (INVALID_SET_FILE_POINTER == SetFilePointer(hFile, 0, NULL, FILE_BEGIN))
+			ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
 
-	DWORD dwChunkSize;
+			DWORD dwChunkSize;
 	DWORD dwChunkPosition;
 	//check the file type, should be fourccWAVE or 'XWMA'
 	FindChunk(hFile, fourccRIFF, dwChunkSize, dwChunkPosition);
@@ -209,7 +210,7 @@ void GetWaveInfo(const TCHAR* fileName, WAVEFORMATEXTENSIBLE& wfx, DWORD& filety
 	if (filetype != fourccWAVE)
 		ASSERT_HRESULT(S_FALSE)
 
-	wfx = { 0 };
+		wfx = { 0 };
 
 	// 4. Locate the 'fmt ' chunk, and copy its contents into a WAVEFORMATEXTENSIBLE structure.
 	FindChunk(hFile, fourccFMT, dwChunkSize, dwChunkPosition);
@@ -235,14 +236,14 @@ void GetWaveInfo(const TCHAR* fileName, WAVEFORMATEXTENSIBLE& wfx, DWORD& filety
 typedef struct StreamMusic
 {
 	//IXAudio2* pXAudio2;
-	TCHAR* strFileName;
+	//TCHAR* strFileName;
 	TCHAR* nextFileName;
 
 	bool isChanging = false;
 	bool isPlaying = false;
 	bool isAlive = true;
 
-	void PlayNewFile(LPWSTR newFileName)
+	void PlayNewFile(const TCHAR* newFileName)
 	{
 		isChanging = true;
 
@@ -257,12 +258,16 @@ typedef struct StreamMusic
 
 		StreamAudioFile(strFileName);*/
 
-		nextFileName = newFileName;
+		nextFileName = (TCHAR*)newFileName;
 	}
 
 	void StreamAudioFile(LPWSTR fileName)//Thread callback
 	{
 		isPlaying = true;
+
+		// If playing for first time, then clear down this flag
+		isChanging = false;
+
 		//CWaveFile waveFile;
 		//HRESULT hr = waveFile.Open(fileName, NULL, WAVEFILE_READ);//Load the file
 		//if (FAILED(hr))
@@ -282,9 +287,8 @@ typedef struct StreamMusic
 			StreamingVoiceContext pCallBack;
 			IXAudio2SourceVoice* pSourceVoice = NULL;
 
-			HRESULT hr = pMusicEngine->CreateSourceVoice(&pSourceVoice, (WAVEFORMATEX*)&wfx, 0, 1.0f, &pCallBack);//Create source sound to submit data
-			if (FAILED(hr))
-				return;
+			HRESULT hr = pMusicEngine->CreateSourceVoice(&pSourceVoice, (WAVEFORMATEX*)&wfx, 0, XAUDIO2_DEFAULT_FREQ_RATIO, &pCallBack);//Create source sound to submit data
+			ASSERT_HRESULT(hr)
 
 			OVERLAPPED Overlapped = { 0 };
 
@@ -324,12 +328,10 @@ typedef struct StreamMusic
 				buffer.pAudioData = streamBuffers[currentBufferIndex];
 
 				hr = pSourceVoice->SubmitSourceBuffer(&buffer);//Submit memory data
-				if (FAILED(hr))
-					break;
+				ASSERT_HRESULT(hr)
 
 				hr = pSourceVoice->Start(XAUDIO2_COMMIT_NOW);//Start source sound
-				if (FAILED(hr))
-					break;
+				ASSERT_HRESULT(hr)
 
 				XAUDIO2_VOICE_STATE state;
 				pSourceVoice->GetState(&state);//Get state
@@ -370,7 +372,11 @@ DWORD WINAPI PlayMusicThread(LPVOID lpParam)
 	streamMusic = (PStreamMusic)lpParam;
 	while (streamMusic->isAlive)
 	{
-		streamMusic->StreamAudioFile(streamMusic->strFileName);
+		if (streamMusic->nextFileName != nullptr)
+		{
+			streamMusic->StreamAudioFile(streamMusic->nextFileName);
+		}
+		Sleep(100);
 	}
 	return 0;
 }
@@ -467,11 +473,30 @@ private:
 
 	static const int voiceBufferSize = 2;
 	IXAudio2SourceVoice* voices[voiceBufferSize] = {};
-	IXAudio2SourceVoice* backGroundMusic;
 
 public:
 	~SoundManager()	{
 		pXAudio2->Release();
+
+		DWORD threadID = 0;
+		pDataArray[threadID]->isAlive = false;
+
+		WaitForMultipleObjects(MAX_THREADS, hThreadArray, TRUE, INFINITE);
+
+		// Close all thread handles and free memory allocations.
+		for (int i = 0; i < MAX_THREADS; i++)
+		{
+			CloseHandle(hThreadArray[i]);
+			if (pDataArray[i] != NULL)
+			{
+				HeapFree(GetProcessHeap(), 0, pDataArray[i]);
+				pDataArray[i] = NULL;    // Ensure address is not reused.
+			}
+		}
+
+		pMasterVoice->DestroyVoice();//Release resources
+		pMusicEngine->Release();//Release resources
+		CoUninitialize();//Release resources
 	}
 
 	void ClearCallback() {
@@ -484,6 +509,9 @@ public:
 		pXAudio2 = nullptr;
 		voiceCallbackPtr = nullptr;
 		HRESULT hr;
+
+		//hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);//com initialization
+		//ASSERT_HRESULT(hr)
 
 		hr = XAudio2Create(&pXAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
 		ASSERT_HRESULT(hr)
@@ -506,12 +534,21 @@ public:
 
 #endif // DEBUG
 
+
+		// MUSIC THREAD //
+		hr = XAudio2Create(&pMusicEngine, 0, XAUDIO2_DEFAULT_PROCESSOR);
+		ASSERT_HRESULT(hr)
+
+		hr = pMusicEngine->CreateMasteringVoice(&pMasterVoice);//Create a master sound, the default is to output the current speaker
+		ASSERT_HRESULT(hr)
+
 		/*for (int i = 0; i < MAX_THREADS; i++)
 	{*/
 		int i = 0;
 		// Allocate memory for thread data.
 	//pDataArray[i] = (PStreamMusic)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
 		pDataArray[0] = (PStreamMusic)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(StreamMusic));
+		pDataArray[0]->isAlive = true;
 
 		if (pDataArray[i] == NULL) {
 			// If the array allocation fails, the system is out of memory
@@ -554,21 +591,21 @@ public:
 		for (SoundAssetId assetId : *soundQueue) {
 			//LPCWSTR fileName = textureNames[(size_t)assetId];
 			LPCWSTR fileName = soundNames[(size_t)assetId];
-			PlaySound(fileName);
+			PlayGameSound(fileName);
 		}
 
-		if (musicToPlay != NULL)
-		{
+		if (*musicToPlay != MusicAssetId::none) {
 			// Potential to have multiple music threads, but for now hardcode to first thread
 			DWORD threadID = 0;
-			/*LPWSTR fileName = musicNames[(size_t)musicToPlay];
-			pDataArray[threadID]->PlayNewFile(fileName);*/
+			LPCWSTR fileName = musicNames[(size_t)*musicToPlay];
+			pDataArray[threadID]->PlayNewFile(fileName);
 		}
 
 		soundQueue->clear();
+		*musicToPlay = MusicAssetId::none;
 	}
 
-	void PlaySound(const TCHAR* strFileName) {
+	void PlayGameSound(const TCHAR* strFileName) {
 
 		const TCHAR* fileName;
 
@@ -676,8 +713,7 @@ public:
 		}*/
 	}
 
-	void SetPitch(float target)
-	{
+	void SetPitch(float target) {
 		// Frequency adjustment ratio.This value must be between XAUDIO2_MIN_FREQ_RATIOand the MaxFrequencyRatio parameter specified when the 
 		// voice was created(see IXAudio2::CreateSourceVoice). XAUDIO2_MIN_FREQ_RATIO currently is 0.0005, which allows pitch to be lowered 
 		// by up to 11 octaves.

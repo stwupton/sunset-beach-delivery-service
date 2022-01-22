@@ -30,7 +30,7 @@ enum class SoundAssetId : u8 {
 };
 
 namespace _SoundAssetFileNames {
-	const wchar_t* left = L"assets/img/music/Left.wav";
+	const wchar_t* left = L"assets/music/Left.wav";
 	const wchar_t* right = L"assets/music/Right.wav";
 	const wchar_t* stereo = L"assets/music/Stereo.wav";
 	const wchar_t* doomDeath = L"assets/music/sound1.wav";
@@ -45,11 +45,12 @@ const wchar_t* soundNames[] = {
 
 enum class MusicAssetId : u8 {
 	mars,
-	_length
+	_length,
+	none
 };
 
 namespace _MusicAssetFileNames {
-	const wchar_t* mars = L"assets/img/music/mars.wav";
+	const wchar_t* mars = L"assets/music/mars.wav";
 };
 
 const wchar_t* musicNames[] = {

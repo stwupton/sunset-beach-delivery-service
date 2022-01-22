@@ -17,6 +17,8 @@ namespace SystemView {
 	void setup(GameState *gameState) {
 		gameState->textureLoadQueue.push(TextureAssetId::background);
 
+		gameState->pendingMusicItem = MusicAssetId::mars;
+
 		SystemLocation location = {};
 		location.name = L"Arrakis";
 		location.color = Rgba(0.8f, 0.64f, 0.3f, 1.0f);
