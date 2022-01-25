@@ -86,29 +86,31 @@ void FindChunk(HANDLE hFile, DWORD fourcc, DWORD& dwChunkSize, DWORD& dwChunkDat
 		DWORD dwRead;
 		if (0 == ReadFile(hFile, &dwChunkType, sizeof(DWORD), &dwRead, NULL))
 			hr = (HRESULT_FROM_WIN32(GetLastError()));
+		ASSERT_HRESULT(hr)
 
 		if (0 == ReadFile(hFile, &dwChunkDataSize, sizeof(DWORD), &dwRead, NULL))
 			hr = (HRESULT_FROM_WIN32(GetLastError()));
+		ASSERT_HRESULT(hr)
 
 		switch (dwChunkType) {
-		case fourccRIFF:
-			dwRIFFDataSize = dwChunkDataSize;
-			dwChunkDataSize = 4;
-			if (0 == ReadFile(hFile, &dwFileType, sizeof(DWORD), &dwRead, NULL))
-				hr = (HRESULT_FROM_WIN32(GetLastError()));
-			break;
+			case fourccRIFF:
+				dwRIFFDataSize = dwChunkDataSize;
+				dwChunkDataSize = 4;
+				if (0 == ReadFile(hFile, &dwFileType, sizeof(DWORD), &dwRead, NULL))
+					hr = (HRESULT_FROM_WIN32(GetLastError()));
+				break;
 
-		default:
-			if (INVALID_SET_FILE_POINTER == SetFilePointer(hFile, dwChunkDataSize, NULL, FILE_CURRENT))
-				hr = (HRESULT_FROM_WIN32(GetLastError()));
+			default:
+				if (INVALID_SET_FILE_POINTER == SetFilePointer(hFile, dwChunkDataSize, NULL, FILE_CURRENT))
+					hr = (HRESULT_FROM_WIN32(GetLastError()));
 		}
+		ASSERT_HRESULT(hr)
 
 		dwOffset += sizeof(DWORD) * 2;
 
 		if (dwChunkType == fourcc) {
 			dwChunkSize = dwChunkDataSize;
 			dwChunkDataPosition = dwOffset;
-			//return S_OK;
 			return;
 		}
 
@@ -116,18 +118,16 @@ void FindChunk(HANDLE hFile, DWORD fourcc, DWORD& dwChunkSize, DWORD& dwChunkDat
 
 		if (bytesRead >= dwRIFFDataSize)
 			ASSERT_HRESULT(S_FALSE)
-
 	}
 
 }
 
 void ReadChunkData(HANDLE hFile, void* buffer, DWORD buffersize, DWORD bufferoffset) {
-	//HRESULT hr = S_OK;
 	if (INVALID_SET_FILE_POINTER == SetFilePointer(hFile, bufferoffset, NULL, FILE_BEGIN))
-		FAILED(HRESULT_FROM_WIN32(GetLastError()));
+		ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()));
 	DWORD dwRead;
 	if (0 == ReadFile(hFile, buffer, buffersize, &dwRead, NULL))
-		FAILED(HRESULT_FROM_WIN32(GetLastError()));
+		ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()));
 }
 
 // https://docs.microsoft.com/en-us/windows/win32/xaudio2/how-to--stream-a-sound-from-disk
@@ -141,52 +141,31 @@ IXAudio2* pMusicEngine = NULL;
 IXAudio2MasteringVoice* pMasterVoice = NULL;
 int currentBufferIndex = 0;
 
-class StreamingVoiceContext : public IXAudio2VoiceCallback
-{
+class StreamingVoiceContext : public IXAudio2VoiceCallback {
 public:
 	HANDLE hBufferEndEvent;
 	StreamingVoiceContext() : hBufferEndEvent(CreateEvent(NULL, FALSE, FALSE, NULL)) {}
 	~StreamingVoiceContext() { CloseHandle(hBufferEndEvent); }
-	//void OnStreamEnd() {/* SetEvent (hBufferEndEvent); */ }
 	//Called when the voice has just finished playing a contiguous audio stream.
 	void STDMETHODCALLTYPE  OnStreamEnd() {
 		SetEvent(hBufferEndEvent);
 	}
-	//void STDMETHODCALLTYPE  OnVoiceProcessingPassEnd() {}
-	//void STDMETHODCALLTYPE  OnVoiceProcessingPassStart(UINT32 SamplesRequired) {}
-	////Called when the voice has just finished playing an audio buffer.
-	//void STDMETHODCALLTYPE OnBufferEnd(void* pBufferContext) { SetEvent(hBufferEndEvent); }
 
 	// Inherited via IXAudio2VoiceCallback
-	virtual void __stdcall OnBufferStart(void* pBufferContext) override
-	{
-	}
-	virtual void __stdcall OnLoopEnd(void* pBufferContext) override
-	{
-	}
-	virtual void __stdcall OnVoiceError(void* pBufferContext, HRESULT Error) override
-	{
-	}
+	virtual void __stdcall OnBufferStart(void* pBufferContext) override { }
+	virtual void __stdcall OnLoopEnd(void* pBufferContext) override { }
+	virtual void __stdcall OnVoiceError(void* pBufferContext, HRESULT Error) override { }
 
 	// Inherited via IXAudio2VoiceCallback
-	virtual void __stdcall OnVoiceProcessingPassStart(UINT32 BytesRequired) override
-	{
-	}
-	virtual void __stdcall OnVoiceProcessingPassEnd(void) override
-	{
-	}
-	virtual void __stdcall OnBufferEnd(void* pBufferContext) override
-	{
+	virtual void __stdcall OnVoiceProcessingPassStart(UINT32 BytesRequired) override { }
+	virtual void __stdcall OnVoiceProcessingPassEnd(void) override { }
+	virtual void __stdcall OnBufferEnd(void* pBufferContext) override {
 		SetEvent(hBufferEndEvent);
 	}
-	//void OnBufferStart(void* pBufferContext) {}
-	//void OnLoopEnd(void* pBufferContext) {/* SetEvent (hBufferEndEvent); */ }
-	//void OnVoiceError(void* pBufferContext, HRESULT Error) {}
 };
 
 void GetWaveInfo(const TCHAR* fileName, WAVEFORMATEXTENSIBLE& wfx, DWORD& filetype, DWORD& waveSize, bool readWaveData,
-	BYTE** waveData, bool storeHandle, HANDLE& hFile, DWORD& waveDataStartPosition)
-{
+	BYTE** waveData, bool storeHandle, HANDLE& hFile, DWORD& waveDataStartPosition) {
 	hFile = CreateFile(
 		fileName,
 		GENERIC_READ,
@@ -199,10 +178,10 @@ void GetWaveInfo(const TCHAR* fileName, WAVEFORMATEXTENSIBLE& wfx, DWORD& filety
 	if (INVALID_HANDLE_VALUE == hFile)
 		ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
 
-		if (INVALID_SET_FILE_POINTER == SetFilePointer(hFile, 0, NULL, FILE_BEGIN))
-			ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
+	if (INVALID_SET_FILE_POINTER == SetFilePointer(hFile, 0, NULL, FILE_BEGIN))
+		ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
 
-			DWORD dwChunkSize;
+	DWORD dwChunkSize;
 	DWORD dwChunkPosition;
 	//check the file type, should be fourccWAVE or 'XWMA'
 	FindChunk(hFile, fourccRIFF, dwChunkSize, dwChunkPosition);
@@ -210,7 +189,7 @@ void GetWaveInfo(const TCHAR* fileName, WAVEFORMATEXTENSIBLE& wfx, DWORD& filety
 	if (filetype != fourccWAVE)
 		ASSERT_HRESULT(S_FALSE)
 
-		wfx = { 0 };
+	wfx = { 0 };
 
 	// 4. Locate the 'fmt ' chunk, and copy its contents into a WAVEFORMATEXTENSIBLE structure.
 	FindChunk(hFile, fourccFMT, dwChunkSize, dwChunkPosition);
@@ -220,69 +199,43 @@ void GetWaveInfo(const TCHAR* fileName, WAVEFORMATEXTENSIBLE& wfx, DWORD& filety
 	//fill out the audio data buffer with the contents of the fourccDATA chunk
 	FindChunk(hFile, fourccDATA, waveSize, waveDataStartPosition);
 
-	if (readWaveData)
-	{
+	if (readWaveData) {
 		*waveData = new BYTE[waveSize];
 		ReadChunkData(hFile, *waveData, waveSize, waveDataStartPosition);
 	}
 
-	if (!storeHandle)
-	{
+	if (!storeHandle) {
 		// Close hFile stream now that we've loaded all the data into memory
 		CloseHandle(hFile);
 	}
 }
 
-typedef struct StreamMusic
-{
-	//IXAudio2* pXAudio2;
-	//TCHAR* strFileName;
+typedef struct StreamMusic {
 	TCHAR* nextFileName;
 
 	bool isChanging = false;
 	bool isPlaying = false;
 	bool isAlive = true;
+	bool isLooping = false;
 
-	void PlayNewFile(const TCHAR* newFileName)
-	{
+	void PlayNewFile(const TCHAR* newFileName) {
 		isChanging = true;
-
-		/*strFileName = newFileName;
-
-		while (isPlaying)
-		{
-			Sleep(100);
-		}
-
-		isChanging = false;
-
-		StreamAudioFile(strFileName);*/
-
 		nextFileName = (TCHAR*)newFileName;
 	}
 
-	void StreamAudioFile(LPWSTR fileName)//Thread callback
-	{
+	//Thread callback
+	void StreamAudioFile(LPWSTR fileName) { 
 		isPlaying = true;
-
 		// If playing for first time, then clear down this flag
 		isChanging = false;
-
-		//CWaveFile waveFile;
-		//HRESULT hr = waveFile.Open(fileName, NULL, WAVEFILE_READ);//Load the file
-		//if (FAILED(hr))
-		//	return;
-
 		nextFileName = fileName;
 
-		while (nextFileName != nullptr)
-		{
+		while (nextFileName != nullptr) {
 			WAVEFORMATEXTENSIBLE wfx = { 0 };
 			DWORD fileType, cbWaveSize, waveDataStartPosition;
 			fileType = cbWaveSize = waveDataStartPosition = 0;
 			HANDLE hFile = NULL;
 			GetWaveInfo(nextFileName, wfx, fileType, cbWaveSize, false, NULL, true, hFile, waveDataStartPosition);
-			//WAVEFORMATEX* waveFormat = waveFile.GetFormat();//Get file format
 
 			StreamingVoiceContext pCallBack;
 			IXAudio2SourceVoice* pSourceVoice = NULL;
@@ -292,34 +245,20 @@ typedef struct StreamMusic
 
 			OVERLAPPED Overlapped = { 0 };
 
-			//int fileSize = waveFile.GetSize();//Get the file size
 			int fileSize = cbWaveSize;
 			int currentPos = waveDataStartPosition;
 
 			// clear so doesn't play again
 			nextFileName = nullptr;
 
-			while (currentPos < fileSize)
-			{
-				if (isChanging)
-				{
+			while (currentPos < fileSize) {
+				if (isChanging || !isAlive) {
 					break;
 				}
 
 				DWORD size = STREAMBUFFERSIZE;
 
-
-				//if (INVALID_SET_FILE_POINTER == SetFilePointer(hFile, currentPos, NULL, FILE_BEGIN))
-				//	FAILED(HRESULT_FROM_WIN32(GetLastError()));
-
-				//if (0 == ReadFile(hFile, streamBuffers[currentBufferIndex], size, &size, &Overlapped))
-				//	hr = HRESULT_FROM_WIN32(GetLastError());
-
 				ReadChunkData(hFile, streamBuffers[currentBufferIndex], size, currentPos);
-
-				//hr = waveFile.Read(streamBuffers[currentBufferIndex], size, &size);//Read the file content
-				//if (FAILED(hr))
-				//	break;
 
 				currentPos += size;//The size of the data that has been played
 
@@ -335,20 +274,24 @@ typedef struct StreamMusic
 
 				XAUDIO2_VOICE_STATE state;
 				pSourceVoice->GetState(&state);//Get state
-				while (state.BuffersQueued > BUFFERNUM - 1)//Do not let the audio data of the buffer be overwritten
-				{
+				//Do not let the audio data of the buffer be overwritten
+				while (state.BuffersQueued > BUFFERNUM - 1) {				
 					WaitForSingleObject(pCallBack.hBufferEndEvent, INFINITE);
 					pSourceVoice->GetState(&state);
 				}
 				currentBufferIndex++;//Recycle buffer
 				currentBufferIndex %= BUFFERNUM;
+
+				// If we're looping and we've reached the end, reset and go again
+				if (isLooping && currentPos >= fileSize) {
+					currentPos = waveDataStartPosition;
+				}
 			}
 
 			XAUDIO2_VOICE_STATE state;
-			if (!isChanging)
-			{
-				while (pSourceVoice->GetState(&state), state.BuffersQueued > 0)//Wait for the completion of data playback in the queue, exit the thread
-				{
+			if (!isChanging) {
+				//Wait for the completion of data playback in the queue, exit the thread				
+				while (pSourceVoice->GetState(&state), state.BuffersQueued > 0) {
 					WaitForSingleObject(pCallBack.hBufferEndEvent, INFINITE);
 				}
 			}
@@ -365,15 +308,12 @@ PStreamMusic pDataArray[MAX_THREADS];
 DWORD   dwThreadIdArray[MAX_THREADS];
 HANDLE  hThreadArray[MAX_THREADS];
 
-DWORD WINAPI PlayMusicThread(LPVOID lpParam)
-{
+DWORD WINAPI PlayMusicThread(LPVOID lpParam) {
 	// get info from param
 	PStreamMusic streamMusic;
 	streamMusic = (PStreamMusic)lpParam;
-	while (streamMusic->isAlive)
-	{
-		if (streamMusic->nextFileName != nullptr)
-		{
+	while (streamMusic->isAlive) {
+		if (streamMusic->nextFileName != nullptr) {
 			streamMusic->StreamAudioFile(streamMusic->nextFileName);
 		}
 		Sleep(100);
@@ -381,8 +321,7 @@ DWORD WINAPI PlayMusicThread(LPVOID lpParam)
 	return 0;
 }
 
-void ErrorHandler(LPTSTR lpszFunction)
-{
+void ErrorHandler(LPTSTR lpszFunction) {
 	// Retrieve the system error message for the last-error code.
 
 	LPVOID lpMsgBuf;
@@ -460,15 +399,6 @@ private:
 	float targetRate = 1.0f;	
 	//float frequencyRatio;
 
-	/*const wchar_t* left = L"assets/music/Left.wav";
-	const wchar_t* right = L"assets/music/Right.wav";
-	const wchar_t* stereo = L"assets/music/Stereo.wav";*/
-	//static const int waveFileCount = 3;
-	//WCHAR* waveFileNames[waveFileCount] = {
-	//	L"assets/music/Left.wav",
-	//	L"assets/music/Right.wav",
-	//	L"assets/music/Stereo.wav"
-	//};
 	SoundResources* resources;
 
 	static const int voiceBufferSize = 2;
@@ -481,14 +411,12 @@ public:
 		DWORD threadID = 0;
 		pDataArray[threadID]->isAlive = false;
 
-		WaitForMultipleObjects(MAX_THREADS, hThreadArray, TRUE, INFINITE);
+		WaitForMultipleObjects(MAX_THREADS, hThreadArray, TRUE, 5000);
 
 		// Close all thread handles and free memory allocations.
-		for (int i = 0; i < MAX_THREADS; i++)
-		{
+		for (int i = 0; i < MAX_THREADS; i++) {
 			CloseHandle(hThreadArray[i]);
-			if (pDataArray[i] != NULL)
-			{
+			if (pDataArray[i] != NULL) {
 				HeapFree(GetProcessHeap(), 0, pDataArray[i]);
 				pDataArray[i] = NULL;    // Ensure address is not reused.
 			}
@@ -500,7 +428,6 @@ public:
 	}
 
 	void ClearCallback() {
-		//delete voiceCallbackPtr;
 		voiceCallbackPtr = nullptr;
 	}
 
@@ -510,6 +437,7 @@ public:
 		voiceCallbackPtr = nullptr;
 		HRESULT hr;
 
+		// Not needed as wWinMain call to CoInitialize defaults to COINIT_MULTITHREADED
 		//hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);//com initialization
 		//ASSERT_HRESULT(hr)
 
@@ -542,13 +470,12 @@ public:
 		hr = pMusicEngine->CreateMasteringVoice(&pMasterVoice);//Create a master sound, the default is to output the current speaker
 		ASSERT_HRESULT(hr)
 
-		/*for (int i = 0; i < MAX_THREADS; i++)
-	{*/
+		/*for (int i = 0; i < MAX_THREADS; i++) {*/
 		int i = 0;
 		// Allocate memory for thread data.
-	//pDataArray[i] = (PStreamMusic)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
 		pDataArray[0] = (PStreamMusic)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(StreamMusic));
 		pDataArray[0]->isAlive = true;
+		pDataArray[0]->isLooping = true;		
 
 		if (pDataArray[i] == NULL) {
 			// If the array allocation fails, the system is out of memory
@@ -575,8 +502,7 @@ public:
 	// If CreateThread fails, terminate execution. 
 	// This will automatically clean up threads and memory. 
 
-		if (hThreadArray[i] == NULL)
-		{
+		if (hThreadArray[i] == NULL) {
 			//ErrorHandler(TEXT("CreateThread"));
 			/*LPTSTR errorText = "CreateThread";
 			ErrorHandler(errorText);*/
@@ -589,7 +515,6 @@ public:
 	void process(SoundLoadQueue* soundQueue, MusicAssetId* musicToPlay) {
 
 		for (SoundAssetId assetId : *soundQueue) {
-			//LPCWSTR fileName = textureNames[(size_t)assetId];
 			LPCWSTR fileName = soundNames[(size_t)assetId];
 			PlayGameSound(fileName);
 		}
@@ -608,19 +533,7 @@ public:
 	void PlayGameSound(const TCHAR* strFileName) {
 
 		const TCHAR* fileName;
-
-		//// Check if we have an available slot
-		//if (voiceCallbackPtr == nullptr) {
-		//	fileName = waveFileNames[soundIndex++];
-
-		//	if (soundIndex >= waveFileCount) {
-		//		soundIndex = 0;
-		//	}
-		//}
-		//else {
-			fileName = strFileName;
-		//}
-
+		fileName = strFileName;
 
 		HRESULT hr;
 		WAVEFORMATEXTENSIBLE wfx;
@@ -641,14 +554,6 @@ public:
 
 		for (;freeVoiceBufferIndex < voiceBufferSize; freeVoiceBufferIndex++) {
 			if (voices[freeVoiceBufferIndex] != nullptr) {
-				//XAUDIO2_VOICE_STATE state;
-				//SDL_assert(!_this->enabled);  /* flag that stops playing. */
-				//source->Discontinuity();
-				//source->GetState(&state);
-				//while (state.BuffersQueued > 0) {
-				//	WaitForSingleObjectEx(_this->hidden->semaphore, INFINITE, 0);
-				//	source->GetState(&state);
-				//}
 				XAUDIO2_VOICE_STATE state;
 				voices[freeVoiceBufferIndex]->GetState(&state);
 				if (state.BuffersQueued <= 0) {
@@ -669,22 +574,17 @@ public:
 			// 3. Create a source voice by calling the IXAudio2::CreateSourceVoice method on an instance of the XAudio2 engine. 
 			// The format of the voice is specified by the values set in a WAVEFORMATEX structure.
 			IXAudio2SourceVoice* pSourceVoice;
-			//if (FAILED(hr = pXAudio2->CreateSourceVoice(&pSourceVoice, (WAVEFORMATEX*)&wfx)))
-			//	return hr;
-
 
 			// the access to this function is mutually exclusive
 			//std::lock_guard<std::mutex> guard(xAudioMutex);
-			try
-			{
+			try {
 				xAudioMutex.lock();
 				hr = pXAudio2->CreateSourceVoice(&pSourceVoice, (WAVEFORMATEX*)&wfx,
 					0, XAUDIO2_DEFAULT_FREQ_RATIO, &voiceCallback, NULL, NULL);
 				ASSERT_HRESULT(hr)
 				xAudioMutex.unlock();
 			}
-			catch (const std::exception&)
-			{
+			catch (const std::exception&) {
 				xAudioMutex.unlock();
 			}
 
@@ -702,22 +602,13 @@ public:
 			ASSERT_HRESULT(hr)
 
 			voices[freeVoiceBufferIndex] = pSourceVoice;
-
-
-			//WaitForSingleObjectEx(voiceCallback.hBufferEndEvent, INFINITE, TRUE);
 		}
-
-		/*else if (!voiceCallbackPtr->hBufferEndEvent)
-		{
-			voiceCallbackPtr = nullptr;
-		}*/
 	}
 
 	void SetPitch(float target) {
 		// Frequency adjustment ratio.This value must be between XAUDIO2_MIN_FREQ_RATIOand the MaxFrequencyRatio parameter specified when the 
 		// voice was created(see IXAudio2::CreateSourceVoice). XAUDIO2_MIN_FREQ_RATIO currently is 0.0005, which allows pitch to be lowered 
 		// by up to 11 octaves.
-
 
 		// Input of 0 means 1.0f so always add this on
 		target += 1.0f;
