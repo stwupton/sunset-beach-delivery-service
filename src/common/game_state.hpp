@@ -31,6 +31,7 @@ struct GameMode {
 
 enum class GameModeId : u8 {
 	none,
+	systemSelect,
 	systemView,
 	combat,
 	_length
@@ -47,11 +48,11 @@ struct GameState {
 	Array<SystemLocation, 6> systemLocations;
 
 	// Platform/game common data
-	GameModeId mode = GameModeId::systemView;
-	GameModeId pendingMode;
 	Events events;
 	Input input;
+	GameModeId mode = GameModeId::systemSelect;
 	GameMode modes[(size_t)GameModeId::_length];
+	GameModeId nextMode;
 	SpriteBuffer sprites;
 	Templates templates;
 	TextureLoadQueue textureLoadQueue;

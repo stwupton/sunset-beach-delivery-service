@@ -46,8 +46,12 @@ public:
 		BYTE *buffer = (BYTE*)malloc(100000000);
 
 		for (TextureAssetId assetId : *loadQueue) {
+			Dx3dSpriteResource &spriteResource = resources->spriteResources[(size_t)assetId];
+			if (spriteResource.loaded) {
+				continue;
+			}
+
 			LPCWSTR fileName = textureNames[(size_t)assetId];
-			Dx3dSpriteResource spriteInfo = {};
 
 			IWICBitmapDecoder *bitmapDecoder;
 			HRESULT result = imagingFactory->CreateDecoderFromFilename(
@@ -74,7 +78,7 @@ public:
 			UINT width = 0, height = 0;
 			frameDecode->GetSize(&width, &height);
 
-			spriteInfo.vertexBuffer = this->createVertexBuffer(width, height);
+			spriteResource.vertexBuffer = this->createVertexBuffer(width, height);
 
 			const UINT stride = bitsPerPixel / 8; 
 			const UINT rowStride = stride * width;
@@ -88,13 +92,12 @@ public:
 				formatConverted
 			);
 
-			spriteInfo.texture2d = this->createTexture2d(buffer, dxgiFormat, width, height, rowStride);
-			spriteInfo.texture2dView = this->createTexture2dView(spriteInfo.texture2d, dxgiFormat);
+			spriteResource.texture2d = this->createTexture2d(buffer, dxgiFormat, width, height, rowStride);
+			spriteResource.texture2dView = this->createTexture2dView(spriteResource.texture2d, dxgiFormat);
+			spriteResource.loaded = true;
 
 			RELEASE_COM_OBJ(bitmapDecoder)
 			RELEASE_COM_OBJ(frameDecode)
-
-			this->resources->spriteResources[(size_t)assetId] = spriteInfo;
 		}
 
 		loadQueue->clear();

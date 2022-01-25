@@ -12,7 +12,7 @@ namespace SystemSelect {
 	void drawCentralStar(GameState *gameState);
 	void drawLocations(GameState *gameState, f32 delta);
 
-	const f32 starRadius = 500.0f;
+	const f32 starRadius = 400.0f;
 	const Vec2<f32> starCenter = Vec3(-250.0f, 1080.0f * 0.5f);
 	const f32 minPlanetSpacing = 100.0f;
 	const f32 minMoonSpacing = minPlanetSpacing * 0.2f;
@@ -29,7 +29,7 @@ namespace SystemSelect {
 		gameState->sprites.push(background);
 
 		if (gameState->input.keyDown == '\t') {
-			gameState->nextMode = GameModeId::combat;
+			gameState->nextMode = GameModeId::systemView;
 		}
 
 		drawCentralStar(gameState);
@@ -60,7 +60,7 @@ namespace SystemSelect {
 			SystemLocation &location = gameState->systemLocations[i];
 
 			if (i != 0 && location.isMoon) {
-				const SystemLocation toOrbit = gameState->systemLocations[i - moonOffset - 1];
+				const SystemLocation &toOrbit = gameState->systemLocations[i - moonOffset - 1];
 				orbitCenter = toOrbit.position;
 				distance = minMoonSpacing + previousMoonRadius + location.radius + toOrbit.radius;
 				previousMoonRadius = distance + location.radius - toOrbit.radius;
