@@ -18,8 +18,6 @@ namespace SystemView {
 
 	void setup(GameState *gameState) {
 		gameState->textureLoadQueue.push(TextureAssetId::background);
-		gameState->pendingMusicItem = MusicAssetId::mars;
-
 	}
 
 	void update(GameState *gameState, f32 delta) {
@@ -36,8 +34,8 @@ namespace SystemView {
 		drawCentralStar(gameState);
 		drawLocations(gameState, delta);
 
-		if (gameState->input.primaryButton.down && gameState->pendingMode != GameModeId::combat) {
-			gameState->pendingMode = GameModeId::combat;
+		if (gameState->input.primaryButton.down && gameState->nextMode != GameModeId::combat) {
+			gameState->nextMode = GameModeId::combat;
 			gameState->soundLoadQueue.push(SoundAssetId::stereo);
 		}
 	}
