@@ -56,27 +56,28 @@ namespace Game {
 		swprintf_s(textBuffer, L"FPS: %d", fps);
 		UITextData text = {};
 		text.text = textBuffer;
-		text.fontSize = 30.0f;
+		text.font = L"consolas";
+		text.fontSize = 16.0f;
 		text.position = 0;
 		text.width = 300.0f;
-		text.height = 40.0f;
-		text.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
+		text.height = 20.0f;
+		text.color = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
 		uiElements.push(text);
 
 		swprintf_s(textBuffer, L"Mouse Down: %d", gameState->input.primaryButton.down);
 		text.text = textBuffer;
-		text.position.y += 40.0f;
+		text.position.y += text.height;
 		uiElements.push(text);
 
 		const Vec2<f32> mouse = gameState->input.mouse;
 		swprintf_s(textBuffer, L"X: %d, Y: %d", (u32)mouse.x, (u32)mouse.y);
 		text.text = textBuffer;
-		text.position.y += 40.0f;
+		text.position.y += text.height;
 		uiElements.push(text);
 
 		swprintf_s(textBuffer, L"Game Speed: x%u", gameState->gameSpeed);
 		text.text = textBuffer;
-		text.position.y += 40.0f;
+		text.position.y += text.height;
 		uiElements.push(text);
 	}
 
