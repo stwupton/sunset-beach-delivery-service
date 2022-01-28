@@ -25,6 +25,7 @@ enum class UITextAlignment {
 
 struct UITextData : UICommonData {
 	String16<100> text;
+	String16<32> font;
 	f32 fontSize; 
 	Vec2<f32> position;
 	f32 width, height;

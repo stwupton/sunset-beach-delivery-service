@@ -3,13 +3,13 @@
 #include <cmath>
 
 #include "common/game_state.hpp"
+#include "types/vector.hpp"
+#include "game/system/common.hpp"
 #include "game/utils.hpp"
 #include "types/core.hpp"
-#include "types/vector.hpp"
 
 namespace SystemView {
 	// Forward declerations
-	void drawCentralStar(GameState *gameState);
 	void drawLocations(GameState *gameState, f32 delta);
 
 	const f32 scale = 0.2f;
@@ -21,26 +21,14 @@ namespace SystemView {
 	}
 
 	void update(GameState *gameState, f32 delta) {
-		Sprite background = {};
-		background.assetId = TextureAssetId::background;
-		background.position = Vec3<f32>(0.0f, 0.0f, 0.9f);
-		background.scale = Vec2<f32>(1.3f, 1.3f);
-		gameState->sprites.push(background);
+		SystemCommon::drawStarField(gameState);
 
 		if (gameState->input.keyDown == '\t') {
 			gameState->nextMode = GameModeId::systemSelect;
 		}
 
-		drawCentralStar(gameState);
+		SystemCommon::drawCentralStar(gameState, starCenter, starRadius * scale);
 		drawLocations(gameState, delta);
-	}
-
-	void drawCentralStar(GameState *gameState) {
-		UICircleData star = {};
-		star.color = Rgba(0.99f, 1.0f, 0.0f, 1.0f);
-		star.position = starCenter;
-		star.radius = starRadius * scale;
-		gameState->uiElements.push(star);
 	}
 
 	void drawLocations(GameState *gameState, f32 delta) {
@@ -56,7 +44,7 @@ namespace SystemView {
 			circle.color = location.color;
 			circle.radius = locationRadius;
 
-			location.orbit.angle += location.orbit.speed * delta / location.orbit.distance;
+			SystemCommon::updateOrbitLocation(&location, delta);
 			circle.position = Vec2(1.0f, 0.0f);
 
 			const f32 ca = cos(location.orbit.angle);

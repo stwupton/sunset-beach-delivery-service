@@ -4,8 +4,8 @@
 
 #include "common/game_state.hpp"
 #include "game/combat.hpp"
-#include "game/system_select.hpp"
-#include "game/system_view.hpp"
+#include "game/system/system_select.hpp"
+#include "game/system/system_view.hpp"
 
 namespace Game {
 	// Forward declerations
@@ -13,6 +13,11 @@ namespace Game {
 	void populateSystemLocations(GameState *gameState);
 
 	void setup(GameState *gameState) {
+		// TODO(steven): Get from load data instead
+		gameState->playerShip.fuelTankCapacity = 30;
+		gameState->playerShip.fuel = 30;
+		gameState->dockedLocation = &gameState->systemLocations[0];
+
 		gameState->modes[(size_t)GameModeId::combat] = { &Combat::setup, &Combat::update };
 		gameState->modes[(size_t)GameModeId::systemSelect] = { &SystemSelect::setup, &SystemSelect::update };
 		gameState->modes[(size_t)GameModeId::systemView] = { &SystemView::setup, &SystemView::update };
