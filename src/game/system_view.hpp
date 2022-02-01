@@ -33,11 +33,6 @@ namespace SystemView {
 
 		drawCentralStar(gameState);
 		drawLocations(gameState, delta);
-
-		if (gameState->input.primaryButton.down && gameState->nextMode != GameModeId::combat) {
-			gameState->nextMode = GameModeId::combat;
-			gameState->soundLoadQueue.push(SoundAssetId::stereo);
-		}
 	}
 
 	void drawCentralStar(GameState *gameState) {

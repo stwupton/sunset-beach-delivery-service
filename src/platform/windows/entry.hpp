@@ -12,7 +12,7 @@
 #include "platform/windows/file_saver.hpp"
 #include "platform/windows/input_processor.hpp"
 #include "platform/windows/template_loader.hpp"
-#include "platform/windows/SoundManager.hpp"
+#include "platform/windows/sound_manager.hpp"
 #include "platform/windows/utils.hpp"
 #include "types/core.hpp"
 #include "types/vector.hpp"
@@ -20,11 +20,10 @@
 // TODO(steven): Move elsewhere
 static bool shouldClose = false;
 static bool editorOpen = false;
-static DirectXResources *directXResources = new DirectXResources {};
+static DirectXResources *directXResources = new DirectXResources{};
 static DirectXRenderer *renderer = new DirectXRenderer();
 static Dx3dSpriteLoader *loader = new Dx3dSpriteLoader();
-static SoundManager* soundManager = new SoundManager();
-static SoundResources* soundResources = new SoundResources();
+static SoundManager *soundManager = new SoundManager();
 static InputProcessor *inputProcessor = new InputProcessor();
 static f32 delta;
 
@@ -36,28 +35,27 @@ LRESULT CALLBACK eventHandler(
 ) {
 	INT result = 0;
 	switch (message) {
-	case WM_CREATE: {
-		renderer->initialise(windowHandle, directXResources);
-		inputProcessor->initialise(windowHandle);
-		loader->initialise(directXResources);
-		soundManager->Initialise(soundResources);
-		//soundManager->PlaySoundW(L"assets/music/sound1.wav");
+		case WM_CREATE: {
+			renderer->initialise(windowHandle, directXResources);
+			inputProcessor->initialise(windowHandle);
+			loader->initialise(directXResources);
+			soundManager->initialise();
 
-		CREATESTRUCT *createStruct = (CREATESTRUCT*)lParam;
-		SetWindowLongPtr(windowHandle, GWLP_USERDATA, (LONG_PTR)createStruct->lpCreateParams);
-	} break;
+			CREATESTRUCT *createStruct = (CREATESTRUCT *)lParam;
+			SetWindowLongPtr(windowHandle, GWLP_USERDATA, (LONG_PTR)createStruct->lpCreateParams);
+		} break;
 
-	case WM_CLOSE: {
-		shouldClose = true;
-		DestroyWindow(windowHandle);
-	} break;
+		case WM_CLOSE: {
+			shouldClose = true;
+			DestroyWindow(windowHandle);
+		} break;
 
-	case WM_DESTROY: {
-		PostQuitMessage(0);
-	} break;
+		case WM_DESTROY: {
+			PostQuitMessage(0);
+		} break;
 
-		case WM_KEYDOWN: { 
-			GameState *gameState = (GameState*)GetWindowLongPtr(windowHandle, GWLP_USERDATA);
+		case WM_KEYDOWN: {
+			GameState *gameState = (GameState *)GetWindowLongPtr(windowHandle, GWLP_USERDATA);
 
 			if (wParam == VK_ESCAPE) {
 				PostMessage(windowHandle, WM_CLOSE, NULL, NULL);
@@ -81,9 +79,9 @@ LRESULT CALLBACK eventHandler(
 #endif
 		} break;
 
-	default: {
-		result = DefWindowProc(windowHandle, message, wParam, lParam);
-	}
+		default: {
+			result = DefWindowProc(windowHandle, message, wParam, lParam);
+		}
 	}
 	return result;
 }
@@ -112,7 +110,7 @@ INT createWin32Window(HINSTANCE instanceHandle, INT showFlag, GameState *gameSta
 		NULL,
 		NULL,
 		instanceHandle,
-		(void*)gameState
+		(void *)gameState
 	);
 
 	if (windowHandle == NULL) {
@@ -133,14 +131,10 @@ INT WINAPI wWinMain(
 	HRESULT result = CoInitialize(NULL);
 	ASSERT_HRESULT(result)
 
-	GameState *gameState = new GameState {};
+	GameState *gameState = new GameState{};
 	createWin32Window(instanceHandle, showFlag, gameState);
 
 	Game::setup(gameState);
-	//Game game;
-	//game.load(gameState);
-	//game.setup(gameState);
-	//game.man = soundManager; // Rework into setup()
 
 	loadTemplates(gameState);
 
@@ -157,7 +151,7 @@ INT WINAPI wWinMain(
 		if (editorOpen) {
 			Editor::update(gameState);
 
-			SaveData &saveData = gameState->editorState.saveData; 
+			SaveData &saveData = gameState->editorState.saveData;
 			if (saveData.pending) {
 				save(saveData.path.data, saveData.buffer, saveData.size);
 				saveData.pending = false;
@@ -166,11 +160,6 @@ INT WINAPI wWinMain(
 			Game::update(gameState, delta);
 		}
 
-		// MOVE TO GAME::UPDATE()
-		// TODO(ross): Move this into game state at some point
-		//if (gameState->input.primaryButton.down) {
-		//	soundManager->PlaySound(L"assets/music/sound1.wav");
-		//}
 		soundManager->process(&gameState->soundLoadQueue, &gameState->pendingMusicItem);
 
 		renderer->drawSprites(gameState->sprites.data, gameState->sprites.length);
@@ -212,6 +201,5 @@ INT WINAPI wWinMain(
 	delete inputProcessor;
 
 	delete directXResources;
-	delete soundResources;
 	delete gameState;
 }
