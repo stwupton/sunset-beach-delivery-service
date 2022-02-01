@@ -11,6 +11,7 @@
 #include "common/projectile.hpp"
 #include "common/ship.hpp"
 #include "common/ship_target.hpp"
+#include "common/shipment.hpp"
 #include "common/system_location.hpp"
 #include "common/templates.hpp"
 #include "common/ui_element_buffer.hpp"
@@ -40,12 +41,19 @@ enum class GameModeId : u8 {
 struct GameState {
 	// Combat data
 	Array<AimlessProjectile, 100> aimlessProjectiles;
+	Ship playerShip;
 	Array<Ship, 2> allyShips;
 	Array<Ship, 2> enemyShips;
 	Array<Projectile, 100> projectiles;
 
 	// System view data
 	Array<SystemLocation, 6> systemLocations;
+	SystemLocation *selectedLocation = nullptr;
+	SystemLocation *dockedLocation = nullptr;
+
+	// Delivery data
+	u32 deliveriesMade = 0;
+	Array<Shipment, 10> shipments;
 
 	// Platform/game common data
 	Events events;

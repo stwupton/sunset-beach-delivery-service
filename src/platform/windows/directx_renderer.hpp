@@ -150,7 +150,7 @@ public:
 				// TODO(steven): Re-use text formats
 				IDWriteTextFormat *textFormat;
 				HRESULT result = this->dWriteFactory->CreateTextFormat(
-					L"Arial", 
+					text.font.data, 
 					nullptr, 
 					DWRITE_FONT_WEIGHT_REGULAR, 
 					DWRITE_FONT_STYLE_NORMAL, 
