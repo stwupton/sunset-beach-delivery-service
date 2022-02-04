@@ -232,6 +232,36 @@ public:
 				this->d2dRenderTarget->DrawEllipse(ellipse, this->d2dSolidBrush, circle.thickness, strokeStyle);
 
 				RELEASE_COM_OBJ(strokeStyle);
+			} else if (element.type == UIType::traingle) {
+				ID2D1PathGeometry *geometry = nullptr;
+				HRESULT result = this->d2dFactory->CreatePathGeometry(&geometry);
+				ASSERT_HRESULT(result)
+
+				ID2D1GeometrySink *sink = nullptr;
+				result = geometry->Open(&sink);
+				ASSERT_HRESULT(result)
+				
+				Vec2<f32> point = element.triangle.points[0];
+				D2D1_POINT_2F *d2dPoint = (D2D1_POINT_2F*)&point;
+				sink->BeginFigure(*d2dPoint, D2D1_FIGURE_BEGIN_FILLED);
+
+				point = element.triangle.points[1];
+				d2dPoint = (D2D1_POINT_2F*)&point;
+				sink->AddLine(*d2dPoint);
+
+				point = element.triangle.points[2];
+				d2dPoint = (D2D1_POINT_2F*)&point;
+				sink->AddLine(*d2dPoint);
+
+				sink->EndFigure(D2D1_FIGURE_END_CLOSED);
+
+				result = sink->Close();
+				ASSERT_HRESULT(result)
+
+				this->d2dRenderTarget->FillGeometry(geometry, this->d2dSolidBrush);
+
+				RELEASE_COM_OBJ(sink)
+				RELEASE_COM_OBJ(geometry)
 			} else if (element.type == UIType::button) {
 				const UIButtonData &button = element.button;
 

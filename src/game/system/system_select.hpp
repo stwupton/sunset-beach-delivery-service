@@ -35,6 +35,13 @@ namespace SystemSelect {
 	}
 
 	void drawLocations(GameState *gameState, f32 delta) {
+		Array<UICircleData, 6> orbitPaths;
+		Array<UICircleData, 6> locations;
+		UITriangleData dockedIndicator = {};
+
+		UITextData locationLabel = {};
+		bool showLabel = false;
+
 		u8 totalMoonOffset = 0;
 		u8 moonOffset = 0;
 
@@ -76,7 +83,7 @@ namespace SystemSelect {
 				orbitPath.radius = distance;
 				orbitPath.thickness = 1.0f;
 				orbitPath.position = orbitCenter;
-				gameState->uiElements.push(orbitPath);
+				orbitPaths.push(orbitPath);
 			}
 
 			// Location
@@ -105,7 +112,7 @@ namespace SystemSelect {
 					locationHighlighted = true;
 				}
 
-				gameState->uiElements.push(circle);
+				locations.push(circle);
 
 				if (mouseIsOver) {
 					if (
@@ -115,16 +122,37 @@ namespace SystemSelect {
 						gameState->selectedLocation = &location;
 					}
 
-					UITextData infoText = {};
-					infoText.text = location.name.data;
-					infoText.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-					infoText.fontSize = 30.0f;
-					infoText.position = circle.position;
-					infoText.height = 30.0f;
-					infoText.width = 200.0f;
-					gameState->uiElements.push(infoText);
+					locationLabel.text = location.name.data;
+					locationLabel.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
+					locationLabel.fontSize = 30.0f;
+					locationLabel.position = circle.position;
+					locationLabel.height = 30.0f;
+					locationLabel.width = 200.0f;
+					showLabel = true;
+				}
+
+				if (gameState->dockedLocation == &location) {
+					dockedIndicator.color = Rgba(0.16f, 0.94f, 0.9f, 1.0f);
+
+					dockedIndicator.points.push(circle.position + Vec2(0.0f, -circle.radius - 10.0f));
+					dockedIndicator.points.push(circle.position + Vec2(-10.0f, -circle.radius - 30.0f));
+					dockedIndicator.points.push(circle.position + Vec2(10.0f, -circle.radius - 30.0f));
 				}
 			}
+		}
+
+		for (const UICircleData &orbit : orbitPaths) {
+			gameState->uiElements.push(orbit);
+		}
+
+		for (const UICircleData &location : locations) {
+			gameState->uiElements.push(location);
+		}
+
+		gameState->uiElements.push(dockedIndicator);
+
+		if (showLabel) {
+			gameState->uiElements.push(locationLabel);
 		}
 
 		gameState->input.cursor = locationHighlighted ? Cursor::pointer : Cursor::arrow;

@@ -48,7 +48,9 @@ struct GameState {
 	// System view data
 	Array<SystemLocation, 6> systemLocations;
 	SystemLocation *selectedLocation = nullptr;
+	SystemLocation *targetLocation = nullptr;
 	SystemLocation *dockedLocation = nullptr;
+	f32 travelProgress = 0.0f;
 
 	// Delivery data
 	u32 deliveriesMade = 0;

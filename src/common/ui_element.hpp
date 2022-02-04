@@ -10,6 +10,7 @@ enum class UIType : u8 {
 	text,
 	line,
 	circle,
+	traingle,
 	button
 };
 
@@ -31,6 +32,10 @@ struct UITextData : UICommonData {
 	f32 width, height;
 	UITextAlignment horizontalAlignment = UITextAlignment::start;
 	UITextAlignment verticalAlignment = UITextAlignment::start;
+};
+
+struct UITriangleData : UICommonData {
+	Array<Vec2<f32>, 3> points;
 };
 
 struct UILineData : UICommonData {
@@ -107,6 +112,7 @@ struct UIElement {
 		UITextData text;
 		UILineData line;
 		UICircleData circle;
+		UITriangleData triangle;
 		UIButtonData button;
 	};
 };

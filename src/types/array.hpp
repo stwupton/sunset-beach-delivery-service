@@ -12,6 +12,11 @@ struct Array {
 		return this->data[index];
 	}
 
+	T operator [](size_t index) const {
+		assert(index >= 0 && index < Size);
+		return this->data[index];
+	}
+
 	T *begin() {
 		return this->data;
 	}

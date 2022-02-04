@@ -6,11 +6,13 @@
 #include "common/sprite.hpp"
 #include "common/weapon.hpp"
 
+typedef u16 FuelValue;
+
 // NOTE(steven): Not  sure if we want to extend sprite because we may end up using
 // data from Sprite that's not needed for the Ship
 struct Ship : Sprite {
-	u32 fuelTankCapacity = 0;
-	u32 fuel = 0;
+	FuelValue fuelTankCapacity = 0;
+	FuelValue fuel = 0;
 	Array<ShipTarget, 2> targets;
 	Array<Weapon, 2> weapons;
 };

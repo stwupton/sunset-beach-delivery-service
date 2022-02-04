@@ -25,6 +25,13 @@ struct UIElementBuffer : Array<UIElement, 100> {
 		Array::push(element);
 	}
 
+	void push(const UITriangleData &triangleData) {
+		UIElement element = {};
+		element.type = UIType::traingle;
+		element.triangle = triangleData;
+		Array::push(element);
+	}
+
 	void push(const UIButtonData &buttonData) {
 		UIElement element = {};
 		element.type = UIType::button;
