@@ -355,9 +355,9 @@ struct StreamMusic {
 	}
 };
 
-StreamMusic *streamMusicDataArray[MAX_THREADS];
-DWORD streamMusicThreadIdArray[MAX_THREADS];
-HANDLE streamMusicThreadArray[MAX_THREADS];
+StreamMusic *streamMusicData[MAX_THREADS];
+DWORD streamMusicThreadIds[MAX_THREADS];
+HANDLE streamMusicThreads[MAX_THREADS];
 
 DWORD WINAPI playMusicThread(LPVOID lpParam) {
 	StreamMusic *streamMusic;
@@ -369,41 +369,6 @@ DWORD WINAPI playMusicThread(LPVOID lpParam) {
 		Sleep(100);
 	}
 	return 0;
-}
-
-void errorHandler(LPTSTR lpszFunction) {
-	LPVOID lpMsgBuf;
-	LPVOID lpDisplayBuf;
-	DWORD dw = GetLastError();
-
-	FormatMessage(
-		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-		NULL,
-		dw,
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		(LPTSTR)&lpMsgBuf,
-		0, 
-		NULL
-	);
-
-	lpDisplayBuf = (LPVOID)LocalAlloc(
-		LMEM_ZEROINIT, 
-		(lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR)
-	);
-
-	StringCchPrintf(
-		(LPTSTR)lpDisplayBuf,
-		LocalSize(lpDisplayBuf) / sizeof(TCHAR),
-		TEXT("%s failed with error %d: %s"),
-		lpszFunction, 
-		dw, 
-		lpMsgBuf
-	);
-
-	MessageBox(NULL, (LPCTSTR)lpDisplayBuf, TEXT("Error"), MB_OK);
-
-	LocalFree(lpMsgBuf);
-	LocalFree(lpDisplayBuf);
 }
 
 class SoundManager {
@@ -461,18 +426,18 @@ public:
 		xAudio2->Release();
 
 		DWORD threadID = 0;
-		streamMusicDataArray[threadID]->isAlive = false;
+		streamMusicData[threadID]->isAlive = false;
 
-		WaitForMultipleObjects(MAX_THREADS, streamMusicThreadArray, TRUE, 5000);
+		WaitForMultipleObjects(MAX_THREADS, streamMusicThreads, TRUE, 5000);
 
 		// Close all thread handles and free memory allocations.
 		for (int i = 0; i < MAX_THREADS; i++) {
-			CloseHandle(streamMusicThreadArray[i]);
-			if (streamMusicDataArray[i] != NULL) {
-				HeapFree(GetProcessHeap(), 0, streamMusicDataArray[i]);
+			CloseHandle(streamMusicThreads[i]);
+			if (streamMusicData[i] != NULL) {
+				HeapFree(GetProcessHeap(), 0, streamMusicData[i]);
 
 				// Ensure address is not reused.
-				streamMusicDataArray[i] = NULL; 
+				streamMusicData[i] = NULL; 
 			}
 		}
 
@@ -518,11 +483,11 @@ public:
 		ASSERT_HRESULT(hr)
 
 		int i = 0;
-		streamMusicDataArray[0] = (StreamMusic*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(StreamMusic));
-		streamMusicDataArray[0]->isAlive = true;
-		streamMusicDataArray[0]->isLooping = true;
+		streamMusicData[0] = (StreamMusic*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(StreamMusic));
+		streamMusicData[0]->isAlive = true;
+		streamMusicData[0]->isLooping = true;
 
-		if (streamMusicDataArray[i] == NULL) {
+		if (streamMusicData[i] == NULL) {
 			// If the array allocation fails, the system is out of memory
 			// so there is no point in trying to print an error message.
 			// Just terminate execution.
@@ -530,25 +495,16 @@ public:
 		}
 
 		// Create the thread to begin execution on its own.
-		streamMusicThreadArray[i] = CreateThread(
+		streamMusicThreads[i] = CreateThread(
 			NULL,                        // default security attributes
 			0,                           // use default stack size  
 			playMusicThread,             // thread function name
-			streamMusicDataArray[i],     // argument to thread function 
+			streamMusicData[i],     // argument to thread function 
 			0,                           // use default creation flags 
-			&streamMusicThreadIdArray[i] // returns the thread identifier
+			&streamMusicThreadIds[i] // returns the thread identifier
 		); 
 
-		// Check the return value for success.
-		// If CreateThread fails, terminate execution. 
-		// This will automatically clean up threads and memory. 
-
-		if (streamMusicThreadArray[i] == NULL) {
-			//errorHandler(TEXT("CreateThread"));
-			/*LPTSTR errorText = "CreateThread";
-			errorHandler(errorText);*/
-			assert(false);
-		}
+		assert(streamMusicThreads[i] != NULL);
 	}
 
 	void process(SoundLoadQueue *soundQueue, MusicAssetId *musicToPlay) {
@@ -561,7 +517,7 @@ public:
 			// Potential to have multiple music threads, but for now hardcode to first thread
 			DWORD threadID = 0;
 			LPCWSTR fileName = musicNames[(size_t)*musicToPlay];
-			streamMusicDataArray[threadID]->playNewFile(fileName);
+			streamMusicData[threadID]->playNewFile(fileName);
 		}
 
 		soundQueue->clear();
