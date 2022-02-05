@@ -138,7 +138,6 @@ void readChunkData(HANDLE fileHandle, void *buffer, DWORD bufferSize, DWORD buff
 #define STREAMBUFFERSIZE 65536 // The size of each buffer
 #define BUFFERNUM 5 // Number of buffers
 BYTE streamBuffers[BUFFERNUM][STREAMBUFFERSIZE]; // Buffer array
-#define MAX_THREADS 1
 
 IXAudio2 *musicXAudio2 = NULL;
 IXAudio2MasteringVoice *musicMasterVoice = NULL;
@@ -355,9 +354,9 @@ struct StreamMusic {
 	}
 };
 
-StreamMusic *streamMusicData[MAX_THREADS];
-DWORD streamMusicThreadIds[MAX_THREADS];
-HANDLE streamMusicThreads[MAX_THREADS];
+StreamMusic *streamMusicData;
+DWORD streamMusicThreadId;
+HANDLE streamMusicThread;
 
 DWORD WINAPI playMusicThread(LPVOID lpParam) {
 	StreamMusic *streamMusic;
@@ -426,19 +425,17 @@ public:
 		xAudio2->Release();
 
 		DWORD threadID = 0;
-		streamMusicData[threadID]->isAlive = false;
+		streamMusicData->isAlive = false;
 
-		WaitForMultipleObjects(MAX_THREADS, streamMusicThreads, TRUE, 5000);
+		WaitForMultipleObjects(1, &streamMusicThread, TRUE, 5000);
 
 		// Close all thread handles and free memory allocations.
-		for (int i = 0; i < MAX_THREADS; i++) {
-			CloseHandle(streamMusicThreads[i]);
-			if (streamMusicData[i] != NULL) {
-				HeapFree(GetProcessHeap(), 0, streamMusicData[i]);
+		CloseHandle(streamMusicThread);
+		if (streamMusicData != NULL) {
+			HeapFree(GetProcessHeap(), 0, streamMusicData);
 
-				// Ensure address is not reused.
-				streamMusicData[i] = NULL; 
-			}
+			// Ensure address is not reused.
+			streamMusicData = NULL; 
 		}
 
 		// Release resources
@@ -482,29 +479,26 @@ public:
 		hr = musicXAudio2->CreateMasteringVoice(&masterVoice);
 		ASSERT_HRESULT(hr)
 
-		int i = 0;
-		streamMusicData[0] = (StreamMusic*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(StreamMusic));
-		streamMusicData[0]->isAlive = true;
-		streamMusicData[0]->isLooping = true;
-
-		if (streamMusicData[i] == NULL) {
-			// If the array allocation fails, the system is out of memory
-			// so there is no point in trying to print an error message.
-			// Just terminate execution.
-			assert(false);
+		streamMusicData = (StreamMusic*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(StreamMusic));
+		if (streamMusicData == NULL) {
+			ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
 		}
+		streamMusicData->isAlive = true;
+		streamMusicData->isLooping = true;
 
 		// Create the thread to begin execution on its own.
-		streamMusicThreads[i] = CreateThread(
-			NULL,                        // default security attributes
-			0,                           // use default stack size  
-			playMusicThread,             // thread function name
-			streamMusicData[i],     // argument to thread function 
-			0,                           // use default creation flags 
-			&streamMusicThreadIds[i] // returns the thread identifier
+		streamMusicThread = CreateThread(
+			NULL,                // default security attributes
+			0,                   // use default stack size  
+			playMusicThread,     // thread function name
+			streamMusicData,     // argument to thread function 
+			0,                   // use default creation flags 
+			&streamMusicThreadId // returns the thread identifier
 		); 
 
-		assert(streamMusicThreads[i] != NULL);
+		if (streamMusicThread == NULL) {
+			ASSERT_HRESULT(HRESULT_FROM_WIN32(GetLastError()))
+		}
 	}
 
 	void process(SoundLoadQueue *soundQueue, MusicAssetId *musicToPlay) {
@@ -514,10 +508,8 @@ public:
 		}
 
 		if (*musicToPlay != MusicAssetId::none) {
-			// Potential to have multiple music threads, but for now hardcode to first thread
-			DWORD threadID = 0;
 			LPCWSTR fileName = musicNames[(size_t)*musicToPlay];
-			streamMusicData[threadID]->playNewFile(fileName);
+			streamMusicData->playNewFile(fileName);
 		}
 
 		soundQueue->clear();
