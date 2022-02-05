@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdio>
-
 #include <Windows.h>
 
 #include "common/game_state.hpp"
@@ -13,6 +12,7 @@
 #include "platform/windows/file_saver.hpp"
 #include "platform/windows/input_processor.hpp"
 #include "platform/windows/template_loader.hpp"
+#include "platform/windows/sound_manager.hpp"
 #include "platform/windows/utils.hpp"
 #include "types/core.hpp"
 #include "types/vector.hpp"
@@ -20,16 +20,17 @@
 // TODO(steven): Move elsewhere
 static bool shouldClose = false;
 static bool editorOpen = false;
-static DirectXResources *directXResources = new DirectXResources {};
+static DirectXResources *directXResources = new DirectXResources{};
 static DirectXRenderer *renderer = new DirectXRenderer();
 static Dx3dSpriteLoader *loader = new Dx3dSpriteLoader();
+static SoundManager *soundManager = new SoundManager();
 static InputProcessor *inputProcessor = new InputProcessor();
 static f32 delta;
 
 LRESULT CALLBACK eventHandler(
-	HWND windowHandle, 
-	UINT message, 
-	WPARAM wParam, 
+	HWND windowHandle,
+	UINT message,
+	WPARAM wParam,
 	LPARAM lParam
 ) {
 	INT result = 0;
@@ -38,8 +39,9 @@ LRESULT CALLBACK eventHandler(
 			renderer->initialise(windowHandle, directXResources);
 			inputProcessor->initialise(windowHandle);
 			loader->initialise(directXResources);
+			soundManager->initialise();
 
-			CREATESTRUCT *createStruct = (CREATESTRUCT*)lParam;
+			CREATESTRUCT *createStruct = (CREATESTRUCT *)lParam;
 			SetWindowLongPtr(windowHandle, GWLP_USERDATA, (LONG_PTR)createStruct->lpCreateParams);
 		} break;
 
@@ -52,8 +54,8 @@ LRESULT CALLBACK eventHandler(
 			PostQuitMessage(0);
 		} break;
 
-		case WM_KEYDOWN: { 
-			GameState *gameState = (GameState*)GetWindowLongPtr(windowHandle, GWLP_USERDATA);
+		case WM_KEYDOWN: {
+			GameState *gameState = (GameState *)GetWindowLongPtr(windowHandle, GWLP_USERDATA);
 
 			if (wParam == VK_ESCAPE) {
 				PostMessage(windowHandle, WM_CLOSE, NULL, NULL);
@@ -108,7 +110,7 @@ INT createWin32Window(HINSTANCE instanceHandle, INT showFlag, GameState *gameSta
 		NULL,
 		NULL,
 		instanceHandle,
-		(void*)gameState
+		(void *)gameState
 	);
 
 	if (windowHandle == NULL) {
@@ -121,15 +123,15 @@ INT createWin32Window(HINSTANCE instanceHandle, INT showFlag, GameState *gameSta
 }
 
 INT WINAPI wWinMain(
-	HINSTANCE instanceHandle, 
-	HINSTANCE prevInstanceHandle, 
-	PWSTR cmdArgs, 
+	HINSTANCE instanceHandle,
+	HINSTANCE prevInstanceHandle,
+	PWSTR cmdArgs,
 	INT showFlag
 ) {
 	HRESULT result = CoInitialize(NULL);
 	ASSERT_HRESULT(result)
-	
-	GameState *gameState = new GameState {};
+
+	GameState *gameState = new GameState{};
 	createWin32Window(instanceHandle, showFlag, gameState);
 
 	Game::setup(gameState);
@@ -149,7 +151,7 @@ INT WINAPI wWinMain(
 		if (editorOpen) {
 			Editor::update(gameState);
 
-			SaveData &saveData = gameState->editorState.saveData; 
+			SaveData &saveData = gameState->editorState.saveData;
 			if (saveData.pending) {
 				save(saveData.path.data, saveData.buffer, saveData.size);
 				saveData.pending = false;
@@ -157,6 +159,8 @@ INT WINAPI wWinMain(
 		} else {
 			Game::update(gameState, delta);
 		}
+
+		soundManager->process(&gameState->soundLoadQueue, &gameState->pendingMusicItem);
 
 		renderer->drawSprites(gameState->sprites.data, gameState->sprites.length);
 		renderer->drawUI(gameState->uiElements.data, gameState->uiElements.length);
@@ -175,7 +179,7 @@ INT WINAPI wWinMain(
 			static LARGE_INTEGER previousCounter;
 			LARGE_INTEGER counter;
 			LARGE_INTEGER frequency;
-			
+
 			QueryPerformanceCounter(&counter);
 			QueryPerformanceFrequency(&frequency);
 
@@ -193,6 +197,7 @@ INT WINAPI wWinMain(
 
 	delete loader;
 	delete renderer;
+	delete soundManager;
 	delete inputProcessor;
 
 	delete directXResources;

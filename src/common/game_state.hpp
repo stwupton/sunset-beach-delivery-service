@@ -18,8 +18,9 @@
 #include "common/weapon.hpp"
 #include "types/array.hpp"
 
-typedef Array<Sprite, 10> SpriteBuffer; 
+typedef Array<Sprite, 10> SpriteBuffer;
 typedef LoadQueue<TextureAssetId, 8> TextureLoadQueue;
+typedef LoadQueue<SoundAssetId, 8> SoundLoadQueue;
 
 typedef void (*GameModeSetup)(struct GameState *gameState);
 typedef void (*GameModeUpdate)(struct GameState *gameState, f32 delta);
@@ -65,6 +66,8 @@ struct GameState {
 	SpriteBuffer sprites;
 	Templates templates;
 	TextureLoadQueue textureLoadQueue;
+	SoundLoadQueue soundLoadQueue;
+	MusicAssetId pendingMusicItem = MusicAssetId::none;
 	UIElementBuffer uiElements;
 
 #ifdef DEBUG

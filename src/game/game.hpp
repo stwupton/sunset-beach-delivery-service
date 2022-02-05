@@ -18,6 +18,8 @@ namespace Game {
 		gameState->playerShip.fuel = 30;
 		gameState->dockedLocation = &gameState->systemLocations[0];
 
+		gameState->pendingMusicItem = MusicAssetId::mars;
+
 		gameState->modes[(size_t)GameModeId::combat] = { &Combat::setup, &Combat::update };
 		gameState->modes[(size_t)GameModeId::systemSelect] = { &SystemSelect::setup, &SystemSelect::update };
 		gameState->modes[(size_t)GameModeId::systemView] = { &SystemView::setup, &SystemView::update };
