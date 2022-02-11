@@ -14,8 +14,8 @@ namespace Game {
 
 	void setup(GameState *gameState) {
 		// TODO(steven): Get from load data instead
-		gameState->playerShip.fuelTankCapacity = 30;
-		gameState->playerShip.fuel = 30;
+		gameState->playerShip.fuelTankCapacity = 30.0f;
+		gameState->playerShip.fuel = 30.0f;
 		gameState->dockedLocation = &gameState->systemLocations[0];
 
 		gameState->pendingMusicItem = MusicAssetId::mars;

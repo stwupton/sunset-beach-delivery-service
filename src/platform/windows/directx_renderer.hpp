@@ -241,17 +241,14 @@ public:
 				result = geometry->Open(&sink);
 				ASSERT_HRESULT(result)
 				
-				Vec2<f32> point = element.triangle.points[0];
-				D2D1_POINT_2F *d2dPoint = (D2D1_POINT_2F*)&point;
-				sink->BeginFigure(*d2dPoint, D2D1_FIGURE_BEGIN_FILLED);
+				D2D1_POINT_2F point = { element.triangle.points[0].x, element.triangle.points[0].y };
+				sink->BeginFigure(point, D2D1_FIGURE_BEGIN_FILLED);
 
-				point = element.triangle.points[1];
-				d2dPoint = (D2D1_POINT_2F*)&point;
-				sink->AddLine(*d2dPoint);
+				point = { element.triangle.points[1].x, element.triangle.points[1].y };
+				sink->AddLine(point);
 
-				point = element.triangle.points[2];
-				d2dPoint = (D2D1_POINT_2F*)&point;
-				sink->AddLine(*d2dPoint);
+				point = { element.triangle.points[2].x, element.triangle.points[2].y };
+				sink->AddLine(point);
 
 				sink->EndFigure(D2D1_FIGURE_END_CLOSED);
 

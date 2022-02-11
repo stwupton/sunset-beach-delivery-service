@@ -49,9 +49,15 @@ struct GameState {
 	// System view data
 	Array<SystemLocation, 6> systemLocations;
 	SystemLocation *selectedLocation = nullptr;
+	SystemLocation *highlightedLocation = nullptr;
 	SystemLocation *targetLocation = nullptr;
 	SystemLocation *dockedLocation = nullptr;
 	f32 travelProgress = 0.0f;
+
+	// TODO(steven): Hacky way of calculating fuel consumption on a journey, do this 
+	// better!
+	FuelValue travelFuelConsumption = 0.0f;
+	FuelValue fuelBeforeTravel = 0.0f;
 
 	// Delivery data
 	u32 deliveriesMade = 0;

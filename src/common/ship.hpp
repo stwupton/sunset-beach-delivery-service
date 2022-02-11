@@ -6,7 +6,7 @@
 #include "common/sprite.hpp"
 #include "common/weapon.hpp"
 
-typedef u16 FuelValue;
+typedef f32 FuelValue;
 
 // NOTE(steven): Not  sure if we want to extend sprite because we may end up using
 // data from Sprite that's not needed for the Ship

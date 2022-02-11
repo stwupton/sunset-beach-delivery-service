@@ -11,44 +11,78 @@
 namespace SystemSelect {
 	// Forward declerations
 	void drawLocations(GameState *gameState, f32 delta);
+	void drawIndicator(GameState *gameState);
 	void drawUI(GameState *gameState);
+	void highlightLocations(GameState *gameState);
 
 	const f32 starRadius = 400.0f;
 	const Vec2<f32> starCenter = Vec3(-250.0f, 1080.0f * 0.5f);
 	const f32 minPlanetSpacing = 100.0f;
 	const f32 minMoonSpacing = minPlanetSpacing * 0.2f;
+	const FuelValue fuelBurnRate = 20;
 
 	void setup(GameState *gameState) {
 		gameState->textureLoadQueue.push(TextureAssetId::background);
 	}
 
 	void update(GameState *gameState, f32 delta) {
-		SystemCommon::drawStarField(gameState);
+		gameState->highlightedLocation = nullptr;
 
 		if (gameState->input.keyDown == '\t') {
 			gameState->nextMode = GameModeId::systemView;
 		}
 
+		if (gameState->targetLocation != nullptr) {
+			// TODO(steven): Change this formula for when we are using the position 
+			// around orbit indtead of system select view position.
+			const f32 travelDistance = gameState->dockedLocation->position
+				.distanceTo(gameState->targetLocation->position);
+			gameState->travelProgress += delta / travelDistance;
+			gameState->travelProgress = min(1.0f, gameState->travelProgress);
+
+			// Update fuel
+			gameState->playerShip.fuel = 
+				gameState->fuelBeforeTravel - 
+				gameState->travelFuelConsumption * 
+				gameState->travelProgress;
+
+			// Once we have reached target location
+			if (gameState->travelProgress == 1.0f) {
+				gameState->dockedLocation = gameState->targetLocation;
+				gameState->targetLocation = nullptr;
+				gameState->travelProgress = 0.0f;
+			}
+		}
+
+		SystemCommon::drawStarField(gameState);
 		SystemCommon::drawCentralStar(gameState, starCenter, starRadius);
 		drawLocations(gameState, delta);
+		drawIndicator(gameState);
+		highlightLocations(gameState);
 		drawUI(gameState);
 	}
 
+	void drawIndicator(GameState *gameState) {
+		const SystemLocation *startLocation = gameState->dockedLocation;
+		const SystemLocation *targetLocation = gameState->targetLocation;
+		if (startLocation != nullptr) {
+			UITriangleData indicator = {};
+			indicator.color = Rgba(0.16f, 0.94f, 0.9f, 1.0f);
+
+			indicator.points.push(startLocation->position + Vec2(0.0f, -startLocation->radius - 10.0f));
+			indicator.points.push(startLocation->position + Vec2(-10.0f, -startLocation->radius - 30.0f));
+			indicator.points.push(startLocation->position + Vec2(10.0f, -startLocation->radius - 30.0f));
+
+			gameState->uiElements.push(indicator);
+		}
+	}
+
 	void drawLocations(GameState *gameState, f32 delta) {
-		Array<UICircleData, 6> orbitPaths;
-		Array<UICircleData, 6> locations;
-		UITriangleData dockedIndicator = {};
-
-		UITextData locationLabel = {};
-		bool showLabel = false;
-
 		u8 totalMoonOffset = 0;
 		u8 moonOffset = 0;
 
 		f32 previousPlanetRadius = starRadius;
 		f32 previousMoonRadius = 0.0f;
-
-		bool locationHighlighted = false;
 
 		for (size_t i = 0; i < gameState->systemLocations.length; i++) {
 			Vec2<f32> orbitCenter = Vec2<f32>();
@@ -83,7 +117,7 @@ namespace SystemSelect {
 				orbitPath.radius = distance;
 				orbitPath.thickness = 1.0f;
 				orbitPath.position = orbitCenter;
-				orbitPaths.push(orbitPath);
+				gameState->uiElements.push(orbitPath);
 			}
 
 			// Location
@@ -106,13 +140,11 @@ namespace SystemSelect {
 				const f32 inputDistance = gameState->input.mouse.distanceTo(circle.position);
 				const f32 allowedInputArea = location.radius + minMoonSpacing * 0.5f;
 				const bool mouseIsOver = inputDistance <= allowedInputArea;
-				if (mouseIsOver || gameState->selectedLocation == &location) {
-					circle.thickness = 1.0f;
-					circle.strokeColor = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
-					locationHighlighted = true;
+				if (mouseIsOver) {
+					gameState->highlightedLocation = &location;
 				}
 
-				locations.push(circle);
+				gameState->uiElements.push(circle);
 
 				if (mouseIsOver) {
 					if (
@@ -122,115 +154,150 @@ namespace SystemSelect {
 						gameState->selectedLocation = &location;
 					}
 
+					UITextData locationLabel = {};
 					locationLabel.text = location.name.data;
 					locationLabel.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-					locationLabel.fontSize = 30.0f;
-					locationLabel.position = circle.position;
-					locationLabel.height = 30.0f;
+					locationLabel.font = L"consolas";
+					locationLabel.fontSize = 24.0f;
 					locationLabel.width = 200.0f;
-					showLabel = true;
-				}
-
-				if (gameState->dockedLocation == &location) {
-					dockedIndicator.color = Rgba(0.16f, 0.94f, 0.9f, 1.0f);
-
-					dockedIndicator.points.push(circle.position + Vec2(0.0f, -circle.radius - 10.0f));
-					dockedIndicator.points.push(circle.position + Vec2(-10.0f, -circle.radius - 30.0f));
-					dockedIndicator.points.push(circle.position + Vec2(10.0f, -circle.radius - 30.0f));
+					locationLabel.height = locationLabel.fontSize;
+					locationLabel.position = 
+						circle.position + 
+						Vec2(-locationLabel.width * 0.5f, circle.radius + 10.0f);
+					locationLabel.horizontalAlignment = UITextAlignment::middle;
+					gameState->uiElements.push(locationLabel);
 				}
 			}
 		}
-
-		for (const UICircleData &orbit : orbitPaths) {
-			gameState->uiElements.push(orbit);
-		}
-
-		for (const UICircleData &location : locations) {
-			gameState->uiElements.push(location);
-		}
-
-		gameState->uiElements.push(dockedIndicator);
-
-		if (showLabel) {
-			gameState->uiElements.push(locationLabel);
-		}
-
-		gameState->input.cursor = locationHighlighted ? Cursor::pointer : Cursor::arrow;
 	}
 
 	void drawUI(GameState *gameState) {
-		UITextData fuelLabel = {};
-		fuelLabel.text = L"FUEL: ";
-		fuelLabel.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-		fuelLabel.font = L"consolas";
-		fuelLabel.fontSize = 20.0f;
-		fuelLabel.position = Vec2(1920.0f - 400.0f, 1080.0f - fuelLabel.fontSize - 20.0f);
-		fuelLabel.width = 100.0f;
-		fuelLabel.height = 30.0f;
-		fuelLabel.horizontalAlignment = UITextAlignment::end;
-		fuelLabel.verticalAlignment = UITextAlignment::middle;
-		gameState->uiElements.push(fuelLabel);
+		// Fuel gauge
+		{
+			UITextData fuelLabel = {};
+			fuelLabel.text = L"FUEL: ";
+			fuelLabel.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
+			fuelLabel.font = L"consolas";
+			fuelLabel.fontSize = 20.0f;
+			fuelLabel.position = Vec2(1920.0f - 400.0f, 1080.0f - fuelLabel.fontSize - 20.0f);
+			fuelLabel.width = 100.0f;
+			fuelLabel.height = 30.0f;
+			fuelLabel.horizontalAlignment = UITextAlignment::end;
+			fuelLabel.verticalAlignment = UITextAlignment::middle;
+			gameState->uiElements.push(fuelLabel);
 
-		UILineData fuelGaugeBackground = {};
-		fuelGaugeBackground.color = Rgba(0.5f, 0.5f, 0.5f, 1.0f);
-		fuelGaugeBackground.start = Vec2(
-			fuelLabel.position.x + fuelLabel.width, 
-			fuelLabel.position.y + fuelLabel.height * 0.5f
-		);
-		fuelGaugeBackground.end = fuelGaugeBackground.start + Vec2(200.0f);
-		fuelGaugeBackground.thickness = 30.0f;
-		gameState->uiElements.push(fuelGaugeBackground);
+			UILineData fuelGaugeBackground = {};
+			fuelGaugeBackground.color = Rgba(0.5f, 0.5f, 0.5f, 1.0f);
+			fuelGaugeBackground.start = Vec2(
+				fuelLabel.position.x + fuelLabel.width, 
+				fuelLabel.position.y + fuelLabel.height * 0.5f
+			);
+			fuelGaugeBackground.end = fuelGaugeBackground.start + Vec2(200.0f);
+			fuelGaugeBackground.thickness = 30.0f;
+			gameState->uiElements.push(fuelGaugeBackground);
 
-		f32 fuelPercent = (f32)gameState->playerShip.fuel / gameState->playerShip.fuelTankCapacity;
-		fuelPercent = min(1.0f, max(0.0f, fuelPercent));
+			f32 fuelPercent = (f32)gameState->playerShip.fuel / gameState->playerShip.fuelTankCapacity;
+			fuelPercent = min(1.0f, max(0.0f, fuelPercent));
 
-		UILineData fuelGauge = fuelGaugeBackground;
-		fuelGauge.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-		fuelGauge.end = fuelGauge.start + Vec2(200.0f) * fuelPercent;
-		fuelGauge.thickness = 30.0f;
-		gameState->uiElements.push(fuelGauge);
+			UILineData fuelGauge = fuelGaugeBackground;
+			fuelGauge.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
+			fuelGauge.end = fuelGauge.start + Vec2(200.0f) * fuelPercent;
+			fuelGauge.thickness = 30.0f;
+			gameState->uiElements.push(fuelGauge);
 
-		if (gameState->selectedLocation != nullptr) {
-			f32 fuelConsumptionPercent = 
-				gameState->dockedLocation->position.distanceTo(gameState->selectedLocation->position) / 
-				20.0f / 
-				gameState->playerShip.fuelTankCapacity;
-			fuelConsumptionPercent = min(1.0f, max(0.0f, fuelConsumptionPercent));
-
-			UILineData fuelConsumption = fuelGauge;
-			fuelConsumption.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
-			fuelConsumption.start = fuelGauge.end;
-			fuelConsumption.end = fuelConsumption.end - Vec2(200.0f) * fuelConsumptionPercent;
-			fuelConsumption.thickness = 30.0f;
-			gameState->uiElements.push(fuelConsumption);
-
-			UIButtonData button = {};
-			button.label.text = L"DEPART";
-			button.label.fontSize = 30.0f;
-			button.label.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-			button.color = Rgba(0.3f, 0.3f, 0.3f, 1.0f);
-			button.height = 100.0f;
-			button.width = 200.0f;
-			button.position = Vec2(1920.0f - button.width - 10.0f, 10.0f);
-
-			button.handleInput(gameState->input);
-			if (button.checkInput(UIButtonInputState::over)) {
-				gameState->input.cursor = Cursor::pointer;
-				button.color += Rgba(0.1f, 0.1f, 0.1f);
-
-				if (button.checkInput(UIButtonInputState::down)) {
-					const f32 scale = 0.9f;
-					button.label.fontSize *= scale;
-					button.position += Vec2(
-						button.width - button.width * scale, 
-						button.height - button.height * scale
-					) * 0.5f;
-					button.width *= scale;
-					button.height *= scale;
-				}
+			SystemLocation *targetLocation = nullptr;
+			if (gameState->selectedLocation != nullptr) {
+				targetLocation = gameState->selectedLocation;
 			}
 
-			gameState->uiElements.push(button);
+			if (gameState->highlightedLocation != nullptr) {
+				targetLocation = gameState->highlightedLocation;
+			}
+
+			if (targetLocation != nullptr) {
+				FuelValue fuelConsumption = 
+					gameState->dockedLocation->position.distanceTo(targetLocation->position) / 
+					fuelBurnRate;
+
+				if (gameState->playerShip.fuel >= fuelConsumption) {
+					f32 fuelConsumptionScale = fuelConsumption / gameState->playerShip.fuelTankCapacity;
+					fuelConsumptionScale = min(1.0f, max(0.0f, fuelConsumptionScale));
+
+					UILineData fuelConsumptionVisual = fuelGauge;
+					fuelConsumptionVisual.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
+					fuelConsumptionVisual.start = fuelGauge.end;
+					fuelConsumptionVisual.end = fuelConsumptionVisual.start - Vec2(200.0f) * fuelConsumptionScale;
+					fuelConsumptionVisual.thickness = 30.0f;
+					gameState->uiElements.push(fuelConsumptionVisual);
+				}
+			}
+		}
+
+		if (gameState->selectedLocation != nullptr) {
+			FuelValue fuelConsumption = 
+				gameState->dockedLocation->position.distanceTo(gameState->selectedLocation->position) / 
+				fuelBurnRate;
+			
+			// TODO(steven): Maybe make the button disable instead of disappear.
+			if (gameState->playerShip.fuel >= fuelConsumption) {
+				UIButtonData button = {};
+				button.label.text = L"DEPART";
+				button.label.fontSize = 30.0f;
+				button.label.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
+				button.color = Rgba(0.3f, 0.3f, 0.3f, 1.0f);
+				button.height = 100.0f;
+				button.width = 200.0f;
+				button.position = Vec2(1920.0f - button.width - 10.0f, 10.0f);
+
+				button.handleInput(gameState->input);
+				if (button.checkInput(UIButtonInputState::over)) {
+					gameState->input.cursor = Cursor::pointer;
+					button.color += Rgba(0.1f, 0.1f, 0.1f);
+
+					if (button.checkInput(UIButtonInputState::down)) {
+						const f32 scale = 0.9f;
+						button.label.fontSize *= scale;
+						button.position += Vec2(
+							button.width - button.width * scale, 
+							button.height - button.height * scale
+						) * 0.5f;
+						button.width *= scale;
+						button.height *= scale;
+
+						gameState->targetLocation = gameState->selectedLocation;
+						gameState->selectedLocation = nullptr;
+						gameState->travelProgress = 0.0f;
+						gameState->travelFuelConsumption = fuelConsumption;
+						gameState->fuelBeforeTravel = gameState->playerShip.fuel;
+					}
+				}
+
+				gameState->uiElements.push(button);
+			}
+		}
+	}
+
+	void highlightLocations(GameState *gameState) {
+		gameState->input.cursor = Cursor::arrow;
+
+		if (gameState->selectedLocation != nullptr) {
+			UICircleData highlight = {};
+			highlight.thickness = 2.0f;
+			highlight.strokeColor = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
+			highlight.position = gameState->selectedLocation->position;
+			highlight.radius = gameState->selectedLocation->radius;
+			gameState->uiElements.push(highlight);
+		}
+
+		if (gameState->highlightedLocation != nullptr) {
+			UICircleData highlight = {};
+			highlight.thickness = 2.0f;
+			highlight.strokeColor = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
+			highlight.position = gameState->highlightedLocation->position;
+			highlight.radius = gameState->highlightedLocation->radius;
+			gameState->uiElements.push(highlight);
+
+			gameState->input.cursor = Cursor::pointer;
 		}
 	}
 };
