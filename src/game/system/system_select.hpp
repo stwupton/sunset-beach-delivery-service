@@ -14,6 +14,7 @@ namespace SystemSelect {
 	void drawIndicator(GameState *gameState);
 	void drawUI(GameState *gameState);
 	void highlightLocations(GameState *gameState);
+	void updateJourney(GameState *gameState, f32 delta);
 
 	const f32 starRadius = 400.0f;
 	const Vec2<f32> starCenter = Vec3(-250.0f, 1080.0f * 0.5f);
@@ -32,34 +33,123 @@ namespace SystemSelect {
 			gameState->nextMode = GameModeId::systemView;
 		}
 
-		if (gameState->targetLocation != nullptr) {
-			// TODO(steven): Change this formula for when we are using the position 
-			// around orbit indtead of system select view position.
-			const f32 travelDistance = gameState->dockedLocation->position
-				.distanceTo(gameState->targetLocation->position);
-			gameState->travelProgress += delta / travelDistance;
-			gameState->travelProgress = min(1.0f, gameState->travelProgress);
-
-			// Update fuel
-			gameState->playerShip.fuel = 
-				gameState->fuelBeforeTravel - 
-				gameState->travelFuelConsumption * 
-				gameState->travelProgress;
-
-			// Once we have reached target location
-			if (gameState->travelProgress == 1.0f) {
-				gameState->dockedLocation = gameState->targetLocation;
-				gameState->targetLocation = nullptr;
-				gameState->travelProgress = 0.0f;
-			}
-		}
-
+		updateJourney(gameState, delta);
 		SystemCommon::drawStarField(gameState);
 		SystemCommon::drawCentralStar(gameState, starCenter, starRadius);
 		drawLocations(gameState, delta);
 		drawIndicator(gameState);
 		highlightLocations(gameState);
 		drawUI(gameState);
+	}
+
+	void drawDepartButton(GameState *gameState) {
+		FuelValue fuelConsumption = 
+			gameState->dockedLocation->position.distanceTo(gameState->selectedLocation->position) / 
+			fuelBurnRate;
+		
+		const bool enabled = 
+			gameState->selectedLocation != gameState->dockedLocation && 
+			gameState->playerShip.fuel >= fuelConsumption;
+		const f32 alpha = enabled ? 1.0f : 0.4f;
+
+		UIButtonData button = {};
+		button.label.text = L"DEPART";
+		button.label.fontSize = 30.0f;
+		button.label.color = Rgba(1.0f, 1.0f, 1.0f, alpha);
+		button.color = Rgba(0.3f, 0.3f, 0.3f, alpha);
+		button.height = 100.0f;
+		button.width = 200.0f;
+		button.position = Vec2(1920.0f - button.width - 10.0f, 10.0f);
+
+		if (enabled) {
+			button.handleInput(gameState->input);
+			if (button.checkInput(UIButtonInputState::over)) {
+				gameState->input.cursor = Cursor::pointer;
+				button.color += Rgba(0.1f, 0.1f, 0.1f);
+
+				if (button.checkInput(UIButtonInputState::down)) {
+					const f32 scale = 0.9f;
+					button.label.fontSize *= scale;
+					button.position += Vec2(
+						button.width - button.width * scale, 
+						button.height - button.height * scale
+					) * 0.5f;
+					button.width *= scale;
+					button.height *= scale;
+
+					gameState->targetLocation = gameState->selectedLocation;
+					gameState->selectedLocation = nullptr;
+					gameState->journey.progress = 0.0f;
+					gameState->journey.fuelConsumption = fuelConsumption;
+					gameState->journey.fuelBefore = gameState->playerShip.fuel;
+				}
+			}
+		}
+
+		gameState->uiElements.push(button);
+	}
+
+	void drawFuelGauge(GameState *gameState) {
+		// Label
+		UITextData fuelLabel = {};
+		fuelLabel.text = L"FUEL: ";
+		fuelLabel.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
+		fuelLabel.font = L"consolas";
+		fuelLabel.fontSize = 20.0f;
+		fuelLabel.position = Vec2(1920.0f - 400.0f, 1080.0f - fuelLabel.fontSize - 20.0f);
+		fuelLabel.width = 100.0f;
+		fuelLabel.height = 30.0f;
+		fuelLabel.horizontalAlignment = UITextAlignment::end;
+		fuelLabel.verticalAlignment = UITextAlignment::middle;
+		gameState->uiElements.push(fuelLabel);
+
+		// Background
+		UILineData fuelGaugeBackground = {};
+		fuelGaugeBackground.color = Rgba(0.5f, 0.5f, 0.5f, 1.0f);
+		fuelGaugeBackground.start = Vec2(
+			fuelLabel.position.x + fuelLabel.width, 
+			fuelLabel.position.y + fuelLabel.height * 0.5f
+		);
+		fuelGaugeBackground.end = fuelGaugeBackground.start + Vec2(200.0f);
+		fuelGaugeBackground.thickness = 30.0f;
+		gameState->uiElements.push(fuelGaugeBackground);
+
+		// Current fuel
+		f32 fuelPercent = (f32)gameState->playerShip.fuel / gameState->playerShip.fuelTankCapacity;
+		fuelPercent = min(1.0f, max(0.0f, fuelPercent));
+
+		UILineData fuelGauge = fuelGaugeBackground;
+		fuelGauge.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
+		fuelGauge.end = fuelGauge.start + Vec2(200.0f) * fuelPercent;
+		fuelGauge.thickness = 30.0f;
+		gameState->uiElements.push(fuelGauge);
+
+		// Estamated journey consumption
+		SystemLocation *targetLocation = nullptr;
+		if (gameState->selectedLocation != nullptr) {
+			targetLocation = gameState->selectedLocation;
+		}
+
+		if (gameState->highlightedLocation != nullptr) {
+			targetLocation = gameState->highlightedLocation;
+		}
+
+		if (targetLocation != nullptr) {
+			FuelValue fuelConsumption = 
+				gameState->dockedLocation->position.distanceTo(targetLocation->position) / 
+				fuelBurnRate;
+
+			f32 fuelConsumptionScale = fuelConsumption / gameState->playerShip.fuelTankCapacity;
+			fuelConsumptionScale = min(1.0f, max(0.0f, fuelConsumptionScale));
+
+			UILineData fuelConsumptionVisual = fuelGauge;
+			fuelConsumptionVisual.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
+			fuelConsumptionVisual.start = fuelGauge.end;
+			fuelConsumptionVisual.end = fuelConsumptionVisual.start - Vec2(200.0f) * fuelConsumptionScale;
+			fuelConsumptionVisual.end.x = max(fuelGauge.start.x, fuelConsumptionVisual.end.x);
+			fuelConsumptionVisual.thickness = 30.0f;
+			gameState->uiElements.push(fuelConsumptionVisual);
+		}
 	}
 
 	void drawIndicator(GameState *gameState) {
@@ -172,108 +262,9 @@ namespace SystemSelect {
 	}
 
 	void drawUI(GameState *gameState) {
-		// Fuel gauge
-		{
-			UITextData fuelLabel = {};
-			fuelLabel.text = L"FUEL: ";
-			fuelLabel.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-			fuelLabel.font = L"consolas";
-			fuelLabel.fontSize = 20.0f;
-			fuelLabel.position = Vec2(1920.0f - 400.0f, 1080.0f - fuelLabel.fontSize - 20.0f);
-			fuelLabel.width = 100.0f;
-			fuelLabel.height = 30.0f;
-			fuelLabel.horizontalAlignment = UITextAlignment::end;
-			fuelLabel.verticalAlignment = UITextAlignment::middle;
-			gameState->uiElements.push(fuelLabel);
-
-			UILineData fuelGaugeBackground = {};
-			fuelGaugeBackground.color = Rgba(0.5f, 0.5f, 0.5f, 1.0f);
-			fuelGaugeBackground.start = Vec2(
-				fuelLabel.position.x + fuelLabel.width, 
-				fuelLabel.position.y + fuelLabel.height * 0.5f
-			);
-			fuelGaugeBackground.end = fuelGaugeBackground.start + Vec2(200.0f);
-			fuelGaugeBackground.thickness = 30.0f;
-			gameState->uiElements.push(fuelGaugeBackground);
-
-			f32 fuelPercent = (f32)gameState->playerShip.fuel / gameState->playerShip.fuelTankCapacity;
-			fuelPercent = min(1.0f, max(0.0f, fuelPercent));
-
-			UILineData fuelGauge = fuelGaugeBackground;
-			fuelGauge.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-			fuelGauge.end = fuelGauge.start + Vec2(200.0f) * fuelPercent;
-			fuelGauge.thickness = 30.0f;
-			gameState->uiElements.push(fuelGauge);
-
-			SystemLocation *targetLocation = nullptr;
-			if (gameState->selectedLocation != nullptr) {
-				targetLocation = gameState->selectedLocation;
-			}
-
-			if (gameState->highlightedLocation != nullptr) {
-				targetLocation = gameState->highlightedLocation;
-			}
-
-			if (targetLocation != nullptr) {
-				FuelValue fuelConsumption = 
-					gameState->dockedLocation->position.distanceTo(targetLocation->position) / 
-					fuelBurnRate;
-
-				if (gameState->playerShip.fuel >= fuelConsumption) {
-					f32 fuelConsumptionScale = fuelConsumption / gameState->playerShip.fuelTankCapacity;
-					fuelConsumptionScale = min(1.0f, max(0.0f, fuelConsumptionScale));
-
-					UILineData fuelConsumptionVisual = fuelGauge;
-					fuelConsumptionVisual.color = Rgba(1.0f, 0.0f, 0.0f, 1.0f);
-					fuelConsumptionVisual.start = fuelGauge.end;
-					fuelConsumptionVisual.end = fuelConsumptionVisual.start - Vec2(200.0f) * fuelConsumptionScale;
-					fuelConsumptionVisual.thickness = 30.0f;
-					gameState->uiElements.push(fuelConsumptionVisual);
-				}
-			}
-		}
-
+		drawFuelGauge(gameState);
 		if (gameState->selectedLocation != nullptr) {
-			FuelValue fuelConsumption = 
-				gameState->dockedLocation->position.distanceTo(gameState->selectedLocation->position) / 
-				fuelBurnRate;
-			
-			// TODO(steven): Maybe make the button disable instead of disappear.
-			if (gameState->playerShip.fuel >= fuelConsumption) {
-				UIButtonData button = {};
-				button.label.text = L"DEPART";
-				button.label.fontSize = 30.0f;
-				button.label.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-				button.color = Rgba(0.3f, 0.3f, 0.3f, 1.0f);
-				button.height = 100.0f;
-				button.width = 200.0f;
-				button.position = Vec2(1920.0f - button.width - 10.0f, 10.0f);
-
-				button.handleInput(gameState->input);
-				if (button.checkInput(UIButtonInputState::over)) {
-					gameState->input.cursor = Cursor::pointer;
-					button.color += Rgba(0.1f, 0.1f, 0.1f);
-
-					if (button.checkInput(UIButtonInputState::down)) {
-						const f32 scale = 0.9f;
-						button.label.fontSize *= scale;
-						button.position += Vec2(
-							button.width - button.width * scale, 
-							button.height - button.height * scale
-						) * 0.5f;
-						button.width *= scale;
-						button.height *= scale;
-
-						gameState->targetLocation = gameState->selectedLocation;
-						gameState->selectedLocation = nullptr;
-						gameState->travelProgress = 0.0f;
-						gameState->travelFuelConsumption = fuelConsumption;
-						gameState->fuelBeforeTravel = gameState->playerShip.fuel;
-					}
-				}
-
-				gameState->uiElements.push(button);
-			}
+			drawDepartButton(gameState);
 		}
 	}
 
@@ -298,6 +289,30 @@ namespace SystemSelect {
 			gameState->uiElements.push(highlight);
 
 			gameState->input.cursor = Cursor::pointer;
+		}
+	}
+
+	void updateJourney(GameState *gameState, f32 delta) {
+		if (gameState->targetLocation != nullptr) {
+			// TODO(steven): Change this formula for when we are using the position 
+			// around orbit indtead of system select view position.
+			const f32 travelDistance = gameState->dockedLocation->position
+				.distanceTo(gameState->targetLocation->position);
+			gameState->journey.progress += delta / travelDistance;
+			gameState->journey.progress = min(1.0f, gameState->journey.progress);
+
+			// Update fuel
+			gameState->playerShip.fuel = 
+				gameState->journey.fuelBefore - 
+				gameState->journey.fuelConsumption * 
+				gameState->journey.progress;
+
+			// Once we have reached target location
+			if (gameState->journey.progress == 1.0f) {
+				gameState->dockedLocation = gameState->targetLocation;
+				gameState->targetLocation = nullptr;
+				gameState->journey.progress = 0.0f;
+			}
 		}
 	}
 };

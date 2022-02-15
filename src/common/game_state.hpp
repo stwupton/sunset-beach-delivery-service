@@ -52,12 +52,13 @@ struct GameState {
 	SystemLocation *highlightedLocation = nullptr;
 	SystemLocation *targetLocation = nullptr;
 	SystemLocation *dockedLocation = nullptr;
-	f32 travelProgress = 0.0f;
 
-	// TODO(steven): Hacky way of calculating fuel consumption on a journey, do this 
-	// better!
-	FuelValue travelFuelConsumption = 0.0f;
-	FuelValue fuelBeforeTravel = 0.0f;
+	// Journey data
+	struct {
+		FuelValue fuelConsumption = 0.0f;
+		FuelValue fuelBefore = 0.0f;
+		f32 progress = 0.0f;
+	} journey;
 
 	// Delivery data
 	u32 deliveriesMade = 0;
