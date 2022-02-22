@@ -317,8 +317,8 @@ public:
 
 			Mat4x4<f32> transform;
 			transform = transform.translate(sprite.position.x, sprite.position.y, sprite.position.z);
-			transform = transform.scale(sprite.scale.x, sprite.scale.y);
 			transform = transform.rotate(-sprite.angle * M_PI / 180);
+			transform = transform.scale(sprite.scale.x, sprite.scale.y);
 			
 			SpriteInfoBuffer *buffer = (SpriteInfoBuffer*)mappedResource.pData;
 			buffer->transform = transform;

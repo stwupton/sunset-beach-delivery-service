@@ -19,12 +19,11 @@ struct Mat4x4 {
 		this->w0 = w0; this->w1 = w1; this->w2 = w2; this->w3 = w3;
 	}
 
-	Mat4x4<T> scale(T x = 1, T y = 1, T z = 1, T w = 1) const {
+	Mat4x4<T> scale(T x = 1, T y = 1, T z = 1) const {
 		Mat4x4<f32> result = *this;
-		result.x0 = x;
-		result.y1 = y;
-		result.z2 = z;
-		result.w3 = w;
+		result.x0 *= x; result.y0 *= x; result.z0 *= x;
+		result.x1 *= y; result.y1 *= y; result.z1 *= y;
+		result.x2 *= z; result.y2 *= z; result.z2 *= z;
 		return result;
 	}
 
