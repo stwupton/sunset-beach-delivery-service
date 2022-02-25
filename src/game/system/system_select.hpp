@@ -14,15 +14,17 @@ namespace SystemSelect {
 	void drawLocations(GameState *gameState, f32 delta);
 	void drawIndicator(GameState *gameState);
 	void drawUI(GameState *gameState);
+	f32 getDistanceFromStar(SystemLocation *location);
 	void highlightLocations(GameState *gameState);
 	void update(GameState *gameState, f32 delta);
 	void updateJourney(GameState *gameState, f32 delta);
 
 	const f32 starRadius = 400.0f;
 	const Vec2<f32> starCenter = Vec3(-250.0f, 1080.0f * 0.5f);
-	const f32 minPlanetSpacing = 100.0f;
+	const f32 minPlanetSpacing = 130.0f;
 	const f32 minMoonSpacing = minPlanetSpacing * 0.2f;
 	const FuelValue fuelBurnRate = 20;
+	const f32 dayRate = 0.01f;
 
 	void setup(GameState *gameState) {
 		gameState->textureLoadQueue.push(TextureAssetId::background);
@@ -48,9 +50,13 @@ namespace SystemSelect {
 	}
 
 	void drawDepartButton(GameState *gameState) {
-		FuelValue fuelConsumption = 
-			gameState->dockedLocation->position.distanceTo(gameState->selectedLocation->position) / 
-			fuelBurnRate;
+		if (gameState->selectedLocation == gameState->dockedLocation) {
+			return;
+		}
+
+		const f32 distance = gameState->dockedLocation->position
+			.distanceTo(gameState->selectedLocation->position);
+		FuelValue fuelConsumption = distance / fuelBurnRate;
 		
 		const bool enabled = 
 			gameState->selectedLocation != gameState->dockedLocation && 
@@ -65,6 +71,22 @@ namespace SystemSelect {
 		button.height = 100.0f;
 		button.width = 200.0f;
 		button.position = Vec2(1920.0f - button.width - 10.0f, 10.0f);
+
+		const f32 travelDistance = abs(
+			getDistanceFromStar(gameState->dockedLocation) - 
+			getDistanceFromStar(gameState->selectedLocation)
+		);
+		const u32 estimatedDays = max(1, round(travelDistance * dayRate));
+		UITextData estimatedDaysText = {};
+		swprintf_s(estimatedDaysText.text.data, L"ESTIMATED TRAVEL TIME: %u DAYS", estimatedDays);
+		estimatedDaysText.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
+		estimatedDaysText.font = L"consolas";
+		estimatedDaysText.fontSize = 18.0f;
+		estimatedDaysText.width = button.width;
+		estimatedDaysText.height = estimatedDaysText.fontSize * 2;
+		estimatedDaysText.horizontalAlignment = UITextAlignment::middle;
+		estimatedDaysText.verticalAlignment = UITextAlignment::middle;
+		estimatedDaysText.position = Vec2(button.position.x, button.position.y + button.height + 10.0f);
 
 		if (enabled) {
 			button.handleInput(gameState->input);
@@ -89,9 +111,12 @@ namespace SystemSelect {
 					gameState->journey.fuelBefore = gameState->playerShip.fuel;
 				}
 			}
+		} else {
+			estimatedDaysText.text = L"INSUFFICIENT FUEL";
 		}
 
 		gameState->uiElements.push(button);
+		gameState->uiElements.push(estimatedDaysText);
 	}
 
 	void drawFuelGauge(GameState *gameState) {
@@ -182,11 +207,12 @@ namespace SystemSelect {
 	}
 
 	void drawLocations(GameState *gameState, f32 delta) {
-		u8 totalMoonOffset = 0;
+		const f32 orbitDistanceScale = 0.07f;
+
 		u8 moonOffset = 0;
 
-		f32 previousPlanetRadius = starRadius;
-		f32 previousMoonRadius = 0.0f;
+		f32 previousLocationDistance = starRadius;
+		f32 previousMoonDistance = 0.0f;
 
 		for (size_t i = 0; i < gameState->systemLocations.length; i++) {
 			Vec2<f32> orbitCenter = Vec2<f32>();
@@ -197,17 +223,21 @@ namespace SystemSelect {
 			if (i != 0 && location.isMoon) {
 				const SystemLocation &toOrbit = gameState->systemLocations[i - moonOffset - 1];
 				orbitCenter = toOrbit.position;
-				distance = minMoonSpacing + previousMoonRadius + location.radius + toOrbit.radius;
-				previousMoonRadius = distance + location.radius - toOrbit.radius;
+				distance = 
+					minMoonSpacing + 
+					previousMoonDistance + 
+					toOrbit.radius + 
+					location.orbit.distance * 
+					orbitDistanceScale;
+				previousMoonDistance = distance - toOrbit.radius;
 
-				totalMoonOffset++;
 				moonOffset++;
 			} else {
-				distance = minPlanetSpacing + previousPlanetRadius + location.radius;
-				previousPlanetRadius = distance + location.radius;
+				distance = minPlanetSpacing + previousLocationDistance + location.orbit.distance * orbitDistanceScale;
+				previousLocationDistance = distance;
 				orbitCenter = starCenter;
 
-				previousMoonRadius = 0.0f;
+				previousMoonDistance = 0.0f;
 				moonOffset = 0;
 			}
 
@@ -280,6 +310,13 @@ namespace SystemSelect {
 		if (gameState->selectedLocation != nullptr) {
 			drawDepartButton(gameState);
 		}
+	}
+
+	f32 getDistanceFromStar(SystemLocation *location) {
+		while (location->isMoon) {
+			location--;
+		}
+		return location->orbit.distance;
 	}
 
 	void highlightLocations(GameState *gameState) {

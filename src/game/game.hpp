@@ -20,12 +20,6 @@ namespace Game {
 
 		gameState->pendingMusicItem = MusicAssetId::mars;
 
-		gameState->modes[(size_t)GameModeId::combat] = { &Combat::setup, &Combat::update };
-		gameState->modes[(size_t)GameModeId::systemSelect] = { &SystemSelect::setup, &SystemSelect::update };
-		gameState->modes[(size_t)GameModeId::systemView] = { &SystemView::setup, &SystemView::update };
-
-		gameState->modes[(size_t)gameState->mode].setup(gameState);
-
 		populateSystemLocations(gameState);
 		SystemSelect::setup(gameState);
 	}

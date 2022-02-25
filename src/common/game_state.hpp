@@ -49,8 +49,8 @@ struct GameState {
 
 	// Journey data
 	struct {
-		FuelValue fuelConsumption = 0.0f;
-		FuelValue fuelBefore = 0.0f;
+		FuelValue fuelConsumption = 0;
+		FuelValue fuelBefore = 0;
 		f32 progress = 0.0f;
 	} journey;
 
