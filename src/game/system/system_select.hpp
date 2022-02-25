@@ -5,6 +5,7 @@
 #include "common/game_state.hpp"
 #include "game/utils.hpp"
 #include "game/system/common.hpp"
+#include "game/system/system_view.hpp"
 #include "types/core.hpp"
 #include "types/vector.hpp"
 
@@ -14,6 +15,7 @@ namespace SystemSelect {
 	void drawIndicator(GameState *gameState);
 	void drawUI(GameState *gameState);
 	void highlightLocations(GameState *gameState);
+	void update(GameState *gameState, f32 delta);
 	void updateJourney(GameState *gameState, f32 delta);
 
 	const f32 starRadius = 400.0f;
@@ -24,13 +26,16 @@ namespace SystemSelect {
 
 	void setup(GameState *gameState) {
 		gameState->textureLoadQueue.push(TextureAssetId::background);
+		
+		gameState->updateSystems.clear();
+		gameState->updateSystems.push(&update);
 	}
 
 	void update(GameState *gameState, f32 delta) {
 		gameState->highlightedLocation = nullptr;
 
 		if (gameState->input.keyDown == '\t') {
-			gameState->nextMode = GameModeId::systemView;
+			SystemView::setup(gameState);
 		}
 
 		updateJourney(gameState, delta);
@@ -159,9 +164,18 @@ namespace SystemSelect {
 			UITriangleData indicator = {};
 			indicator.color = Rgba(0.16f, 0.94f, 0.9f, 1.0f);
 
-			indicator.points.push(startLocation->position + Vec2(0.0f, -startLocation->radius - 10.0f));
-			indicator.points.push(startLocation->position + Vec2(-10.0f, -startLocation->radius - 30.0f));
-			indicator.points.push(startLocation->position + Vec2(10.0f, -startLocation->radius - 30.0f));
+			Vec2<f32> offset;
+			if (targetLocation != nullptr) {
+				offset.y = -(100 - startLocation->radius);
+
+				const Vec2<f32> difference = targetLocation->position - startLocation->position;
+				offset.x = difference.x * gameState->journey.progress;
+			}
+
+			// Bottom, top-left & top-right
+			indicator.points.push(startLocation->position + Vec2(0.0f, -startLocation->radius - 10.0f) + offset);
+			indicator.points.push(startLocation->position + Vec2(-10.0f, -startLocation->radius - 30.0f) + offset);
+			indicator.points.push(startLocation->position + Vec2(10.0f, -startLocation->radius - 30.0f) + offset);
 
 			gameState->uiElements.push(indicator);
 		}

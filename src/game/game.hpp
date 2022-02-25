@@ -27,6 +27,7 @@ namespace Game {
 		gameState->modes[(size_t)gameState->mode].setup(gameState);
 
 		populateSystemLocations(gameState);
+		SystemSelect::setup(gameState);
 	}
 
 	void update(GameState *gameState, f32 delta) {
@@ -35,14 +36,9 @@ namespace Game {
 		delta *= gameState->gameSpeed;
 #endif
 
-		if (gameState->nextMode != GameModeId::none) {
-			gameState->modes[(size_t)gameState->nextMode].setup(gameState);
-
-			gameState->mode = gameState->nextMode;
-			gameState->nextMode = GameModeId::none;
+		for (UpdateSystem system : gameState->updateSystems) {
+			system(gameState, delta);
 		}
-
-		gameState->modes[(size_t)gameState->mode].update(gameState, delta);
 
 #ifdef DEBUG
 		debugUI(gameState, realDelta);

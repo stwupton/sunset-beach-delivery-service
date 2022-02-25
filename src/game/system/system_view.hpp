@@ -5,12 +5,14 @@
 #include "common/game_state.hpp"
 #include "types/vector.hpp"
 #include "game/system/common.hpp"
+#include "game/system/system_select.hpp"
 #include "game/utils.hpp"
 #include "types/core.hpp"
 
 namespace SystemView {
 	// Forward declerations
 	void drawLocations(GameState *gameState, f32 delta);
+	void update(GameState *gameState, f32 delta);
 
 	const f32 scale = 0.2f;
 	const f32 starRadius = 400.0f;
@@ -18,14 +20,17 @@ namespace SystemView {
 
 	void setup(GameState *gameState) {
 		gameState->textureLoadQueue.push(TextureAssetId::background);
+
+		gameState->updateSystems.clear();
+		gameState->updateSystems.push(&update);
 	}
 
 	void update(GameState *gameState, f32 delta) {
 		SystemCommon::drawStarField(gameState);
 
-		if (gameState->input.keyDown == '\t') {
-			gameState->nextMode = GameModeId::systemSelect;
-		}
+		// if (gameState->input.keyDown == '\t') {
+		// 	SystemSelect::setup(gameState);
+		// }
 
 		SystemCommon::drawCentralStar(gameState, starCenter, starRadius * scale);
 		drawLocations(gameState, delta);

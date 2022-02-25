@@ -22,13 +22,7 @@ typedef Array<Sprite, 10> SpriteBuffer;
 typedef LoadQueue<TextureAssetId, 8> TextureLoadQueue;
 typedef LoadQueue<SoundAssetId, 8> SoundLoadQueue;
 
-typedef void (*GameModeSetup)(struct GameState *gameState);
-typedef void (*GameModeUpdate)(struct GameState *gameState, f32 delta);
-
-struct GameMode {
-	GameModeSetup setup;
-	GameModeUpdate update;
-};
+typedef void (*UpdateSystem)(struct GameState *gameState, f32 delta);
 
 enum class GameModeId : u8 {
 	none,
@@ -67,15 +61,13 @@ struct GameState {
 	// Platform/game common data
 	Events events;
 	Input input;
-	GameModeId mode = GameModeId::systemSelect;
-	GameMode modes[(size_t)GameModeId::_length];
-	GameModeId nextMode;
 	SpriteBuffer sprites;
 	Templates templates;
 	TextureLoadQueue textureLoadQueue;
 	SoundLoadQueue soundLoadQueue;
 	MusicAssetId pendingMusicItem = MusicAssetId::none;
 	UIElementBuffer uiElements;
+	Array<UpdateSystem, 1> updateSystems;
 
 #ifdef DEBUG
 	EditorState editorState;
