@@ -49,6 +49,23 @@ namespace SystemSelect {
 		drawUI(gameState);
 	}
 
+	void drawCredits(GameState *gameState) {
+		UITextData creditText = {};
+		swprintf_s(creditText.text.data, L"CREDITS: %c%u", 0xa4, gameState->credits);
+		creditText.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
+		creditText.font = L"consolas";
+		creditText.fontSize = 20.0f;
+		creditText.width = 200.0f;
+		creditText.height = 30.0f;
+		creditText.position = Vec2(
+			(1920.0f - creditText.width) * 0.5f, 
+			1080.0f - creditText.fontSize - 20.0f
+		);
+		creditText.horizontalAlignment = UITextAlignment::middle;
+		creditText.verticalAlignment = UITextAlignment::middle;
+		gameState->uiElements.push(creditText);
+	}
+
 	void drawDepartButton(GameState *gameState) {
 		if (gameState->selectedLocation == gameState->dockedLocation) {
 			return;
@@ -307,6 +324,7 @@ namespace SystemSelect {
 
 	void drawUI(GameState *gameState) {
 		drawFuelGauge(gameState);
+		drawCredits(gameState);
 		if (gameState->selectedLocation != nullptr) {
 			drawDepartButton(gameState);
 		}

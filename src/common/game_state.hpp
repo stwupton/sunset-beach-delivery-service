@@ -59,6 +59,7 @@ struct GameState {
 	Array<Shipment, 10> shipments;
 
 	// Platform/game common data
+	CreditValue credits = 1000;
 	Events events;
 	Input input;
 	SpriteBuffer sprites;

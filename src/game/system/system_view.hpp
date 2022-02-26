@@ -9,6 +9,8 @@
 #include "game/utils.hpp"
 #include "types/core.hpp"
 
+namespace SystemSelect { void setup(GameState *gameState); };
+
 namespace SystemView {
 	// Forward declerations
 	void drawLocations(GameState *gameState, f32 delta);
@@ -28,9 +30,9 @@ namespace SystemView {
 	void update(GameState *gameState, f32 delta) {
 		SystemCommon::drawStarField(gameState);
 
-		// if (gameState->input.keyDown == '\t') {
-		// 	SystemSelect::setup(gameState);
-		// }
+		if (gameState->input.keyDown == '\t') {
+			SystemSelect::setup(gameState);
+		}
 
 		SystemCommon::drawCentralStar(gameState, starCenter, starRadius * scale);
 		drawLocations(gameState, delta);
