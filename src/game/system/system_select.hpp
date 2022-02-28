@@ -82,11 +82,16 @@ namespace SystemSelect {
 
 		UIButtonData button = {};
 		button.label.text = L"DEPART";
-		button.label.fontSize = 30.0f;
+		button.label.font = L"consolas";
+		button.label.color = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
+		button.label.fontSize = 24.0f;
 		button.label.color = Rgba(1.0f, 1.0f, 1.0f, alpha);
-		button.color = Rgba(0.3f, 0.3f, 0.3f, alpha);
-		button.height = 100.0f;
-		button.width = 200.0f;
+		button.color = Rgba(0.0f, 0.0f, 0.0f, alpha);
+		button.height = 70.0f;
+		button.width = 150.0f;
+		button.cornerRadius = 10.0f;
+		button.strokeColor = Rgba(0.62f, 0.62f, 0.62f, 1.0f);
+		button.strokeWidth = 5.0f;
 		button.position = Vec2(1920.0f - button.width - 10.0f, 10.0f);
 
 		const f32 travelDistance = abs(
@@ -98,18 +103,18 @@ namespace SystemSelect {
 		swprintf_s(estimatedDaysText.text.data, L"ESTIMATED TRAVEL TIME: %u DAYS", estimatedDays);
 		estimatedDaysText.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
 		estimatedDaysText.font = L"consolas";
-		estimatedDaysText.fontSize = 18.0f;
+		estimatedDaysText.fontSize = 14.0f;
 		estimatedDaysText.width = button.width;
 		estimatedDaysText.height = estimatedDaysText.fontSize * 2;
 		estimatedDaysText.horizontalAlignment = UITextAlignment::middle;
 		estimatedDaysText.verticalAlignment = UITextAlignment::middle;
-		estimatedDaysText.position = Vec2(button.position.x, button.position.y + button.height + 10.0f);
+		estimatedDaysText.position = Vec2(button.position.x, button.position.y + button.height + 20.0f);
 
 		if (enabled) {
 			button.handleInput(gameState->input);
 			if (button.checkInput(UIButtonInputState::over)) {
 				gameState->input.cursor = Cursor::pointer;
-				button.color += Rgba(0.1f, 0.1f, 0.1f);
+				button.strokeColor = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
 
 				if (button.checkInput(UIButtonInputState::down)) {
 					const f32 scale = 0.9f;
@@ -120,6 +125,7 @@ namespace SystemSelect {
 					) * 0.5f;
 					button.width *= scale;
 					button.height *= scale;
+					button.strokeWidth *= scale;
 
 					gameState->targetLocation = gameState->selectedLocation;
 					gameState->selectedLocation = nullptr;
@@ -264,9 +270,9 @@ namespace SystemSelect {
 			{
 				UICircleData orbitPath = {};
 				orbitPath.strokeColor = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-				orbitPath.strokeStyle = UICircleStrokeStyle::solid;
+				orbitPath.strokeStyle = UIStrokeStyle::solid;
 				orbitPath.radius = distance;
-				orbitPath.thickness = 1.0f;
+				orbitPath.strokeWidth = 1.0f;
 				orbitPath.position = orbitCenter;
 				gameState->uiElements.push(orbitPath);
 			}
@@ -342,7 +348,7 @@ namespace SystemSelect {
 
 		if (gameState->selectedLocation != nullptr) {
 			UICircleData highlight = {};
-			highlight.thickness = 2.0f;
+			highlight.strokeWidth = 2.0f;
 			highlight.strokeColor = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
 			highlight.position = gameState->selectedLocation->position;
 			highlight.radius = gameState->selectedLocation->radius;
@@ -351,7 +357,7 @@ namespace SystemSelect {
 
 		if (gameState->highlightedLocation != nullptr) {
 			UICircleData highlight = {};
-			highlight.thickness = 2.0f;
+			highlight.strokeWidth = 2.0f;
 			highlight.strokeColor = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
 			highlight.position = gameState->highlightedLocation->position;
 			highlight.radius = gameState->highlightedLocation->radius;

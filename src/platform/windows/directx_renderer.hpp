@@ -220,7 +220,7 @@ public:
 				this->d2dRenderTarget->FillEllipse(ellipse, this->d2dSolidBrush);
 
 				D2D1_STROKE_STYLE_PROPERTIES strokeStyleProperties = {};
-				strokeStyleProperties.dashStyle = circle.strokeStyle == UICircleStrokeStyle::solid ? 
+				strokeStyleProperties.dashStyle = circle.strokeStyle == UIStrokeStyle::solid ? 
 					D2D1_DASH_STYLE_SOLID : 
 					D2D1_DASH_STYLE_DASH;
 
@@ -229,7 +229,7 @@ public:
 				ASSERT_HRESULT(result)
 
 				this->d2dSolidBrush->SetColor((const D2D1_COLOR_F*)&circle.strokeColor);
-				this->d2dRenderTarget->DrawEllipse(ellipse, this->d2dSolidBrush, circle.thickness, strokeStyle);
+				this->d2dRenderTarget->DrawEllipse(ellipse, this->d2dSolidBrush, circle.strokeWidth, strokeStyle);
 
 				RELEASE_COM_OBJ(strokeStyle);
 			} else if (element.type == UIType::traingle) {
@@ -259,17 +259,33 @@ public:
 
 				RELEASE_COM_OBJ(sink)
 				RELEASE_COM_OBJ(geometry)
-			} else if (element.type == UIType::button) {
-				const UIButtonData &button = element.button;
+			} else if (element.type == UIType::rectangle) {
+				const UIRectangleData &rectangle = element.rectangle;
 
-				D2D1_RECT_F rect = { 
-					button.position.x, 
-					button.position.y, 
-					button.position.x + button.width, 
-					button.position.y + button.height 
+				D2D1_ROUNDED_RECT rect = { 
+					rectangle.position.x, 
+					rectangle.position.y, 
+					rectangle.position.x + rectangle.width, 
+					rectangle.position.y + rectangle.height,
+					rectangle.cornerRadius, 
+					rectangle.cornerRadius 
 				};
 
-				this->d2dRenderTarget->FillRectangle(rect, this->d2dSolidBrush);
+				this->d2dRenderTarget->FillRoundedRectangle(rect, this->d2dSolidBrush);
+
+				D2D1_STROKE_STYLE_PROPERTIES strokeStyleProperties = {};
+				strokeStyleProperties.dashStyle = rectangle.strokeStyle == UIStrokeStyle::solid ? 
+					D2D1_DASH_STYLE_SOLID : 
+					D2D1_DASH_STYLE_DASH;
+
+				ID2D1StrokeStyle *strokeStyle = nullptr;
+				HRESULT result = this->d2dFactory->CreateStrokeStyle(strokeStyleProperties, nullptr, 0, &strokeStyle);
+				ASSERT_HRESULT(result)
+
+				this->d2dSolidBrush->SetColor((const D2D1_COLOR_F*)&rectangle.strokeColor);
+				this->d2dRenderTarget->DrawRoundedRectangle(rect, this->d2dSolidBrush, rectangle.strokeWidth, strokeStyle);
+
+				RELEASE_COM_OBJ(strokeStyle)
 			}
 
 			HRESULT result = this->d2dRenderTarget->EndDraw();

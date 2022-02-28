@@ -77,9 +77,9 @@ namespace SystemView {
 			{
 				UICircleData orbitPath = {};
 				orbitPath.strokeColor = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-				orbitPath.strokeStyle = UICircleStrokeStyle::solid;
+				orbitPath.strokeStyle = UIStrokeStyle::solid;
 				orbitPath.radius = minRadius + locationDistance;
-				orbitPath.thickness = 1.0f;
+				orbitPath.strokeWidth = 1.0f;
 				orbitPath.position = orbitCenter;
 				gameState->uiElements.push(orbitPath);
 			}
@@ -91,7 +91,7 @@ namespace SystemView {
 			const f32 distance = gameState->input.mouse.distanceTo(circle.position);
 			const bool mouseIsOver = distance <= locationRadius + 10.0f;
 			if (mouseIsOver) {
-				circle.thickness = 1.0f;
+				circle.strokeWidth = 1.0f;
 				circle.strokeColor = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
 			}
 

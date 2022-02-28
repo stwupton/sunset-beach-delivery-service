@@ -11,7 +11,7 @@ enum class UIType : u8 {
 	line,
 	circle,
 	traingle,
-	button
+	rectangle
 };
 
 struct UICommonData {
@@ -44,21 +44,32 @@ struct UILineData : UICommonData {
 	Vec2<f32> end;
 };
 
-enum class UICircleStrokeStyle : u8 {
+enum class UIStrokeStyle : u8 {
 	solid,
 	dotted
 };
 
 struct UICircleData : UICommonData {
-	f32 thickness;
 	f32 radius;
 	Vec2<f32> position;
-	UICircleStrokeStyle strokeStyle = UICircleStrokeStyle::solid;
+	UIStrokeStyle strokeStyle = UIStrokeStyle::solid;
+	f32 strokeWidth;
+	Rgba strokeColor;
+};
+
+struct UIRectangleData : UICommonData {
+	f32 width;
+	f32 height;
+	Vec2<f32> position;
+	f32 cornerRadius;
+	UIStrokeStyle strokeStyle = UIStrokeStyle::solid;
+	f32 strokeWidth;
 	Rgba strokeColor;
 };
 
 struct UIButtonLabelData : UICommonData {
 	f32 fontSize;
+	String16<32> font;
 	String16<32> text;
 };
 
@@ -69,10 +80,8 @@ enum class UIButtonInputState : u8 {
 	clicked = 1 << 3
 };
 
-struct UIButtonData : UICommonData {
+struct UIButtonData : UIRectangleData {
 	UIButtonLabelData label;
-	Vec2<f32> position;
-	f32 width, height;
 	u8 inputState = (u8)UIButtonInputState::none;
 
 	void handleInput(const Input &input) {
@@ -113,6 +122,6 @@ struct UIElement {
 		UILineData line;
 		UICircleData circle;
 		UITriangleData triangle;
-		UIButtonData button;
+		UIRectangleData rectangle;
 	};
 };

@@ -171,7 +171,7 @@ namespace Combat {
 			UICircleData bullet = {};
 			bullet.position = gameToScreen(projectile.position);
 			bullet.radius = 1.0f;
-			bullet.thickness = 10.0f;
+			bullet.strokeWidth = 10.0f;
 			bullet.strokeColor = Rgba(0.0f, 0.0f, 1.0f, 1.0f);
 			uiElements.push(bullet);
 		}
@@ -181,7 +181,7 @@ namespace Combat {
 			UICircleData bullet = {};
 			bullet.position = gameToScreen(aimless.position);
 			bullet.radius = 1.0f;
-			bullet.thickness = 10.0f;
+			bullet.strokeWidth = 10.0f;
 			bullet.strokeColor = Rgba(0.0f, 0.0f, 1.0f, 1.0f);
 			uiElements.push(bullet);
 		}
@@ -219,9 +219,9 @@ namespace Combat {
 		UIElementBuffer &uiElements = gameState->uiElements;
 		UICircleData targetPoint = {};
 		targetPoint.position = gameToScreen(target.position);
-		targetPoint.thickness = 10.0f;
+		targetPoint.strokeWidth = 10.0f;
 		targetPoint.radius = target.selectRadius;
-		targetPoint.strokeStyle = UICircleStrokeStyle::dotted;
+		targetPoint.strokeStyle = UIStrokeStyle::dotted;
 		targetPoint.strokeColor = color;
 
 		uiElements.push(targetPoint);
@@ -240,7 +240,7 @@ namespace Combat {
 
 		UICircleData weaponIndicator = {};
 		weaponIndicator.position = gameToScreen(weapon.position);
-		weaponIndicator.thickness = 10.0f;
+		weaponIndicator.strokeWidth = 10.0f;
 		weaponIndicator.radius = weapon.selectRadius;
 		weaponIndicator.strokeColor = color;
 		uiElements.push(weaponIndicator);

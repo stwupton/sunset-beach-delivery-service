@@ -34,8 +34,8 @@ struct UIElementBuffer : Array<UIElement, 100> {
 
 	void push(const UIButtonData &buttonData) {
 		UIElement element = {};
-		element.type = UIType::button;
-		element.button = buttonData;
+		element.type = UIType::rectangle;
+		element.rectangle = buttonData;
 		Array::push(element);
 
 		// Create a text element out of the label data and add it after the button
@@ -44,6 +44,7 @@ struct UIElementBuffer : Array<UIElement, 100> {
 		textElement.text.text = buttonData.label.text.data;
 		textElement.text.color = buttonData.label.color;
 		textElement.text.fontSize = buttonData.label.fontSize;
+		textElement.text.font = buttonData.label.font;
 		textElement.text.width = buttonData.width;
 		textElement.text.height = buttonData.height;
 		textElement.text.position = buttonData.position;
