@@ -2,16 +2,17 @@
 
 #include <cmath>
 
-#include "common/editor_state.hpp"
 #include "common/asset_definitions.hpp"
+#include "common/editor_state.hpp"
 #include "common/event.hpp"
-#include "common/sprite.hpp"
+#include "common/game_definitions.hpp"
 #include "common/input.hpp"
 #include "common/load_queue.hpp"
 #include "common/projectile.hpp"
 #include "common/ship.hpp"
 #include "common/ship_target.hpp"
 #include "common/shipment.hpp"
+#include "common/sprite.hpp"
 #include "common/system_location.hpp"
 #include "common/templates.hpp"
 #include "common/ui_element_buffer.hpp"
@@ -51,8 +52,11 @@ struct GameState {
 	struct {
 		FuelValue fuelConsumption = 0;
 		FuelValue fuelBefore = 0;
+		DayValue days = 0;
+		DayValue daysBefore = 0;
 		f32 progress = 0.0f;
 	} journey;
+	DayValue daysPassed = 0;
 
 	// Delivery data
 	u32 deliveriesMade = 0;

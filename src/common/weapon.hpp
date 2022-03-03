@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/combat_definitions.hpp"
+#include "common/game_definitions.hpp"
 #include "common/ship_target.hpp"
 #include "types/core.hpp"
 #include "types/nullable.hpp"

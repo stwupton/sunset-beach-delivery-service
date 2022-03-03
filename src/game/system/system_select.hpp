@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include "common/game_state.hpp"
+#include "game/date.hpp"
 #include "game/utils.hpp"
 #include "game/system/common.hpp"
 #include "game/system/system_view.hpp"
@@ -64,6 +65,20 @@ namespace SystemSelect {
 		creditText.horizontalAlignment = UITextAlignment::middle;
 		creditText.verticalAlignment = UITextAlignment::middle;
 		gameState->uiElements.push(creditText);
+	}
+
+	void drawDate(GameState *gameState) {
+		UITextData dateText = {};
+		dateText.text = DateUtils::getDate(gameState->daysPassed).data;
+		dateText.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
+		dateText.font = L"consolas";
+		dateText.fontSize = 20.0f;
+		dateText.width = 200.0f;
+		dateText.height = 30.0f;
+		dateText.position = Vec2(20.0f, 1080.0f - dateText.fontSize - 20.0f);
+		dateText.horizontalAlignment = UITextAlignment::start;
+		dateText.verticalAlignment = UITextAlignment::middle;
+		gameState->uiElements.push(dateText);
 	}
 
 	void drawDepartButton(GameState *gameState) {
@@ -132,6 +147,8 @@ namespace SystemSelect {
 					gameState->journey.progress = 0.0f;
 					gameState->journey.fuelConsumption = fuelConsumption;
 					gameState->journey.fuelBefore = gameState->playerShip.fuel;
+					gameState->journey.days = estimatedDays;
+					gameState->journey.daysBefore = gameState->daysPassed;
 				}
 			}
 		} else {
@@ -331,6 +348,7 @@ namespace SystemSelect {
 	void drawUI(GameState *gameState) {
 		drawFuelGauge(gameState);
 		drawCredits(gameState);
+		drawDate(gameState);
 		if (gameState->selectedLocation != nullptr) {
 			drawDepartButton(gameState);
 		}
@@ -381,6 +399,11 @@ namespace SystemSelect {
 				gameState->journey.fuelBefore - 
 				gameState->journey.fuelConsumption * 
 				gameState->journey.progress;
+
+			// Update date
+			gameState->daysPassed = 
+				gameState->journey.daysBefore + 
+				floor(gameState->journey.days * gameState->journey.progress);
 
 			// Once we have reached target location
 			if (gameState->journey.progress == 1.0f) {
