@@ -12,6 +12,7 @@ namespace Combat {
 	void updateWeaponCooldowns(GameState *gameState, f32 delta);
 	void updateProjectiles(GameState *gameState, f32 delta);
 	void processEvents(GameState *gameState);
+	void update(GameState *gameState, f32 delta);
 	void updateTargets(GameState *gameState);
 	template<size_t Size> void updateShips(Array<Ship, Size> *ships);
 	void updateAimlessProjectiles(GameState *gameState, f32 delta);
@@ -29,6 +30,9 @@ namespace Combat {
 	}
 
 	void setup(GameState *gameState) {
+		gameState->updateSystems.clear();
+		gameState->updateSystems.push(&update);
+
 		gameState->textureLoadQueue.push(TextureAssetId::ship);
 		gameState->textureLoadQueue.push(TextureAssetId::enemyShip);
 		gameState->textureLoadQueue.push(TextureAssetId::background);

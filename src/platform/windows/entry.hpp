@@ -20,6 +20,7 @@
 // TODO(steven): Move elsewhere
 static bool shouldClose = false;
 static bool editorOpen = false;
+static bool inFocus = true;
 static DirectXResources *directXResources = new DirectXResources{};
 static DirectXRenderer *renderer = new DirectXRenderer();
 static Dx3dSpriteLoader *loader = new Dx3dSpriteLoader();
@@ -43,6 +44,14 @@ LRESULT CALLBACK eventHandler(
 
 			CREATESTRUCT *createStruct = (CREATESTRUCT *)lParam;
 			SetWindowLongPtr(windowHandle, GWLP_USERDATA, (LONG_PTR)createStruct->lpCreateParams);
+		} break;
+
+		case WM_SETFOCUS: {
+			inFocus = true;
+		} break;
+
+		case WM_KILLFOCUS: {
+			inFocus = false;
 		} break;
 
 		case WM_CLOSE: {
@@ -146,7 +155,10 @@ INT WINAPI wWinMain(
 		}
 
 		loader->load(&gameState->textureLoadQueue);
-		inputProcessor->process(&gameState->input);
+
+		if (inFocus) {
+			inputProcessor->process(&gameState->input);
+		}
 
 		if (editorOpen) {
 			Editor::update(gameState);
