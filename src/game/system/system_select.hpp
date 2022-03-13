@@ -113,9 +113,9 @@ namespace SystemSelect {
 			getDistanceFromStar(gameState->dockedLocation) - 
 			getDistanceFromStar(gameState->selectedLocation)
 		);
-		const u32 estimatedDays = max(1, round(travelDistance * dayRate));
+		const DayValue estimatedDays = max(1, round(travelDistance * dayRate));
 		UITextData estimatedDaysText = {};
-		swprintf_s(estimatedDaysText.text.data, L"ESTIMATED TRAVEL TIME: %u DAYS", estimatedDays);
+		swprintf_s(estimatedDaysText.text.data, L"ESTIMATED TRAVEL TIME: %d DAYS", estimatedDays);
 		estimatedDaysText.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
 		estimatedDaysText.font = L"consolas";
 		estimatedDaysText.fontSize = 14.0f;
@@ -142,13 +142,32 @@ namespace SystemSelect {
 					button.height *= scale;
 					button.strokeWidth *= scale;
 
+					Tween journeyTween = {};
+					journeyTween.duration = estimatedDays;
+					journeyTween.type = TweenValueType::float32;
+					*(f32*)journeyTween.from = 0.0f;
+					*(f32*)journeyTween.to = 1.0f;
+					journeyTween.value = &gameState->journeyProgress;
+					gameState->tweens.push(journeyTween);
+
+					Tween fuelTween = {};
+					fuelTween.duration = estimatedDays;
+					fuelTween.type = TweenValueType::float32;
+					*(f32*)fuelTween.from = gameState->playerShip.fuel;
+					*(f32*)fuelTween.to = gameState->playerShip.fuel - fuelConsumption;
+					fuelTween.value = &gameState->playerShip.fuel;
+					gameState->tweens.push(fuelTween);
+
+					Tween daysTween = {};
+					daysTween.duration = estimatedDays;
+					daysTween.type = TweenValueType::int32;
+					*(s32*)daysTween.from = gameState->daysPassed;
+					*(s32*)daysTween.to = gameState->daysPassed + estimatedDays;
+					daysTween.value = &gameState->daysPassed;
+					gameState->tweens.push(daysTween);
+
 					gameState->targetLocation = gameState->selectedLocation;
 					gameState->selectedLocation = nullptr;
-					gameState->journey.progress = 0.0f;
-					gameState->journey.fuelConsumption = fuelConsumption;
-					gameState->journey.fuelBefore = gameState->playerShip.fuel;
-					gameState->journey.days = estimatedDays;
-					gameState->journey.daysBefore = gameState->daysPassed;
 				}
 			}
 		} else {
@@ -234,7 +253,7 @@ namespace SystemSelect {
 				offset.y = -(100 - startLocation->radius);
 
 				const Vec2<f32> difference = targetLocation->position - startLocation->position;
-				offset.x = difference.x * gameState->journey.progress;
+				offset.x = difference.x * gameState->journeyProgress;
 			}
 
 			// Bottom, top-left & top-right
@@ -386,31 +405,10 @@ namespace SystemSelect {
 	}
 
 	void updateJourney(GameState *gameState, f32 delta) {
-		if (gameState->targetLocation != nullptr) {
-			// TODO(steven): Change this formula for when we are using the position 
-			// around orbit indtead of system select view position.
-			const f32 travelDistance = gameState->dockedLocation->position
-				.distanceTo(gameState->targetLocation->position);
-			gameState->journey.progress += delta / travelDistance;
-			gameState->journey.progress = min(1.0f, gameState->journey.progress);
-
-			// Update fuel
-			gameState->playerShip.fuel = 
-				gameState->journey.fuelBefore - 
-				gameState->journey.fuelConsumption * 
-				gameState->journey.progress;
-
-			// Update date
-			gameState->daysPassed = 
-				gameState->journey.daysBefore + 
-				floor(gameState->journey.days * gameState->journey.progress);
-
-			// Once we have reached target location
-			if (gameState->journey.progress == 1.0f) {
-				gameState->dockedLocation = gameState->targetLocation;
-				gameState->targetLocation = nullptr;
-				gameState->journey.progress = 0.0f;
-			}
+		if (gameState->targetLocation != nullptr && gameState->journeyProgress == 1.0f) {
+			gameState->dockedLocation = gameState->targetLocation;
+			gameState->targetLocation = nullptr;
+			gameState->journeyProgress = 0.0f;
 		}
 	}
 };

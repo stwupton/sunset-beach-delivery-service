@@ -15,6 +15,7 @@
 #include "common/sprite.hpp"
 #include "common/system_location.hpp"
 #include "common/templates.hpp"
+#include "common/tween.hpp"
 #include "common/ui_element_buffer.hpp"
 #include "common/weapon.hpp"
 #include "types/array.hpp"
@@ -49,13 +50,7 @@ struct GameState {
 	SystemLocation *dockedLocation = nullptr;
 
 	// Journey data
-	struct {
-		FuelValue fuelConsumption = 0;
-		FuelValue fuelBefore = 0;
-		DayValue days = 0;
-		DayValue daysBefore = 0;
-		f32 progress = 0.0f;
-	} journey;
+	f32 journeyProgress = 0.0f;
 	DayValue daysPassed = 0;
 
 	// Delivery data
@@ -73,6 +68,7 @@ struct GameState {
 	MusicAssetId pendingMusicItem = MusicAssetId::none;
 	UIElementBuffer uiElements;
 	Array<UpdateSystem, 1> updateSystems;
+	Array<Tween, 16> tweens;
 
 #ifdef DEBUG
 	EditorState editorState;
