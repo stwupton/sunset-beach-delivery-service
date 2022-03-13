@@ -6,6 +6,7 @@
 #include "game/combat.hpp"
 #include "game/system/system_select.hpp"
 #include "game/system/system_view.hpp"
+#include "game/update_tweens.hpp"
 
 namespace Game {
 	// Forward declerations
@@ -29,11 +30,11 @@ namespace Game {
 		const f32 realDelta = delta;
 		delta *= gameState->gameSpeed;
 #endif
-
 		for (UpdateSystem system : gameState->updateSystems) {
 			system(gameState, delta);
 		}
 
+		updateTweens(gameState, delta);
 #ifdef DEBUG
 		debugUI(gameState, realDelta);
 #endif
