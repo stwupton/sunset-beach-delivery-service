@@ -76,6 +76,6 @@ struct GameState {
 
 #ifdef DEBUG
 	EditorState editorState;
-	u8 gameSpeed = 1;
+	u8 gameSpeed = 3;
 #endif
 };
