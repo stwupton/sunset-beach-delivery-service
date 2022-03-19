@@ -305,7 +305,7 @@ namespace SystemSelect {
 			// Orbit path
 			{
 				UICircleData orbitPath = {};
-				orbitPath.strokeColor = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
+				orbitPath.strokeColor = Rgba(1.0f, 1.0f, 1.0f, .7f);
 				orbitPath.strokeStyle = UIStrokeStyle::solid;
 				orbitPath.radius = distance;
 				orbitPath.strokeWidth = 1.0f;
@@ -384,20 +384,29 @@ namespace SystemSelect {
 		gameState->input.cursor = Cursor::arrow;
 
 		if (gameState->selectedLocation != nullptr) {
-			UICircleData highlight = {};
-			highlight.strokeWidth = 2.0f;
-			highlight.strokeColor = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-			highlight.position = gameState->selectedLocation->position;
-			highlight.radius = gameState->selectedLocation->radius;
+			UIRectangleData highlight = {};
+			highlight.strokeWidth = 1.0f;
+			highlight.strokeColor = Rgba(.0f, 1.0f, .0f, 1.0f);
+			highlight.position = gameState->selectedLocation->position - Vec2(
+				gameState->selectedLocation->radius + 10,
+				gameState->selectedLocation->radius + 10
+			);
+			highlight.width = highlight.height = (gameState->selectedLocation->radius + 10) * 2;
 			gameState->uiElements.push(highlight);
 		}
 
-		if (gameState->highlightedLocation != nullptr) {
-			UICircleData highlight = {};
-			highlight.strokeWidth = 2.0f;
-			highlight.strokeColor = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
-			highlight.position = gameState->highlightedLocation->position;
-			highlight.radius = gameState->highlightedLocation->radius;
+		if (
+			gameState->highlightedLocation != nullptr && 
+			gameState->highlightedLocation != gameState->selectedLocation
+		) {
+			UIRectangleData highlight = {};
+			highlight.strokeWidth = 1.0f;
+			highlight.strokeColor = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
+			highlight.position = gameState->highlightedLocation->position - Vec2(
+				gameState->highlightedLocation->radius + 10,
+				gameState->highlightedLocation->radius + 10
+			);
+			highlight.width = highlight.height = (gameState->highlightedLocation->radius + 10) * 2;
 			gameState->uiElements.push(highlight);
 
 			gameState->input.cursor = Cursor::pointer;

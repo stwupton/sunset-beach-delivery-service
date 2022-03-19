@@ -22,6 +22,17 @@
 		assert(SUCCEEDED(_result));                                 \
 	}
 
+// Assert a HRESULT with an extra details (useful for when we also get error 
+// messages from places other than the HRESULT)
+#define DETAILED_ASSERT_HRESULT(_result, _details, ...)         \
+	if (!SUCCEEDED(_result)) {                                    \
+		_com_error _error(_result);                                 \
+		LOG(L"HRESULT Error Message: %s\n", _error.ErrorMessage()); \
+		LOG(L"Details:\n");                                         \
+		LOG(_details, __VA_ARGS__);                                 \
+		assert(SUCCEEDED(_result));                                 \
+	}
+
 // TODO(steven): Keeping for now as it's useful for the render work that I'm 
 // doing but it should be removed at some point
 #define LOG_MATRIX(_m)                                 \

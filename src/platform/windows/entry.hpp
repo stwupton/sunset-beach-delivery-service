@@ -174,6 +174,8 @@ INT WINAPI wWinMain(
 
 		soundManager->process(&gameState->soundLoadQueue, &gameState->pendingMusicItem);
 
+		renderer->start();
+		renderer->drawStarfield();
 		renderer->drawSprites(gameState->sprites.data, gameState->sprites.length);
 		renderer->drawUI(gameState->uiElements.data, gameState->uiElements.length);
 		renderer->finish();

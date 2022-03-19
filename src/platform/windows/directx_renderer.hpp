@@ -45,18 +45,31 @@ protected:
 	IDWriteFactory *dWriteFactory;
 
 	// TODO(steven): delete
-	ID3D11VertexShader *vertexShader;
-	ID3D11PixelShader *pixelShader;
-	ID3D11InputLayout *vertexBufferLayout;
+	struct {
+		ID3D11VertexShader *vertexShader;
+		ID3D11PixelShader *pixelShader;
+		ID3D11InputLayout *vertexBufferLayout;
+		ID3D11Buffer *infoBuffer;
+	} spriteShader;
+
+	struct {
+		ID3D11VertexShader *vertexShader;
+		ID3D11InputLayout *vertexBufferLayout;
+		ID3D11Buffer *vertexBuffer;
+		ID3D11PixelShader *pixelShader;
+	} starfieldShader;
+
 	ID3D11BlendState *blendState;
-	ID3D11Buffer *spriteInfoBuffer;
 	ID3D11Buffer *constantBuffer;
 
 public:
 	~DirectXRenderer() {
-		RELEASE_COM_OBJ(this->vertexShader)
-		RELEASE_COM_OBJ(this->pixelShader)
-		RELEASE_COM_OBJ(this->vertexBufferLayout)
+		RELEASE_COM_OBJ(this->spriteShader.vertexShader)
+		RELEASE_COM_OBJ(this->spriteShader.pixelShader)
+		RELEASE_COM_OBJ(this->spriteShader.vertexBufferLayout)
+		RELEASE_COM_OBJ(this->spriteShader.infoBuffer)
+		RELEASE_COM_OBJ(this->starfieldShader.vertexShader)
+		RELEASE_COM_OBJ(this->starfieldShader.pixelShader)
 		RELEASE_COM_OBJ(this->swapChain)
 		RELEASE_COM_OBJ(this->deviceContext)
 		RELEASE_COM_OBJ(this->renderView)
@@ -67,7 +80,6 @@ public:
 		RELEASE_COM_OBJ(this->d2dSolidBrush)
 		RELEASE_COM_OBJ(this->dWriteFactory)
 		RELEASE_COM_OBJ(this->blendState)
-		RELEASE_COM_OBJ(this->spriteInfoBuffer)
 		RELEASE_COM_OBJ(this->constantBuffer)
 
 #ifdef DEBUG
@@ -161,7 +173,7 @@ public:
 				);
 				ASSERT_HRESULT(result)
 
-				// Horizaltal text alignment
+				// Horizontal text alignment
 				DWRITE_TEXT_ALIGNMENT textAlignments[] = { 
 					DWRITE_TEXT_ALIGNMENT_LEADING, 
 					DWRITE_TEXT_ALIGNMENT_CENTER, 
@@ -294,24 +306,14 @@ public:
 	}
 
 	void drawSprites(Sprite *sprites, UINT bufferLength) const {
-		const Rgba clearColor(0.0f, 0.2f, 0.4f, 1.0f);
-		this->deviceContext->ClearRenderTargetView(this->renderView, (f32*)&clearColor);
-
-		this->deviceContext->ClearDepthStencilView(
-			this->depthStencilView, 
-			D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 
-			1.0f, 
-			0
-		);
-
-		this->deviceContext->VSSetConstantBuffers(0, 1, &this->constantBuffer);
-		this->deviceContext->VSSetConstantBuffers(1, 1, &this->spriteInfoBuffer);
-
-		this->deviceContext->OMSetBlendState(this->blendState, 0, 0xffffffff);
-		this->deviceContext->OMSetDepthStencilState(this->depthStencilState, NULL);
-		this->deviceContext->OMSetRenderTargets(1, &this->renderView, this->depthStencilView);
-
 		this->deviceContext->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+		this->deviceContext->IASetInputLayout(this->spriteShader.vertexBufferLayout);
+
+		this->deviceContext->VSSetShader(this->spriteShader.vertexShader, nullptr, 0);
+		this->deviceContext->VSSetConstantBuffers(0, 1, &this->constantBuffer);
+		this->deviceContext->VSSetConstantBuffers(1, 1, &this->spriteShader.infoBuffer);
+
+		this->deviceContext->PSSetShader(this->spriteShader.pixelShader, nullptr, 0);
 
 		for (UINT i = 0; i < bufferLength; i++) {
 			const Sprite &sprite = sprites[i];
@@ -323,7 +325,7 @@ public:
 
 			D3D11_MAPPED_SUBRESOURCE mappedResource;
 			HRESULT result = this->deviceContext->Map(
-				this->spriteInfoBuffer, 
+				this->spriteShader.infoBuffer, 
 				NULL, 
 				D3D11_MAP_WRITE_DISCARD, 
 				NULL, 
@@ -339,11 +341,25 @@ public:
 			SpriteInfoBuffer *buffer = (SpriteInfoBuffer*)mappedResource.pData;
 			buffer->transform = transform;
 
-			this->deviceContext->Unmap(this->spriteInfoBuffer, 0);
+			this->deviceContext->Unmap(this->spriteShader.infoBuffer, 0);
 
 			this->deviceContext->PSSetShaderResources(0, 1, &textureReference.texture2dView);
 			this->deviceContext->Draw(4, 0);
 		}
+	}
+
+	void drawStarfield() const {
+		this->deviceContext->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+		this->deviceContext->IASetInputLayout(this->starfieldShader.vertexBufferLayout);
+
+		const UINT stride = sizeof(Vec3<f32>);
+		const UINT offset = 0;
+		this->deviceContext->IASetVertexBuffers(0, 1, &this->starfieldShader.vertexBuffer, &stride, &offset);
+
+		this->deviceContext->VSSetShader(this->starfieldShader.vertexShader, nullptr, 0);
+		this->deviceContext->PSSetShader(this->starfieldShader.pixelShader, nullptr, 0);
+
+		this->deviceContext->Draw(4, 0);
 	}
 
 	void finish() const {
@@ -352,55 +368,48 @@ public:
 		ASSERT_HRESULT(result)
 	}
 
-protected:
-	void compileShaders() {
-		ID3D10Blob *vertexShaderBlob; 
-		ID3D10Blob *pixelShaderBlob;
+	void start() const {
+		const Rgba clearColor(0.0f, 0.2f, 0.4f, 1.0f);
+		this->deviceContext->ClearRenderTargetView(this->renderView, (f32*)&clearColor);
 
+		this->deviceContext->ClearDepthStencilView(
+			this->depthStencilView, 
+			D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 
+			1.0f, 
+			0
+		);
+
+		this->deviceContext->OMSetBlendState(this->blendState, 0, 0xffffffff);
+		this->deviceContext->OMSetDepthStencilState(this->depthStencilState, NULL);
+		this->deviceContext->OMSetRenderTargets(1, &this->renderView, this->depthStencilView);
+	}
+
+protected:
+	void compileSpriteShaders() {
+		ID3D10Blob *blob;
+		ID3D10Blob *errorBlob;
+
+		const wchar_t *fileName = L"assets/shaders/sprite_shader.hlsl";
 		HRESULT result = D3DCompileFromFile(
-			L"assets/shaders/shaders.hlsl", 
+			fileName, 
 			nullptr, 
 			nullptr, 
 			"vertex", 
 			"vs_4_0", 
 			NULL, 
 			NULL, 
-			&vertexShaderBlob, 
-			nullptr
+			&blob, 
+			&errorBlob
 		); 
-		ASSERT_HRESULT(result)
-
-		result = D3DCompileFromFile(
-			L"assets/shaders/shaders.hlsl", 
-			nullptr, 
-			nullptr, 
-			"pixel", 
-			"ps_4_0", 
-			NULL, 
-			NULL, 
-			&pixelShaderBlob, 
-			nullptr
-		);
-		ASSERT_HRESULT(result)
+		DETAILED_ASSERT_HRESULT(result, L"%hs\n", errorBlob->GetBufferPointer())
 
 		result = this->resources->device->CreateVertexShader(
-			vertexShaderBlob->GetBufferPointer(), 
-			vertexShaderBlob->GetBufferSize(), 
+			blob->GetBufferPointer(), 
+			blob->GetBufferSize(), 
 			NULL, 
-			&this->vertexShader
+			&this->spriteShader.vertexShader
 		);
 		ASSERT_HRESULT(result)
-
-		result = this->resources->device->CreatePixelShader(
-			pixelShaderBlob->GetBufferPointer(), 
-			pixelShaderBlob->GetBufferSize(), 
-			NULL, 
-			&this->pixelShader
-		);
-		ASSERT_HRESULT(result)
-
-		this->deviceContext->VSSetShader(this->vertexShader, 0, 0);
-		this->deviceContext->PSSetShader(this->pixelShader, 0, 0);
 
 		D3D11_INPUT_ELEMENT_DESC inputElementDescriptions[] = {
 			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -410,13 +419,116 @@ protected:
 		result = this->resources->device->CreateInputLayout(
 			inputElementDescriptions,
 			2,
-			vertexShaderBlob->GetBufferPointer(),
-			vertexShaderBlob->GetBufferSize(),
-			&this->vertexBufferLayout
+			blob->GetBufferPointer(),
+			blob->GetBufferSize(),
+			&this->spriteShader.vertexBufferLayout
 		);
 		ASSERT_HRESULT(result)
 
-		this->deviceContext->IASetInputLayout(this->vertexBufferLayout);
+		result = D3DCompileFromFile(
+			fileName, 
+			nullptr, 
+			nullptr, 
+			"pixel", 
+			"ps_4_0", 
+			NULL, 
+			NULL, 
+			&blob,
+			&errorBlob
+		);
+		DETAILED_ASSERT_HRESULT(result, L"%hs\n", errorBlob->GetBufferPointer())
+
+		result = this->resources->device->CreatePixelShader(
+			blob->GetBufferPointer(),
+			blob->GetBufferSize(),
+			NULL,
+			&this->spriteShader.pixelShader
+		);
+		ASSERT_HRESULT(result)
+	}
+
+	void compileStarfieldShaders() {
+		ID3D10Blob *blob;
+		ID3DBlob *errorBlob;
+
+		const wchar_t *fileName = L"assets/shaders/starfield_shader.hlsl";
+		HRESULT result = D3DCompileFromFile(
+			fileName, 
+			nullptr, 
+			nullptr, 
+			"vertex", 
+			"vs_4_0", 
+			NULL, 
+			NULL, 
+			&blob, 
+			&errorBlob
+		); 
+		DETAILED_ASSERT_HRESULT(result, L"%hs\n", errorBlob->GetBufferPointer())
+
+		result = this->resources->device->CreateVertexShader(
+			blob->GetBufferPointer(), 
+			blob->GetBufferSize(), 
+			NULL, 
+			&this->starfieldShader.vertexShader
+		);
+		ASSERT_HRESULT(result)
+
+		D3D11_INPUT_ELEMENT_DESC inputElementDescriptions[] = {
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		};
+
+		result = this->resources->device->CreateInputLayout(
+			inputElementDescriptions,
+			1,
+			blob->GetBufferPointer(),
+			blob->GetBufferSize(),
+			&this->starfieldShader.vertexBufferLayout
+		);
+		ASSERT_HRESULT(result)
+
+		const Vec3<f32> vertices[] = { 
+			{ -1.0f, -1.0f }, { -1.0f, 1.0f }, { 1.0f, -1.0f }, { 1.0f, 1.0f } 
+		};
+		D3D11_BUFFER_DESC bufferDescription = {};
+		bufferDescription.Usage = D3D11_USAGE_DEFAULT;
+		bufferDescription.ByteWidth = sizeof(vertices);
+		bufferDescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+
+		D3D11_SUBRESOURCE_DATA subresourceData = {};
+		subresourceData.pSysMem = vertices;
+
+		result = this->resources->device->CreateBuffer(
+			&bufferDescription, 
+			&subresourceData, 
+			&this->starfieldShader.vertexBuffer
+		);
+		ASSERT_HRESULT(result)
+
+		result = D3DCompileFromFile(
+			fileName, 
+			nullptr, 
+			nullptr, 
+			"pixel", 
+			"ps_4_0", 
+			NULL, 
+			NULL, 
+			&blob, 
+			&errorBlob
+		);
+		DETAILED_ASSERT_HRESULT(result, L"%hs\n", errorBlob->GetBufferPointer())
+
+		result = this->resources->device->CreatePixelShader(
+			blob->GetBufferPointer(), 
+			blob->GetBufferSize(), 
+			NULL, 
+			&this->starfieldShader.pixelShader
+		);
+		ASSERT_HRESULT(result)
+	}
+
+	void compileShaders() {
+		this->compileSpriteShaders();
+		this->compileStarfieldShaders();
 	}
 
 	void createBlendState() {
@@ -491,7 +603,7 @@ protected:
 			HRESULT result = this->resources->device->CreateBuffer(
 				&bufferDescription, 
 				&subresourceData, 
-				&this->spriteInfoBuffer
+				&this->spriteShader.infoBuffer
 			);
 			ASSERT_HRESULT(result)
 		}
@@ -510,7 +622,11 @@ protected:
 		depthStencilResourceDescription.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 
 		ID3D11Texture2D *depthStencil;
-		HRESULT result = this->resources->device->CreateTexture2D(&depthStencilResourceDescription, NULL, &depthStencil);
+		HRESULT result = this->resources->device->CreateTexture2D(
+			&depthStencilResourceDescription, 
+			NULL, 
+			&depthStencil
+		);
 		ASSERT_HRESULT(result)
 
 		D3D11_DEPTH_STENCIL_DESC depthStencilDescription = {};
@@ -518,7 +634,10 @@ protected:
 		depthStencilDescription.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
 		depthStencilDescription.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
 
-		result = this->resources->device->CreateDepthStencilState(&depthStencilDescription, &this->depthStencilState);
+		result = this->resources->device->CreateDepthStencilState(
+			&depthStencilDescription, 
+			&this->depthStencilState
+		);
 		ASSERT_HRESULT(result)
 
 		D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDescription = {};
