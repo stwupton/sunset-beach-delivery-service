@@ -10,4 +10,5 @@ struct Shipment {
 	SystemLocation *from = nullptr;
 	SystemLocation *to = nullptr;
 	f32 weight;
+	bool available = true;
 };

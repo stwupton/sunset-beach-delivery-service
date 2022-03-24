@@ -142,6 +142,8 @@ BYTE streamBuffers[BUFFERNUM][STREAMBUFFERSIZE]; // Buffer array
 IXAudio2 *musicXAudio2 = NULL;
 IXAudio2MasteringVoice *musicMasterVoice = NULL;
 int currentBufferIndex = 0;
+float backgroundMusicVolume = 0.5f;
+float soundVolume = 0.5f;
 
 class StreamingVoiceContext : public IXAudio2VoiceCallback {
 public:
@@ -289,6 +291,8 @@ struct StreamMusic {
 				&musicCallBack
 			); 
 			ASSERT_HRESULT(hr)
+
+			musicSourceVoice->SetVolume(backgroundMusicVolume);
 
 			int fileSize = waveFileSize;
 			int currentPos = waveDataStartPosition;
@@ -567,6 +571,8 @@ public:
 				NULL
 			);
 			ASSERT_HRESULT(hr)
+
+			soundSourceVoice->SetVolume(soundVolume);
 
 			voiceCallbackPtr = &voiceCallback;
 			voiceCallbackPtr->soundManager = this;

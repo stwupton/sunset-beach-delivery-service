@@ -34,6 +34,11 @@ enum class GameModeId : u8 {
 	_length
 };
 
+const static int CREDIT_MAX = 10000;
+const static int CREDIT_MIN = 100;
+const static int WEIGHT_MAX = 500;
+const static int WEIGHT_MIN = 1;
+
 struct GameState {
 	// Combat data
 	Array<AimlessProjectile, 100> aimlessProjectiles;
@@ -56,6 +61,7 @@ struct GameState {
 	// Delivery data
 	u32 deliveriesMade = 0;
 	Array<Shipment, 10> shipments;
+	Array<Shipment, 4> availableShipments;
 
 	// Platform/game common data
 	CreditValue credits = 1000;

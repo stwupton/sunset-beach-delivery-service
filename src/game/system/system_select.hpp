@@ -7,8 +7,60 @@
 #include "game/utils.hpp"
 #include "game/system/common.hpp"
 #include "game/system/system_view.hpp"
+#include "game/package_menu.hpp"
 #include "types/core.hpp"
 #include "types/vector.hpp"
+
+
+
+namespace SystemSelect {
+	void populateAvailablePackages(GameState *gameState);
+
+	void populateAvailablePackages(GameState *gameState) {
+
+		gameState->availableShipments.clear();
+
+		Shipment shipment = {};
+
+		// Set the random seed based on number of days passed
+		srand(gameState->daysPassed);
+		//shipment.name = L"Package 1";
+
+		// Note: This method of generating random numbers in a range isn't suitable for
+		// applications that require high quality random numbers.
+		// rand() has a small output range [0,32767], making it unsuitable for
+		// generating random numbers across a large range using the method below.
+		// The approach below also may result in a non-uniform distribution.
+		// More robust random number functionality is available in the C++ <random> header.
+		// See https://docs.microsoft.com/cpp/standard-library/random
+		int creditAward = ((double)rand() / RAND_MAX) * (CREDIT_MAX - CREDIT_MIN) + CREDIT_MIN;
+
+		shipment.creditAward = creditAward;
+		shipment.from = gameState->dockedLocation;
+
+		int maxLocations = gameState->systemLocations.length - 1;
+		int destination = ((double)rand() / RAND_MAX) * (maxLocations - 1) + 1; // don't want to include docked location
+
+		// array is 0 based so remove 1
+		destination--;
+
+		// If selected location is the current location, then move on one
+		// If exceeds locations, then go back to first one
+		// TODO: probably better to randomise this again rather than consistently doing this
+		if (&gameState->systemLocations[destination] == shipment.from) {
+			destination++;
+			if (destination == gameState->systemLocations.length) {
+				destination = 0;
+			}
+		}
+
+		shipment.to = &gameState->systemLocations[destination];
+
+		int weight = ((double)rand() / RAND_MAX) * (WEIGHT_MAX - WEIGHT_MIN) + WEIGHT_MIN;
+		shipment.weight = weight;
+		gameState->availableShipments.push(shipment);
+	}
+};
 
 namespace SystemSelect {
 	// Forward declerations
@@ -176,6 +228,46 @@ namespace SystemSelect {
 
 		gameState->uiElements.push(button);
 		gameState->uiElements.push(estimatedDaysText);
+	}
+
+	void drawVisitPlanetButton(GameState *gameState) {
+		f32 alpha = 1.0f;
+
+		UIButtonData button = {};
+		button.label.text = L"VISIT";
+		button.label.font = L"consolas";
+		button.label.color = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
+		button.label.fontSize = 24.0f;
+		button.label.color = Rgba(1.0f, 1.0f, 1.0f, alpha);
+		button.color = Rgba(0.0f, 0.0f, 0.0f, alpha);
+		button.height = 70.0f;
+		button.width = 150.0f;
+		button.cornerRadius = 10.0f;
+		button.strokeColor = Rgba(0.62f, 0.62f, 0.62f, 1.0f);
+		button.strokeWidth = 5.0f;
+		button.position = Vec2(1920.0f - button.width - 10.0f, 180.0f);
+
+		button.handleInput(gameState->input);
+		if (button.checkInput(UIButtonInputState::over)) {
+			gameState->input.cursor = Cursor::pointer;
+			button.strokeColor = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
+
+			if (button.checkInput(UIButtonInputState::down)) {
+				const f32 scale = 0.9f;
+				button.label.fontSize *= scale;
+				button.position += Vec2(
+					button.width - button.width * scale,
+					button.height - button.height * scale
+				) * 0.5f;
+				button.width *= scale;
+				button.height *= scale;
+				button.strokeWidth *= scale;
+
+				PackageMenu::setup(gameState);
+			}
+		}
+
+		gameState->uiElements.push(button);
 	}
 
 	void drawFuelGauge(GameState *gameState) {
@@ -371,6 +463,9 @@ namespace SystemSelect {
 		if (gameState->selectedLocation != nullptr) {
 			drawDepartButton(gameState);
 		}
+		if (gameState->journeyProgress == 0.0f) {
+			drawVisitPlanetButton(gameState);
+		}
 	}
 
 	f32 getDistanceFromStar(SystemLocation *location) {
@@ -409,6 +504,10 @@ namespace SystemSelect {
 			gameState->dockedLocation = gameState->targetLocation;
 			gameState->targetLocation = nullptr;
 			gameState->journeyProgress = 0.0f;
+			
+			// TODO: Generate new packages to select from for new world
+			//Game::populateAvailablePackages(gameState);
+			SystemSelect::populateAvailablePackages(gameState);
 		}
 	}
 };

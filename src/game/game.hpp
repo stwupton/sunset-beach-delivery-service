@@ -19,9 +19,12 @@ namespace Game {
 		gameState->playerShip.fuel = 30.0f;
 		gameState->dockedLocation = &gameState->systemLocations[0];
 
+		Shipment package1 = Shipment{};
+
 		gameState->pendingMusicItem = MusicAssetId::mars;
 
 		populateSystemLocations(gameState);
+		SystemSelect::populateAvailablePackages(gameState);
 		SystemSelect::setup(gameState);
 	}
 
