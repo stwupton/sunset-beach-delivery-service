@@ -24,12 +24,6 @@ namespace PackageMenu {
 	void setup(GameState *gameState) {
 		gameState->textureLoadQueue.push(TextureAssetId::marketPlace1);
 
-		/*Shipment shipment1 = Shipment{};
-		srand(gameState->daysPassed);
-		shipment1.creditAward = rand() * ;
-
-		gameState->systemLocations.length*/
-
 		gameState->updateSystems.clear();
 		gameState->updateSystems.push(&update);
 	}
@@ -48,7 +42,7 @@ namespace PackageMenu {
 		titleText.fontSize = 40.0f;
 		titleText.width = 200.0f;
 		titleText.height = 30.0f;
-		f32 xPos = (screenWidth / 2.0f) - titleText.fontSize - 20.0f;
+		f32 xPos = (screenWidth / 2.0f) - (titleText.width / 2.0f); //titleText.fontSize - 20.0f;
 		titleText.position = Vec2(xPos, 20.0f);
 		titleText.horizontalAlignment = UITextAlignment::start;
 		titleText.verticalAlignment = UITextAlignment::middle;
@@ -57,7 +51,24 @@ namespace PackageMenu {
 
 	void drawPackages(GameState *gameState) {
 
+		const f32 packageWidth = 200.0f;
+		const f32 packagePadding = 80.0f;
+		int numOfPackages = gameState->availableShipments.length;
+
+		// Calculate total width of all packages with padding
+		f32 totalWidth = (numOfPackages * packageWidth) + ((numOfPackages - 1) * packagePadding);
+		f32 midPoint = (screenWidth / 2.0f);
+		f32 startXPos = midPoint - (totalWidth / 2.0f);
+
+		//int divisor = numOfPackages == 1 ? 2 : numOfPackages;
+		//f32 startingPoint = (screenWidth / (double)(divisor));
+		//f32 startXPos = startingPoint - ((packagePadding / 2.0f) * (numOfPackages - 1)) - packageWidth;// (packageWidth / 2.0f);
+		f32 previousXPosDiff = 0.0f;
+
 		for (size_t i = 0; i < gameState->availableShipments.length; i++) {
+
+			f32 xPos = startXPos + previousXPosDiff;
+			f32 yPos = (screenHeight / 2.0f) - 20.0f;
 
 			UITextData packageText = {};
 			swprintf_s(packageText.text.data, L"Package %d", i + 1);
@@ -66,8 +77,6 @@ namespace PackageMenu {
 			packageText.fontSize = 40.0f;
 			packageText.width = 200.0f;
 			packageText.height = 30.0f;
-			f32 xPos = (screenWidth / 5.0f) - (packageText.width / 2.0f);
-			f32 yPos = (screenHeight / 2.0f) - 20.0f;
 			packageText.position = Vec2(xPos, yPos);
 			packageText.horizontalAlignment = UITextAlignment::start;
 			packageText.verticalAlignment = UITextAlignment::middle;
@@ -131,6 +140,8 @@ namespace PackageMenu {
 			yPos += creditText.height;
 			button.position = Vec2(xPos, yPos);
 
+			previousXPosDiff += packageWidth + packagePadding;
+
 			if (enabled) {
 				button.handleInput(gameState->input);
 				if (button.checkInput(UIButtonInputState::over)) {
@@ -157,92 +168,92 @@ namespace PackageMenu {
 		}
 	}
 
-	void drawPackage2(GameState *gameState) {
-		UIRectangleData packageImage = {};
-		packageImage.color = Rgba(1.0f, 1.0f, 1.0f, 0.0f);
-		packageImage.height = 500.0f;
-		packageImage.width = 200.0f;
-		f32 xPos = ((screenWidth / 5.0f) * 2.0f) - (packageImage.width / 2.0f);
-		f32 yPos = (screenHeight / 2.0f);
-		yPos -= packageImage.height / 2.0f;
-		packageImage.position = Vec2(xPos, yPos);
-		packageImage.strokeWidth = 5.0f;
-		packageImage.strokeColor = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-		//packageImage.fillRectange = false;
+	//void drawPackage2(GameState *gameState) {
+	//	UIRectangleData packageImage = {};
+	//	packageImage.color = Rgba(1.0f, 1.0f, 1.0f, 0.0f);
+	//	packageImage.height = 500.0f;
+	//	packageImage.width = 200.0f;
+	//	f32 xPos = ((screenWidth / 5.0f) * 2.0f) - (packageImage.width / 2.0f);
+	//	f32 yPos = (screenHeight / 2.0f);
+	//	yPos -= packageImage.height / 2.0f;
+	//	packageImage.position = Vec2(xPos, yPos);
+	//	packageImage.strokeWidth = 5.0f;
+	//	packageImage.strokeColor = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
+	//	//packageImage.fillRectange = false;
 
-		gameState->uiElements.push(packageImage);
+	//	gameState->uiElements.push(packageImage);
 
-		UITextData packageText = {};
-		packageText.text = L"Package 2";
-		packageText.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-		packageText.font = L"consolas";
-		packageText.fontSize = 40.0f;
-		packageText.width = 200.0f;
-		packageText.height = 30.0f;
-		yPos += packageImage.height + packageText.height;
-		packageText.position = Vec2(xPos, yPos);
-		packageText.horizontalAlignment = UITextAlignment::start;
-		packageText.verticalAlignment = UITextAlignment::middle;
-		gameState->uiElements.push(packageText);
-	}
+	//	UITextData packageText = {};
+	//	packageText.text = L"Package 2";
+	//	packageText.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
+	//	packageText.font = L"consolas";
+	//	packageText.fontSize = 40.0f;
+	//	packageText.width = 200.0f;
+	//	packageText.height = 30.0f;
+	//	yPos += packageImage.height + packageText.height;
+	//	packageText.position = Vec2(xPos, yPos);
+	//	packageText.horizontalAlignment = UITextAlignment::start;
+	//	packageText.verticalAlignment = UITextAlignment::middle;
+	//	gameState->uiElements.push(packageText);
+	//}
 
-	void drawPackage3(GameState *gameState) {
-		UIRectangleData packageImage = {};
-		packageImage.color = Rgba(1.0f, 1.0f, 1.0f, 0.0f);
-		packageImage.height = 500.0f;
-		packageImage.width = 200.0f;
-		f32 xPos = ((screenWidth / 5.0f) * 3.0f) - (packageImage.width / 2.0f);
-		f32 yPos = (screenHeight / 2.0f);
-		yPos -= packageImage.height / 2.0f;
-		packageImage.position = Vec2(xPos, yPos);
-		packageImage.strokeWidth = 5.0f;
-		packageImage.strokeColor = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-		//packageImage.fillRectange = false;
+	//void drawPackage3(GameState *gameState) {
+	//	UIRectangleData packageImage = {};
+	//	packageImage.color = Rgba(1.0f, 1.0f, 1.0f, 0.0f);
+	//	packageImage.height = 500.0f;
+	//	packageImage.width = 200.0f;
+	//	f32 xPos = ((screenWidth / 5.0f) * 3.0f) - (packageImage.width / 2.0f);
+	//	f32 yPos = (screenHeight / 2.0f);
+	//	yPos -= packageImage.height / 2.0f;
+	//	packageImage.position = Vec2(xPos, yPos);
+	//	packageImage.strokeWidth = 5.0f;
+	//	packageImage.strokeColor = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
+	//	//packageImage.fillRectange = false;
 
-		gameState->uiElements.push(packageImage);
+	//	gameState->uiElements.push(packageImage);
 
-		UITextData packageText = {};
-		packageText.text = L"Package 3";
-		packageText.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-		packageText.font = L"consolas";
-		packageText.fontSize = 40.0f;
-		packageText.width = 200.0f;
-		packageText.height = 30.0f;
-		yPos += packageImage.height + packageText.height;
-		packageText.position = Vec2(xPos, yPos);
-		packageText.horizontalAlignment = UITextAlignment::start;
-		packageText.verticalAlignment = UITextAlignment::middle;
-		gameState->uiElements.push(packageText);
-	}
+	//	UITextData packageText = {};
+	//	packageText.text = L"Package 3";
+	//	packageText.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
+	//	packageText.font = L"consolas";
+	//	packageText.fontSize = 40.0f;
+	//	packageText.width = 200.0f;
+	//	packageText.height = 30.0f;
+	//	yPos += packageImage.height + packageText.height;
+	//	packageText.position = Vec2(xPos, yPos);
+	//	packageText.horizontalAlignment = UITextAlignment::start;
+	//	packageText.verticalAlignment = UITextAlignment::middle;
+	//	gameState->uiElements.push(packageText);
+	//}
 
-	void drawPackage4(GameState *gameState) {
-		UIRectangleData packageImage = {};
-		packageImage.color = Rgba(1.0f, 1.0f, 1.0f, 0.0f);
-		packageImage.height = 500.0f;
-		packageImage.width = 200.0f;
-		f32 xPos = ((screenWidth / 5.0f) * 4.0f) - (packageImage.width / 2.0f);
-		f32 yPos = (screenHeight / 2.0f);
-		yPos -= packageImage.height / 2.0f;
-		packageImage.position = Vec2(xPos, yPos);
-		packageImage.strokeWidth = 5.0f;
-		packageImage.strokeColor = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-		//packageImage.fillRectange = false;
+	//void drawPackage4(GameState *gameState) {
+	//	UIRectangleData packageImage = {};
+	//	packageImage.color = Rgba(1.0f, 1.0f, 1.0f, 0.0f);
+	//	packageImage.height = 500.0f;
+	//	packageImage.width = 200.0f;
+	//	f32 xPos = ((screenWidth / 5.0f) * 4.0f) - (packageImage.width / 2.0f);
+	//	f32 yPos = (screenHeight / 2.0f);
+	//	yPos -= packageImage.height / 2.0f;
+	//	packageImage.position = Vec2(xPos, yPos);
+	//	packageImage.strokeWidth = 5.0f;
+	//	packageImage.strokeColor = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
+	//	//packageImage.fillRectange = false;
 
-		gameState->uiElements.push(packageImage);
+	//	gameState->uiElements.push(packageImage);
 
-		UITextData packageText = {};
-		packageText.text = L"Package 4";
-		packageText.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-		packageText.font = L"consolas";
-		packageText.fontSize = 40.0f;
-		packageText.width = 200.0f;
-		packageText.height = 30.0f;
-		yPos += packageImage.height + packageText.height;
-		packageText.position = Vec2(xPos, yPos);
-		packageText.horizontalAlignment = UITextAlignment::start;
-		packageText.verticalAlignment = UITextAlignment::middle;
-		gameState->uiElements.push(packageText);
-	}
+	//	UITextData packageText = {};
+	//	packageText.text = L"Package 4";
+	//	packageText.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
+	//	packageText.font = L"consolas";
+	//	packageText.fontSize = 40.0f;
+	//	packageText.width = 200.0f;
+	//	packageText.height = 30.0f;
+	//	yPos += packageImage.height + packageText.height;
+	//	packageText.position = Vec2(xPos, yPos);
+	//	packageText.horizontalAlignment = UITextAlignment::start;
+	//	packageText.verticalAlignment = UITextAlignment::middle;
+	//	gameState->uiElements.push(packageText);
+	//}
 
 	void drawExitButton(GameState *gameState) {
 
@@ -261,7 +272,8 @@ namespace PackageMenu {
 		button.cornerRadius = 10.0f;
 		button.strokeColor = Rgba(0.62f, 0.62f, 0.62f, 1.0f);
 		button.strokeWidth = 5.0f;
-		f32 xPos = (screenWidth / 2.0f) - button.label.fontSize - 20.0f;
+		//f32 xPos = (screenWidth / 2.0f) - button.label.fontSize - 20.0f;
+		f32 xPos = (screenWidth / 2.0f) - (button.width / 2.0f);
 		f32 yPos = screenHeight - button.height - bottomPadding;
 		button.position = Vec2(xPos, yPos);
 
@@ -288,7 +300,6 @@ namespace PackageMenu {
 		gameState->uiElements.push(button);
 	}
 
-
 	void drawBackground(GameState *gameState) {
 		Sprite background = {};
 		background.assetId = TextureAssetId::marketPlace1;
@@ -300,9 +311,9 @@ namespace PackageMenu {
 	void drawUI(GameState *gameState) {
 		drawTitle(gameState);
 		drawPackages(gameState);
-		drawPackage2(gameState);
+		/*drawPackage2(gameState);
 		drawPackage3(gameState);
-		drawPackage4(gameState);
+		drawPackage4(gameState);*/
 		drawExitButton(gameState);
 	}
 };

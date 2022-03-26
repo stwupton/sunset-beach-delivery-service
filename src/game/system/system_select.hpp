@@ -14,51 +14,75 @@
 
 
 namespace SystemSelect {
-	void populateAvailablePackages(GameState *gameState);
-
 	void populateAvailablePackages(GameState *gameState) {
 
 		gameState->availableShipments.clear();
 
-		Shipment shipment = {};
-
 		// Set the random seed based on number of days passed
 		srand(gameState->daysPassed);
-		//shipment.name = L"Package 1";
 
-		// Note: This method of generating random numbers in a range isn't suitable for
-		// applications that require high quality random numbers.
-		// rand() has a small output range [0,32767], making it unsuitable for
-		// generating random numbers across a large range using the method below.
-		// The approach below also may result in a non-uniform distribution.
-		// More robust random number functionality is available in the C++ <random> header.
-		// See https://docs.microsoft.com/cpp/standard-library/random
-		int creditAward = ((double)rand() / RAND_MAX) * (CREDIT_MAX - CREDIT_MIN) + CREDIT_MIN;
-
-		shipment.creditAward = creditAward;
-		shipment.from = gameState->dockedLocation;
-
-		int maxLocations = gameState->systemLocations.length - 1;
-		int destination = ((double)rand() / RAND_MAX) * (maxLocations - 1) + 1; // don't want to include docked location
-
-		// array is 0 based so remove 1
-		destination--;
-
-		// If selected location is the current location, then move on one
-		// If exceeds locations, then go back to first one
-		// TODO: probably better to randomise this again rather than consistently doing this
-		if (&gameState->systemLocations[destination] == shipment.from) {
-			destination++;
-			if (destination == gameState->systemLocations.length) {
-				destination = 0;
-			}
+		const int AVAILABLE_SHIPMENT_MIN = 1;
+		f32 num = ((double)rand() / RAND_MAX);
+		/*int range = (AVAILABLE_SHIPMENT_MAX - AVAILABLE_SHIPMENT_MIN);
+		int availableShipments = (num) * (range + AVAILABLE_SHIPMENT_MIN);*/
+		int range = (AVAILABLE_SHIPMENT_MAX);
+		int availableShipments = (num) * (range);
+		if (availableShipments < AVAILABLE_SHIPMENT_MAX) {
+			availableShipments++;
 		}
 
-		shipment.to = &gameState->systemLocations[destination];
+		for (size_t i = 1; i <= availableShipments; i++) {
+			Shipment shipment = {};
+			//shipment.name = L"Package 1";
 
-		int weight = ((double)rand() / RAND_MAX) * (WEIGHT_MAX - WEIGHT_MIN) + WEIGHT_MIN;
-		shipment.weight = weight;
-		gameState->availableShipments.push(shipment);
+			// Note: This method of generating random numbers in a range isn't suitable for
+			// applications that require high quality random numbers.
+			// rand() has a small output range [0,32767], making it unsuitable for
+			// generating random numbers across a large range using the method below.
+			// The approach below also may result in a non-uniform distribution.
+			// More robust random number functionality is available in the C++ <random> header.
+			// See https://docs.microsoft.com/cpp/standard-library/random
+			num = ((double)rand() / RAND_MAX);
+			range = CREDIT_MAX - CREDIT_MIN;
+			//int creditAward = (((double)rand() / RAND_MAX) * (CREDIT_MAX - CREDIT_MIN)) + CREDIT_MIN;
+			int creditAward = ((num) * (range)) + CREDIT_MIN;
+
+			shipment.creditAward = creditAward;
+			shipment.from = gameState->dockedLocation;
+
+			int maxLocations = gameState->systemLocations.length;
+			//int destination = ((double)rand() / RAND_MAX) * ((maxLocations - 1) + 1); // don't want to include docked location
+			num = ((double)rand() / RAND_MAX);
+			int destination = (num) * ((maxLocations - 1)); // don't want to include docked location
+			if (destination < (maxLocations - 1)) {
+				destination++;
+			}
+
+			// array is 0 based so remove 1
+			destination--;
+
+			// If selected location is the current location, then move on one
+			// If exceeds locations, then go back to first one
+			// TODO: probably better to randomise this again rather than consistently doing this
+			if (&gameState->systemLocations[destination] == shipment.from) {
+				destination++;
+				if (destination == gameState->systemLocations.length) {
+					destination = 0;
+				}
+			}
+
+			shipment.to = &gameState->systemLocations[destination];
+
+			//int weight = (((double)rand() / RAND_MAX) * (WEIGHT_MAX - WEIGHT_MIN)) + WEIGHT_MIN;
+			range = (WEIGHT_MAX - WEIGHT_MIN);
+			num = ((double)rand() / RAND_MAX);
+			int weight = (num) * (range);
+			if (weight < WEIGHT_MAX) {
+				weight++;
+			}
+			shipment.weight = weight;
+			gameState->availableShipments.push(shipment);
+		}
 	}
 };
 
@@ -504,10 +528,8 @@ namespace SystemSelect {
 			gameState->dockedLocation = gameState->targetLocation;
 			gameState->targetLocation = nullptr;
 			gameState->journeyProgress = 0.0f;
-			
-			// TODO: Generate new packages to select from for new world
-			//Game::populateAvailablePackages(gameState);
-			SystemSelect::populateAvailablePackages(gameState);
+
+			populateAvailablePackages(gameState);
 		}
 	}
 };

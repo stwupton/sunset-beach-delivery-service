@@ -24,8 +24,8 @@ namespace Game {
 		gameState->pendingMusicItem = MusicAssetId::mars;
 
 		populateSystemLocations(gameState);
-		SystemSelect::populateAvailablePackages(gameState);
 		SystemSelect::setup(gameState);
+		SystemSelect::populateAvailablePackages(gameState);
 	}
 
 	void update(GameState *gameState, f32 delta) {
