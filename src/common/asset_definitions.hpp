@@ -28,7 +28,9 @@ enum class SoundAssetId : u8 {
 	left,
 	right,
 	stereo,
-	doomDeath
+	doomDeath,
+	cha_ching,
+	wahoo
 };
 
 namespace _SoundAssetFileNames {
@@ -36,13 +38,17 @@ namespace _SoundAssetFileNames {
 	const wchar_t *right = L"assets/music/Right.wav";
 	const wchar_t *stereo = L"assets/music/Stereo.wav";
 	const wchar_t *doomDeath = L"assets/music/sound1.wav";
+	const wchar_t *cha_ching = L"assets/music/cha_ching.wav";
+	const wchar_t *wahoo = L"assets/music/wahoo.wav";
 };
 
 const wchar_t *soundNames[] = {
 	_SoundAssetFileNames::left,
 	_SoundAssetFileNames::right,
 	_SoundAssetFileNames::stereo,
-	_SoundAssetFileNames::doomDeath
+	_SoundAssetFileNames::doomDeath,
+	_SoundAssetFileNames::cha_ching,
+	_SoundAssetFileNames::wahoo
 };
 
 enum class MusicAssetId : u8 {
