@@ -39,6 +39,7 @@ const int CREDIT_MIN = 100;
 const int WEIGHT_MAX = 500;
 const int WEIGHT_MIN = 1;
 const int AVAILABLE_SHIPMENT_MAX = 4;
+const int SHIPMENT_MAX = 10;
 
 struct GameState {
 	// Combat data
@@ -61,7 +62,7 @@ struct GameState {
 
 	// Delivery data
 	u32 deliveriesMade = 0;
-	Array<Shipment, 10> shipments;
+	Array<Shipment, SHIPMENT_MAX> shipments;
 	Array<Shipment, AVAILABLE_SHIPMENT_MAX> availableShipments;
 
 	// Platform/game common data

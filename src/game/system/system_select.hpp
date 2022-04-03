@@ -15,11 +15,42 @@
 
 namespace SystemSelect {
 	void populateAvailablePackages(GameState *gameState) {
+		#pragma region Clear out any delivered packages
+
+		Array<Shipment, SHIPMENT_MAX> undeliveredShipments;
+
+		for (int i = gameState->shipments.length - 1; i > -1; i--) {
+			Shipment s = gameState->shipments[i];
+
+			// only show packages for current location
+			if (s.available) {
+				undeliveredShipments.push(s);
+			}
+
+			gameState->shipments.pop();
+		}
+
+		// Push all deliverable packages back in
+		for (int i = 0; i < undeliveredShipments.length; i++) {
+			gameState->shipments.push(undeliveredShipments[i]);
+		}
+
+		// Finally clear temporary array
+		undeliveredShipments.clear();
+
+		#pragma endregion
 
 		gameState->availableShipments.clear();
 
 		// Set the random seed based on number of days passed
 		srand(gameState->daysPassed);
+
+		int r;
+		// Give the salt a bit of a shake (always seems to get a low number on first go after calling srand)
+		for (int i = 0; i < 3; i++)
+		{
+			r = rand();
+		}
 
 		const int AVAILABLE_SHIPMENT_MIN = 1;
 		f32 num = ((double)rand() / RAND_MAX);
@@ -53,13 +84,18 @@ namespace SystemSelect {
 			int maxLocations = gameState->systemLocations.length;
 			//int destination = ((double)rand() / RAND_MAX) * ((maxLocations - 1) + 1); // don't want to include docked location
 			num = ((double)rand() / RAND_MAX);
-			int destination = (num) * ((maxLocations - 1)); // don't want to include docked location
-			if (destination < (maxLocations - 1)) {
+			int destination = (num) * (maxLocations);
+			//int destination = (num) * ((maxLocations - 1)); // don't want to include docked location
+			/*if (destination < (maxLocations - 1)) {
 				destination++;
+			}*/
+			if (destination > maxLocations - 1)
+			{
+				destination = 0;
 			}
 
 			// array is 0 based so remove 1
-			destination--;
+			//destination--;
 
 			// If selected location is the current location, then move on one
 			// If exceeds locations, then go back to first one

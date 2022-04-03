@@ -14,6 +14,7 @@ namespace PackageMenu {
 	void drawBackground(GameState *gameState);
 	void drawUI(GameState *gameState);
 	void drawPackageOptions(GameState *gameState);
+	void deliverPackages(GameState *gameState);
 	
 	enum class PackageMenuState {
 		main,
@@ -21,13 +22,7 @@ namespace PackageMenu {
 		dropoff
 	};
 	PackageMenuState mode = PackageMenuState::main;
-
-	template<typename T, size_t Size>
-	void addSprites(SpriteBuffer *sprites, Array<T, Size> toRender) {
-		for (const T &sprite : toRender) {
-			sprites->push((Sprite)sprite);
-		}
-	}
+	bool hasAvailablePackages = false;
 
 	void setup(GameState *gameState) {
 		gameState->textureLoadQueue.push(TextureAssetId::marketPlace1);
@@ -36,6 +31,15 @@ namespace PackageMenu {
 		gameState->updateSystems.push(&update);
 
 		mode = PackageMenuState::main;
+
+		hasAvailablePackages = false;
+		for (size_t i = 0; i < gameState->shipments.length; i++) {
+			// only show packages for current location
+			if (gameState->shipments[i].to == gameState->dockedLocation && gameState->shipments[i].available) {
+				hasAvailablePackages = true;
+				break;
+			}
+		}
 	}
 
 	void update(GameState *gameState, f32 delta) {
@@ -58,7 +62,6 @@ namespace PackageMenu {
 		titleText.verticalAlignment = UITextAlignment::middle;
 		gameState->uiElements.push(titleText);
 	}
-
 
 	void drawPackageDropoffs(GameState *gameState) {
 
@@ -317,93 +320,6 @@ namespace PackageMenu {
 		}
 	}
 
-	//void drawPackage2(GameState *gameState) {
-	//	UIRectangleData packageImage = {};
-	//	packageImage.color = Rgba(1.0f, 1.0f, 1.0f, 0.0f);
-	//	packageImage.height = 500.0f;
-	//	packageImage.width = 200.0f;
-	//	f32 xPos = ((screenWidth / 5.0f) * 2.0f) - (packageImage.width / 2.0f);
-	//	f32 yPos = (screenHeight / 2.0f);
-	//	yPos -= packageImage.height / 2.0f;
-	//	packageImage.position = Vec2(xPos, yPos);
-	//	packageImage.strokeWidth = 5.0f;
-	//	packageImage.strokeColor = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-	//	//packageImage.fillRectange = false;
-
-	//	gameState->uiElements.push(packageImage);
-
-	//	UITextData packageText = {};
-	//	packageText.text = L"Package 2";
-	//	packageText.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-	//	packageText.font = L"consolas";
-	//	packageText.fontSize = 40.0f;
-	//	packageText.width = 200.0f;
-	//	packageText.height = 30.0f;
-	//	yPos += packageImage.height + packageText.height;
-	//	packageText.position = Vec2(xPos, yPos);
-	//	packageText.horizontalAlignment = UITextAlignment::start;
-	//	packageText.verticalAlignment = UITextAlignment::middle;
-	//	gameState->uiElements.push(packageText);
-	//}
-
-	//void drawPackage3(GameState *gameState) {
-	//	UIRectangleData packageImage = {};
-	//	packageImage.color = Rgba(1.0f, 1.0f, 1.0f, 0.0f);
-	//	packageImage.height = 500.0f;
-	//	packageImage.width = 200.0f;
-	//	f32 xPos = ((screenWidth / 5.0f) * 3.0f) - (packageImage.width / 2.0f);
-	//	f32 yPos = (screenHeight / 2.0f);
-	//	yPos -= packageImage.height / 2.0f;
-	//	packageImage.position = Vec2(xPos, yPos);
-	//	packageImage.strokeWidth = 5.0f;
-	//	packageImage.strokeColor = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-	//	//packageImage.fillRectange = false;
-
-	//	gameState->uiElements.push(packageImage);
-
-	//	UITextData packageText = {};
-	//	packageText.text = L"Package 3";
-	//	packageText.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-	//	packageText.font = L"consolas";
-	//	packageText.fontSize = 40.0f;
-	//	packageText.width = 200.0f;
-	//	packageText.height = 30.0f;
-	//	yPos += packageImage.height + packageText.height;
-	//	packageText.position = Vec2(xPos, yPos);
-	//	packageText.horizontalAlignment = UITextAlignment::start;
-	//	packageText.verticalAlignment = UITextAlignment::middle;
-	//	gameState->uiElements.push(packageText);
-	//}
-
-	//void drawPackage4(GameState *gameState) {
-	//	UIRectangleData packageImage = {};
-	//	packageImage.color = Rgba(1.0f, 1.0f, 1.0f, 0.0f);
-	//	packageImage.height = 500.0f;
-	//	packageImage.width = 200.0f;
-	//	f32 xPos = ((screenWidth / 5.0f) * 4.0f) - (packageImage.width / 2.0f);
-	//	f32 yPos = (screenHeight / 2.0f);
-	//	yPos -= packageImage.height / 2.0f;
-	//	packageImage.position = Vec2(xPos, yPos);
-	//	packageImage.strokeWidth = 5.0f;
-	//	packageImage.strokeColor = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-	//	//packageImage.fillRectange = false;
-
-	//	gameState->uiElements.push(packageImage);
-
-	//	UITextData packageText = {};
-	//	packageText.text = L"Package 4";
-	//	packageText.color = Rgba(1.0f, 1.0f, 1.0f, 1.0f);
-	//	packageText.font = L"consolas";
-	//	packageText.fontSize = 40.0f;
-	//	packageText.width = 200.0f;
-	//	packageText.height = 30.0f;
-	//	yPos += packageImage.height + packageText.height;
-	//	packageText.position = Vec2(xPos, yPos);
-	//	packageText.horizontalAlignment = UITextAlignment::start;
-	//	packageText.verticalAlignment = UITextAlignment::middle;
-	//	gameState->uiElements.push(packageText);
-	//}
-
 	void drawExitButton(GameState *gameState) {
 
 		const f32 alpha = 1.0f;
@@ -448,7 +364,6 @@ namespace PackageMenu {
 		}
 		gameState->uiElements.push(button);
 	}
-
 
 	void drawReturnButton(GameState *gameState) {
 
@@ -528,9 +443,8 @@ namespace PackageMenu {
 		drawPackage4(gameState);*/
 	}
 
-
 	void drawPackageOptions(GameState *gameState) {
-		const f32 alpha = 1.0f;
+		f32 alpha = 1.0f;
 
 		const f32 buttonWidth = 200.0f;
 		const f32 buttonPadding = 80.0f;
@@ -587,6 +501,8 @@ namespace PackageMenu {
 		previousXPosDiff += buttonWidth + buttonPadding;
 		xPos = startXPos + previousXPosDiff;
 
+		const bool enabled = hasAvailablePackages;
+		alpha = enabled ? 1.0f : 0.4f;
 		UIButtonData btnDropoff = {};
 		btnDropoff.label.text = L"DROP OFF";
 		btnDropoff.label.font = L"consolas";
@@ -602,27 +518,50 @@ namespace PackageMenu {
 		//f32 xPos = (screenWidth / 2.0f) - (btnDropoff.width / 2.0f);
 		//f32 yPos = (screenHeight / 2.0f) - (btnDropoff.height / 2.0f);
 		btnDropoff.position = Vec2(xPos, yPos);
+		btnDropoff.enabled = enabled;
 
-		btnDropoff.handleInput(gameState->input);
-		if (btnDropoff.checkInput(UIButtonInputState::over)) {
-			gameState->input.cursor = Cursor::pointer;
-			btnDropoff.strokeColor = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
+		if (btnDropoff.enabled) {
+			btnDropoff.handleInput(gameState->input);
+			if (btnDropoff.checkInput(UIButtonInputState::over)) {
+				gameState->input.cursor = Cursor::pointer;
+				btnDropoff.strokeColor = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
 
-			if (btnDropoff.checkInput(UIButtonInputState::down)) {
-				const f32 scale = 0.9f;
-				btnDropoff.label.fontSize *= scale;
-				btnDropoff.position += Vec2(
-					btnDropoff.width - btnDropoff.width * scale,
-					btnDropoff.height - btnDropoff.height * scale
-				) * 0.5f;
-				btnDropoff.width *= scale;
-				btnDropoff.height *= scale;
-				btnDropoff.strokeWidth *= scale;
+				if (btnDropoff.checkInput(UIButtonInputState::down)) {
+					const f32 scale = 0.9f;
+					btnDropoff.label.fontSize *= scale;
+					btnDropoff.position += Vec2(
+						btnDropoff.width - btnDropoff.width * scale,
+						btnDropoff.height - btnDropoff.height * scale
+					) * 0.5f;
+					btnDropoff.width *= scale;
+					btnDropoff.height *= scale;
+					btnDropoff.strokeWidth *= scale;
 
-				mode = PackageMenuState::dropoff;
+					//mode = PackageMenuState::dropoff;
+					deliverPackages(gameState);
+				}
+
 			}
-
 		}
 		gameState->uiElements.push(btnDropoff);
+	}
+
+	void deliverPackages(GameState *gameState)
+	{
+		for (size_t i = 0; i < gameState->shipments.length; i++) {
+			// only show packages for current location
+			if (gameState->shipments[i].to == gameState->dockedLocation) {
+				gameState->credits += gameState->shipments[i].creditAward;
+				// Play cash sound
+				gameState->shipments[i].available = false;
+			}
+		}
+
+		hasAvailablePackages = false;
+
+		// TODO: Display "toast" of how much money (moo-la) has been made
+
+		gameState->soundLoadQueue.push(SoundAssetId::cha_ching);
+		gameState->soundLoadQueue.push(SoundAssetId::wahoo); // TODO: Add delay so this gets played 100 milliseconds after cha_ching
 	}
 };
