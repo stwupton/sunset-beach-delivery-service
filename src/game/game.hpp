@@ -91,6 +91,7 @@ namespace Game {
 		location.radius = 30.0f;
 		location.orbit.angle = M_PI + M_PI / 4;
 		location.orbit.distance = 1000.0f;
+		location.isRefuellingLocation = true;
 		gameState->systemLocations.push(location);
 
 		location.name = L"Boobies";
@@ -107,6 +108,7 @@ namespace Game {
 		location.orbit.angle = 0.1f;
 		location.orbit.distance = 2000.0f;
 		location.isMoon = false;
+		location.isRefuellingLocation = true;
 		gameState->systemLocations.push(location);
 	}
 };

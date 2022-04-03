@@ -65,6 +65,9 @@ struct GameState {
 	Array<Shipment, SHIPMENT_MAX> shipments;
 	Array<Shipment, AVAILABLE_SHIPMENT_MAX> availableShipments;
 
+	// Refuelling data
+	bool isRefuelling = false;
+
 	// Platform/game common data
 	CreditValue credits = 1000;
 	Events events;

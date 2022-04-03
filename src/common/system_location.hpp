@@ -14,5 +14,7 @@ struct SystemLocation {
 	} orbit;
 	Vec2<f32> position;
 	f32 radius = 1.0f;
+	f32 fuelPrice = 1.0f;
 	bool isMoon;
+	bool isRefuellingLocation;
 };

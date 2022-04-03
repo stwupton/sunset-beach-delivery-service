@@ -125,12 +125,14 @@ namespace SystemSelect {
 namespace SystemSelect {
 	// Forward declerations
 	void drawLocations(GameState *gameState, f32 delta);
+	void drawVisitPlanetButton(GameState *gameState);
 	void drawIndicator(GameState *gameState);
 	void drawUI(GameState *gameState);
 	f32 getDistanceFromStar(SystemLocation *location);
 	void highlightLocations(GameState *gameState);
 	void update(GameState *gameState, f32 delta);
 	void updateJourney(GameState *gameState, f32 delta);
+	void updateRefuel(GameState *gameState, f32 delta);
 
 	const f32 starRadius = 400.0f;
 	const Vec2<f32> starCenter = Vec3(-250.0f, 1080.0f * 0.5f);
@@ -138,6 +140,7 @@ namespace SystemSelect {
 	const f32 minMoonSpacing = minPlanetSpacing * 0.2f;
 	const FuelValue fuelBurnRate = 20;
 	const f32 dayRate = 0.01f;
+	const f32 VISIT_PLANET_BUTTON_Y = 180.0f;
 
 	void setup(GameState *gameState) {
 		gameState->textureLoadQueue.push(TextureAssetId::background);
@@ -154,6 +157,9 @@ namespace SystemSelect {
 		}
 
 		updateJourney(gameState, delta);
+		if (gameState->isRefuelling) {
+			updateRefuel(gameState, delta);
+		}
 		SystemCommon::drawStarField(gameState);
 		SystemCommon::drawCentralStar(gameState, starCenter, starRadius);
 		drawLocations(gameState, delta);
@@ -290,6 +296,70 @@ namespace SystemSelect {
 		gameState->uiElements.push(estimatedDaysText);
 	}
 
+	void drawRefuelButton(GameState *gameState) {
+		const bool enabled =
+			gameState->playerShip.fuel < gameState->playerShip.fuelTankCapacity &&
+			gameState->credits > gameState->dockedLocation->fuelPrice;
+		const f32 alpha = enabled ? 1.0f : 0.4f;
+
+		UIButtonData button = {};
+		button.label.text = L"Refuel";
+		button.label.font = L"consolas";
+		button.label.color = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
+		button.label.fontSize = 24.0f;
+		button.label.color = Rgba(1.0f, 1.0f, 1.0f, alpha);
+		button.color = Rgba(0.0f, 0.0f, 0.0f, alpha);
+		button.height = 70.0f;
+		button.width = 150.0f;
+		button.cornerRadius = 10.0f;
+		button.strokeColor = Rgba(0.62f, 0.62f, 0.62f, 1.0f);
+		button.strokeWidth = 5.0f;
+
+		const f32 buttonOffset = 20.0f;
+
+		button.position = Vec2(1920.0f - button.width - 10.0f, VISIT_PLANET_BUTTON_Y + button.height + buttonOffset);
+
+		// initialise to not refuelling
+		gameState->isRefuelling = false;
+
+		if (enabled) {
+			button.handleInput(gameState->input);
+			if (button.checkInput(UIButtonInputState::over)) {
+				gameState->input.cursor = Cursor::pointer;
+				button.strokeColor = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
+
+				if (button.checkInput(UIButtonInputState::down)) {
+					const f32 scale = 0.9f;
+					button.label.fontSize *= scale;
+					button.position += Vec2(
+						button.width - button.width * scale,
+						button.height - button.height * scale
+					) * 0.5f;
+					button.width *= scale;
+					button.height *= scale;
+					button.strokeWidth *= scale;
+
+					gameState->isRefuelling = true;
+
+					////if (refuelTween.progress == 0.0f || refuelTween.progress == 100.0f) {
+					//if (gameState->tweens.hasCapacity()) {
+					//	Tween refuelTween = {};
+					//	refuelTween.duration = 1.0f;
+					//	refuelTween.type = TweenValueType::float32;
+					//	*(f32 *)refuelTween.from = gameState->playerShip.fuel;
+					//	*(f32 *)refuelTween.to = gameState->playerShip.fuel + fuelAddition;
+					//	refuelTween.value = &gameState->playerShip.fuel;
+					//	gameState->tweens.push(refuelTween);
+
+					//	gameState->credits -= gameState->dockedLocation->fuelPrice;
+					//}
+				}
+			}
+		}
+
+		gameState->uiElements.push(button);
+	}
+
 	void drawVisitPlanetButton(GameState *gameState) {
 		f32 alpha = 1.0f;
 
@@ -305,7 +375,7 @@ namespace SystemSelect {
 		button.cornerRadius = 10.0f;
 		button.strokeColor = Rgba(0.62f, 0.62f, 0.62f, 1.0f);
 		button.strokeWidth = 5.0f;
-		button.position = Vec2(1920.0f - button.width - 10.0f, 180.0f);
+		button.position = Vec2(1920.0f - button.width - 10.0f, VISIT_PLANET_BUTTON_Y);
 
 		button.handleInput(gameState->input);
 		if (button.checkInput(UIButtonInputState::over)) {
@@ -525,6 +595,9 @@ namespace SystemSelect {
 		}
 		if (gameState->journeyProgress == 0.0f) {
 			drawVisitPlanetButton(gameState);
+			if (gameState->dockedLocation->isRefuellingLocation) {
+				drawRefuelButton(gameState);
+			}
 		}
 	}
 
@@ -565,7 +638,19 @@ namespace SystemSelect {
 			gameState->targetLocation = nullptr;
 			gameState->journeyProgress = 0.0f;
 
+			// TODO: Maybe regenerate fuel prices?
+
 			populateAvailablePackages(gameState);
+		}
+	}
+
+	void updateRefuel(GameState *gameState, f32 delta) {
+		if (gameState->playerShip.fuel < gameState->playerShip.fuelTankCapacity
+			&& gameState->credits > gameState->dockedLocation->fuelPrice) {
+			FuelValue fuelAddition = 1.0f;
+			gameState->playerShip.fuel += fuelAddition * delta;
+
+			gameState->credits -= gameState->dockedLocation->fuelPrice * delta;
 		}
 	}
 };
