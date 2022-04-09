@@ -84,6 +84,7 @@ namespace Game {
 		location.radius = 20.0f;
 		location.orbit.angle = 2.5f;
 		location.orbit.distance = 200.0f;
+		location.isRefuellingLocation = false;
 		gameState->systemLocations.push(location);
 
 		location.name = L"Caladan";
@@ -100,6 +101,7 @@ namespace Game {
 		location.orbit.angle = 2.0f;
 		location.orbit.distance = 10.0f;
 		location.isMoon = true;
+		location.isRefuellingLocation = false;
 		gameState->systemLocations.push(location);
 
 		location.name = L"Space Station";
