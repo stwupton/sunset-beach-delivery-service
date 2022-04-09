@@ -273,11 +273,11 @@ namespace PackageMenu {
 			creditText.verticalAlignment = UITextAlignment::middle;
 			gameState->uiElements.push(creditText);
 
-			const bool enabled = gameState->availableShipments[i].available;
+			const bool enabled = gameState->availableShipments[i].available && gameState->shipments.length < SHIPMENT_MAX;
 			const f32 alpha = enabled ? 1.0f : 0.4f;
 
 			UIButtonData button = {};
-			button.label.text = L"SELECT";
+			button.label.text = gameState->shipments.length < SHIPMENT_MAX ? L"SELECT" : L"NO SPACE";
 			button.label.font = L"consolas";
 			button.label.color = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
 			button.label.fontSize = 24.0f;
