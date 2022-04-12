@@ -145,6 +145,25 @@ public:
 		WCHAR localeName[LOCALE_NAME_MAX_LENGTH];
 		GetUserDefaultLocaleName(localeName, LOCALE_NAME_MAX_LENGTH);
 
+		// Horizontal text alignment
+		DWRITE_TEXT_ALIGNMENT textAlignments[] = { 
+			DWRITE_TEXT_ALIGNMENT_LEADING, 
+			DWRITE_TEXT_ALIGNMENT_CENTER, 
+			DWRITE_TEXT_ALIGNMENT_TRAILING 
+		};
+
+		// Vertical text alignment
+		DWRITE_PARAGRAPH_ALIGNMENT paragraphAlignments[] = {
+			DWRITE_PARAGRAPH_ALIGNMENT_NEAR,
+			DWRITE_PARAGRAPH_ALIGNMENT_CENTER,
+			DWRITE_PARAGRAPH_ALIGNMENT_FAR
+		};
+
+		IDWriteTextFormat *textFormat = nullptr;
+		ID2D1StrokeStyle *strokeStyle = nullptr;
+		ID2D1PathGeometry *geometry = nullptr;
+		ID2D1GeometrySink *sink = nullptr;
+
 		for (UINT i = 0; i < bufferLength; i++) {
 			const UIElement &element = uiElementBuffer[i];
 			this->d2dRenderTarget->BeginDraw();
@@ -160,7 +179,6 @@ public:
 				const UITextData &text = element.text;
 
 				// TODO(steven): Re-use text formats
-				IDWriteTextFormat *textFormat;
 				HRESULT result = this->dWriteFactory->CreateTextFormat(
 					text.font.data, 
 					nullptr, 
@@ -173,22 +191,10 @@ public:
 				);
 				ASSERT_HRESULT(result)
 
-				// Horizontal text alignment
-				DWRITE_TEXT_ALIGNMENT textAlignments[] = { 
-					DWRITE_TEXT_ALIGNMENT_LEADING, 
-					DWRITE_TEXT_ALIGNMENT_CENTER, 
-					DWRITE_TEXT_ALIGNMENT_TRAILING 
-				}; 
 				DWRITE_TEXT_ALIGNMENT textAlignment = textAlignments[(size_t)text.horizontalAlignment]; 
 				result = textFormat->SetTextAlignment(textAlignment);
 				ASSERT_HRESULT(result)
 
-				// Vertical text alignment
-				DWRITE_PARAGRAPH_ALIGNMENT paragraphAlignments[] = {
-					DWRITE_PARAGRAPH_ALIGNMENT_NEAR,
-					DWRITE_PARAGRAPH_ALIGNMENT_CENTER,
-					DWRITE_PARAGRAPH_ALIGNMENT_FAR
-				};
 				DWRITE_PARAGRAPH_ALIGNMENT paragraphAlignment = paragraphAlignments[(size_t)text.verticalAlignment];
 				textFormat->SetParagraphAlignment(paragraphAlignment);
 				ASSERT_HRESULT(result)
@@ -209,8 +215,6 @@ public:
 					D2D1_DRAW_TEXT_OPTIONS_NO_SNAP, 
 					DWRITE_MEASURING_MODE_NATURAL
 				);
-
-				RELEASE_COM_OBJ(textFormat)
 			} else if (element.type == UIType::line) {
 				const UILineData &line = element.line;
 
@@ -235,21 +239,16 @@ public:
 				strokeStyleProperties.dashStyle = circle.strokeStyle == UIStrokeStyle::solid ? 
 					D2D1_DASH_STYLE_SOLID : 
 					D2D1_DASH_STYLE_DASH;
-
-				ID2D1StrokeStyle *strokeStyle = nullptr;
+	
 				HRESULT result = this->d2dFactory->CreateStrokeStyle(strokeStyleProperties, nullptr, 0, &strokeStyle);
 				ASSERT_HRESULT(result)
 
 				this->d2dSolidBrush->SetColor((const D2D1_COLOR_F*)&circle.strokeColor);
 				this->d2dRenderTarget->DrawEllipse(ellipse, this->d2dSolidBrush, circle.strokeWidth, strokeStyle);
-
-				RELEASE_COM_OBJ(strokeStyle);
 			} else if (element.type == UIType::traingle) {
-				ID2D1PathGeometry *geometry = nullptr;
 				HRESULT result = this->d2dFactory->CreatePathGeometry(&geometry);
 				ASSERT_HRESULT(result)
 
-				ID2D1GeometrySink *sink = nullptr;
 				result = geometry->Open(&sink);
 				ASSERT_HRESULT(result)
 				
@@ -268,9 +267,6 @@ public:
 				ASSERT_HRESULT(result)
 
 				this->d2dRenderTarget->FillGeometry(geometry, this->d2dSolidBrush);
-
-				RELEASE_COM_OBJ(sink)
-				RELEASE_COM_OBJ(geometry)
 			} else if (element.type == UIType::rectangle) {
 				const UIRectangleData &rectangle = element.rectangle;
 
@@ -290,15 +286,17 @@ public:
 					D2D1_DASH_STYLE_SOLID : 
 					D2D1_DASH_STYLE_DASH;
 
-				ID2D1StrokeStyle *strokeStyle = nullptr;
 				HRESULT result = this->d2dFactory->CreateStrokeStyle(strokeStyleProperties, nullptr, 0, &strokeStyle);
 				ASSERT_HRESULT(result)
 
 				this->d2dSolidBrush->SetColor((const D2D1_COLOR_F*)&rectangle.strokeColor);
 				this->d2dRenderTarget->DrawRoundedRectangle(rect, this->d2dSolidBrush, rectangle.strokeWidth, strokeStyle);
-
-				RELEASE_COM_OBJ(strokeStyle)
 			}
+
+			RELEASE_COM_OBJ(textFormat)
+			RELEASE_COM_OBJ(strokeStyle)
+			RELEASE_COM_OBJ(sink)
+			RELEASE_COM_OBJ(geometry)
 
 			HRESULT result = this->d2dRenderTarget->EndDraw();
 			ASSERT_HRESULT(result);

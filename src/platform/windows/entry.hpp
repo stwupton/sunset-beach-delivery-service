@@ -50,7 +50,7 @@ static Array<FrameProfile, 32> profiles = {};
 	profiles.push({ _name, _diff / timings.frequency }); \
 }
 #else
-#define PROFILE (_name, _call) _call;
+#define PROFILE(_name, _call) _call;
 #endif
 
 LRESULT CALLBACK eventHandler(
