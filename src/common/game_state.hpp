@@ -26,14 +26,6 @@ typedef LoadQueue<SoundAssetId, 8> SoundLoadQueue;
 
 typedef void (*UpdateSystem)(struct GameState *gameState, f32 delta);
 
-enum class GameModeId : u8 {
-	none,
-	systemSelect,
-	systemView,
-	combat,
-	_length
-};
-
 struct GameState {
 	// Combat data
 	Array<AimlessProjectile, 100> aimlessProjectiles;

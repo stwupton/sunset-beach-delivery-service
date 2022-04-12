@@ -141,7 +141,7 @@ namespace SystemSelect {
 					button.width *= scale;
 					button.height *= scale;
 					button.strokeWidth *= scale;
-
+				} else if (button.checkInput(UIButtonInputState::clicked)) {
 					Tween journeyTween = {};
 					journeyTween.duration = estimatedDays;
 					journeyTween.type = TweenValueType::float32;

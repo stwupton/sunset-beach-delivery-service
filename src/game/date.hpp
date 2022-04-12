@@ -21,7 +21,7 @@ namespace DateUtils {
 		const DayValue dayInYear = daysPassed % daysInYear + 1;
 
 		const size_t monthLength = sizeof(daysInMonths) / sizeof(*daysInMonths);
-		size_t monthIndex = floor(dayInYear / (daysInYear / monthLength));
+		size_t monthIndex = floor(dayInYear / daysInYear / monthLength);
 
 		DayValue daysOffset = 0;
 		for (size_t i = 0; i < monthIndex; i++) {
