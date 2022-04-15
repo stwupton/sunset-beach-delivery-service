@@ -4,7 +4,6 @@
 #include "types/core.hpp"
 #include "utils/reducer.hpp"
 
-
 template<typename T>
 bool updateTween(Tween *tween, f32 delta) {
 	#define PTR_CAST(type, ptr) *(type*)ptr

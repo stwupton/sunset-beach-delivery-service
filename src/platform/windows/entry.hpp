@@ -6,6 +6,7 @@
 #include "common/game_state.hpp"
 #include "common/window_config.hpp"
 #include "editor/editor.hpp"
+#include "frame_timing.hpp"
 #include "game/game.hpp"
 #include "platform/windows/directx_renderer.hpp"
 #include "platform/windows/dx3d_sprite_loader.hpp"
@@ -26,7 +27,31 @@ static DirectXRenderer *renderer = new DirectXRenderer();
 static Dx3dSpriteLoader *loader = new Dx3dSpriteLoader();
 static SoundManager *soundManager = new SoundManager();
 static InputProcessor *inputProcessor = new InputProcessor();
-static f32 delta;
+static FrameTiming timings = {};
+
+#ifdef DEBUG
+struct FrameProfile {
+	String16<64> name;
+	f32 time = 0;
+};
+
+static Array<FrameProfile, 32> profiles = {};
+
+#define PROFILE(_name, _call)                          \
+{                                                      \
+	LARGE_INTEGER start;                                 \
+	LARGE_INTEGER end;                                   \
+                                                       \
+	QueryPerformanceCounter(&start);                     \
+	_call;                                               \
+	QueryPerformanceCounter(&end);                       \
+	                                                     \
+	const f32 _diff = end.QuadPart - start.QuadPart;     \
+	profiles.push({ _name, _diff / timings.frequency }); \
+}
+#else
+#define PROFILE(_name, _call) _call;
+#endif
 
 LRESULT CALLBACK eventHandler(
 	HWND windowHandle,
@@ -140,7 +165,11 @@ INT WINAPI wWinMain(
 	HRESULT result = CoInitialize(NULL);
 	ASSERT_HRESULT(result)
 
-	GameState *gameState = new GameState{};
+	LARGE_INTEGER frequency;
+	QueryPerformanceFrequency(&frequency);
+	timings.frequency = frequency.QuadPart;
+
+	GameState *gameState = new GameState {};
 	createWin32Window(instanceHandle, showFlag, gameState);
 
 	Game::setup(gameState);
@@ -157,7 +186,7 @@ INT WINAPI wWinMain(
 		loader->load(&gameState->textureLoadQueue);
 
 		if (inFocus) {
-			inputProcessor->process(&gameState->input);
+			PROFILE(L"Process Input", inputProcessor->process(&gameState->input))
 		}
 
 		if (editorOpen) {
@@ -169,14 +198,16 @@ INT WINAPI wWinMain(
 				saveData.pending = false;
 			}
 		} else {
-			Game::update(gameState, delta);
+			PROFILE(L"Game Update", Game::update(gameState, timings.delta))
 		}
 
-		soundManager->process(&gameState->soundLoadQueue, &gameState->pendingMusicItem);
+		PROFILE(L"Sound", soundManager->process(&gameState->soundLoadQueue, &gameState->pendingMusicItem))
 
-		renderer->drawSprites(gameState->sprites.data, gameState->sprites.length);
-		renderer->drawUI(gameState->uiElements.data, gameState->uiElements.length);
-		renderer->finish();
+		PROFILE(L"Render Start", renderer->start())
+		PROFILE(L"  Draw Starfield", renderer->drawStarfield())
+		PROFILE(L"  Draw Sprites", renderer->drawSprites(gameState->sprites.data, gameState->sprites.length))
+		PROFILE(L"  Draw UI", renderer->drawUI(gameState->uiElements.data, gameState->uiElements.length))
+		PROFILE(L"Render Finish", renderer->finish())
 
 		// Reset render buffers
 		gameState->sprites.clear();
@@ -186,24 +217,42 @@ INT WINAPI wWinMain(
 		gameState->input.cursor = Cursor::arrow;
 		gameState->input.keyDown = '\0';
 
-		// TODO(steven): Move elsewhere, maybe a gameloop class?
+#ifdef DEBUG
+		UITextData text = {};
+		text.font = L"consolas";
+		text.fontSize = 16.0f;
+		text.width = 300.0f;
+		text.height = 20.0f;
+		text.position = Vec2(screenWidth - text.width, 300.0f);
+		text.color = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
+
+		wchar_t textBuffer[128] = {};
+
+		for (const FrameProfile profile : profiles) {
+			swprintf_s(textBuffer, L"%s: %.5fs", profile.name.data, profile.time);
+			text.text = textBuffer;
+			text.position.y += text.height;
+
+			gameState->uiElements.push(text);
+		}
+
+		profiles.clear();
+#endif
+
+		// Update delta
 		{
-			static LARGE_INTEGER previousCounter;
 			LARGE_INTEGER counter;
-			LARGE_INTEGER frequency;
 
 			QueryPerformanceCounter(&counter);
-			QueryPerformanceFrequency(&frequency);
-
-			if (previousCounter.QuadPart == 0) {
-				previousCounter = counter;
+			if (timings.previousTime == 0) {
+				timings.previousTime = counter.QuadPart;
 				continue;
 			}
 
-			const f32 diff = counter.QuadPart - previousCounter.QuadPart;
-			previousCounter = counter;
+			const f32 diff = counter.QuadPart - timings.previousTime;
+			timings.previousTime = counter.QuadPart;
 
-			delta = diff / frequency.QuadPart;
+			timings.delta = diff / timings.frequency;
 		}
 	}
 

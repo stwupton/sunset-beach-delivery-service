@@ -26,14 +26,6 @@ typedef LoadQueue<SoundAssetId, 8> SoundLoadQueue;
 
 typedef void (*UpdateSystem)(struct GameState *gameState, f32 delta);
 
-enum class GameModeId : u8 {
-	none,
-	systemSelect,
-	systemView,
-	combat,
-	_length
-};
-
 const int CREDIT_MAX = 10000;
 const int CREDIT_MIN = 100;
 const int WEIGHT_MAX = 500;
