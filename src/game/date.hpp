@@ -7,7 +7,7 @@
 #include "types/string.hpp"
 
 namespace DateUtils {
-	const u16 year = 3485;
+	const u16 initialYear = 3485;
 	const DayValue daysInYear = 365;
 	const DayValue daysInMonths[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 	const wchar_t monthNames[][4] = {
@@ -21,7 +21,7 @@ namespace DateUtils {
 		const DayValue dayInYear = daysPassed % daysInYear + 1;
 
 		const size_t monthLength = sizeof(daysInMonths) / sizeof(*daysInMonths);
-		size_t monthIndex = floor(dayInYear / daysInYear / monthLength);
+		size_t monthIndex = floor(dayInYear / (daysInYear / monthLength));
 
 		DayValue daysOffset = 0;
 		for (size_t i = 0; i < monthIndex; i++) {
@@ -48,6 +48,8 @@ namespace DateUtils {
 		}
 
 		const wchar_t *month = monthNames[monthIndex];
+
+		const u16 year = initialYear + floor(daysPassed / daysInYear);
 
 		String16<32> result;
 		swprintf_s(result.data, L"%u%s %s %u", dayInMonth, daySuffix, month, year);
