@@ -17,14 +17,15 @@ namespace Editor {
 		UITextData debugText = {};
 		debugText.text = text.data;
 		debugText.color = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
-		debugText.fontSize = 24.0f;
+		debugText.font = L"consolas";
+		debugText.fontSize = 16.0f;
 		debugText.width = 400.0f;
-		debugText.height = 100.0f;
+		debugText.height = debugText.fontSize;
 		debugText.position = Vec2(1920.0f - 400.0f, 100.0f);
 		gameState->uiElements.push(debugText);
 
 		debugText.text = L"[E] Enter/exit editor";
-		debugText.position.y += 50.0f;
+		debugText.position.y += debugText.height + 10.0f;
 		gameState->uiElements.push(debugText);
 
 		if (gameState->editorState.mode == EditorMode::menu) {
@@ -32,7 +33,7 @@ namespace Editor {
 		} else {
 			swprintf_s(text.data, L"[Q] Quit %s", modeName.data);
 			debugText.text = text.data;
-			debugText.position.y += 50.0f;
+			debugText.position.y += debugText.height + 10.0f;
 			gameState->uiElements.push(debugText);
 
 			if (gameState->input.keyDown == 'Q') {
