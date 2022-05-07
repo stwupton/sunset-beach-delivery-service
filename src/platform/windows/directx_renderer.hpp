@@ -40,6 +40,7 @@ protected:
 	DirectXResources *resources;
 	IDXGISwapChain *swapChain;
 	ID2D1Factory *d2dFactory;
+	WCHAR d2dLocaleName[LOCALE_NAME_MAX_LENGTH];
 	ID2D1RenderTarget *d2dRenderTarget;
 	ID2D1SolidColorBrush *d2dSolidBrush;
 	IDWriteFactory *dWriteFactory;
@@ -70,6 +71,8 @@ public:
 		RELEASE_COM_OBJ(this->spriteShader.infoBuffer)
 		RELEASE_COM_OBJ(this->starfieldShader.vertexShader)
 		RELEASE_COM_OBJ(this->starfieldShader.pixelShader)
+		RELEASE_COM_OBJ(this->starfieldShader.vertexBufferLayout)
+		RELEASE_COM_OBJ(this->starfieldShader.vertexBuffer)
 		RELEASE_COM_OBJ(this->swapChain)
 		RELEASE_COM_OBJ(this->deviceContext)
 		RELEASE_COM_OBJ(this->renderView)
@@ -101,6 +104,8 @@ public:
 		this->createDepthBuffer();
 		this->createConstantBuffers();
 		this->create2dTarget();
+
+		GetUserDefaultLocaleName(this->d2dLocaleName, LOCALE_NAME_MAX_LENGTH);
 	}
 
 	void create2dTarget() {
@@ -141,10 +146,6 @@ public:
 	}
 
 	void drawUI(UIElement *uiElementBuffer, UINT bufferLength) const {
-		// TODO(steven): Cache this somewhere
-		WCHAR localeName[LOCALE_NAME_MAX_LENGTH];
-		GetUserDefaultLocaleName(localeName, LOCALE_NAME_MAX_LENGTH);
-
 		// Horizontal text alignment
 		DWRITE_TEXT_ALIGNMENT textAlignments[] = { 
 			DWRITE_TEXT_ALIGNMENT_LEADING, 
@@ -186,7 +187,7 @@ public:
 					DWRITE_FONT_STYLE_NORMAL, 
 					DWRITE_FONT_STRETCH_MEDIUM, 
 					text.fontSize, 
-					localeName, 
+					this->d2dLocaleName, 
 					&textFormat
 				);
 				ASSERT_HRESULT(result)
@@ -215,6 +216,8 @@ public:
 					D2D1_DRAW_TEXT_OPTIONS_NO_SNAP, 
 					DWRITE_MEASURING_MODE_NATURAL
 				);
+
+				RELEASE_COM_OBJ(textFormat)
 			} else if (element.type == UIType::line) {
 				const UILineData &line = element.line;
 
@@ -245,6 +248,8 @@ public:
 
 				this->d2dSolidBrush->SetColor((const D2D1_COLOR_F*)&circle.strokeColor);
 				this->d2dRenderTarget->DrawEllipse(ellipse, this->d2dSolidBrush, circle.strokeWidth, strokeStyle);
+
+				RELEASE_COM_OBJ(strokeStyle)
 			} else if (element.type == UIType::traingle) {
 				HRESULT result = this->d2dFactory->CreatePathGeometry(&geometry);
 				ASSERT_HRESULT(result)
@@ -267,6 +272,9 @@ public:
 				ASSERT_HRESULT(result)
 
 				this->d2dRenderTarget->FillGeometry(geometry, this->d2dSolidBrush);
+
+				RELEASE_COM_OBJ(sink)
+				RELEASE_COM_OBJ(geometry)
 			} else if (element.type == UIType::rectangle) {
 				const UIRectangleData &rectangle = element.rectangle;
 
@@ -291,12 +299,9 @@ public:
 
 				this->d2dSolidBrush->SetColor((const D2D1_COLOR_F*)&rectangle.strokeColor);
 				this->d2dRenderTarget->DrawRoundedRectangle(rect, this->d2dSolidBrush, rectangle.strokeWidth, strokeStyle);
-			}
 
-			RELEASE_COM_OBJ(textFormat)
-			RELEASE_COM_OBJ(strokeStyle)
-			RELEASE_COM_OBJ(sink)
-			RELEASE_COM_OBJ(geometry)
+				RELEASE_COM_OBJ(strokeStyle)
+			}
 
 			HRESULT result = this->d2dRenderTarget->EndDraw();
 			ASSERT_HRESULT(result);

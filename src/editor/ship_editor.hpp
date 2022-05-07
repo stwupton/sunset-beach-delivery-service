@@ -6,6 +6,7 @@
 namespace ShipEditor {
 	void setup(GameState *gameState) {
 		gameState->editorState.shipEditorState.shipTemplate = &gameState->templates.ships[0];
+		gameState->textureLoadQueue.push(gameState->templates.ships[0].data.assetId);
 	}
 
 	void rotationUpdate(ShipEditorState *state, Input input) {
