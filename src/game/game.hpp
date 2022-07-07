@@ -19,10 +19,13 @@ namespace Game {
 		gameState->playerShip.fuel = 30.0f;
 		gameState->dockedLocation = &gameState->systemLocations[0];
 
+		Shipment package1 = Shipment{};
+
 		gameState->pendingMusicItem = MusicAssetId::mars;
 
 		populateSystemLocations(gameState);
 		SystemSelect::setup(gameState);
+		SystemSelect::populateAvailablePackages(gameState);
 	}
 
 	void update(GameState *gameState, f32 delta) {
@@ -81,6 +84,7 @@ namespace Game {
 		location.radius = 20.0f;
 		location.orbit.angle = 2.5f;
 		location.orbit.distance = 200.0f;
+		location.isRefuellingLocation = false;
 		gameState->systemLocations.push(location);
 
 		location.name = L"Caladan";
@@ -88,6 +92,7 @@ namespace Game {
 		location.radius = 30.0f;
 		location.orbit.angle = M_PI + M_PI / 4;
 		location.orbit.distance = 1000.0f;
+		location.isRefuellingLocation = true;
 		gameState->systemLocations.push(location);
 
 		location.name = L"Boobies";
@@ -96,6 +101,7 @@ namespace Game {
 		location.orbit.angle = 2.0f;
 		location.orbit.distance = 10.0f;
 		location.isMoon = true;
+		location.isRefuellingLocation = false;
 		gameState->systemLocations.push(location);
 
 		location.name = L"Space Station";
@@ -104,6 +110,7 @@ namespace Game {
 		location.orbit.angle = 0.1f;
 		location.orbit.distance = 2000.0f;
 		location.isMoon = false;
+		location.isRefuellingLocation = true;
 		gameState->systemLocations.push(location);
 	}
 };

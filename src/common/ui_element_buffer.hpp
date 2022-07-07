@@ -32,7 +32,7 @@ struct UIElementBuffer : Array<UIElement, 100> {
 		Array::push(element);
 	}
 
-	void push(const UIRectangleData & rectangleData) {
+	void push(const UIRectangleData &rectangleData) {
 		UIElement element = {};
 		element.type = UIType::rectangle;
 		element.rectangle = rectangleData;

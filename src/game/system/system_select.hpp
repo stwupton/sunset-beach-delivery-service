@@ -7,18 +7,132 @@
 #include "game/utils.hpp"
 #include "game/system/common.hpp"
 #include "game/system/system_view.hpp"
+#include "game/package_menu.hpp"
 #include "types/core.hpp"
 #include "types/vector.hpp"
+
+
+
+namespace SystemSelect {
+	void populateAvailablePackages(GameState *gameState) {
+		#pragma region Clear out any delivered packages
+
+		Array<Shipment, SHIPMENT_MAX> undeliveredShipments;
+
+		for (int i = gameState->shipments.length - 1; i > -1; i--) {
+			Shipment s = gameState->shipments[i];
+
+			// only show packages for current location
+			if (s.available) {
+				undeliveredShipments.push(s);
+			}
+
+			gameState->shipments.pop();
+		}
+
+		// Push all deliverable packages back in
+		for (int i = 0; i < undeliveredShipments.length; i++) {
+			gameState->shipments.push(undeliveredShipments[i]);
+		}
+
+		// Finally clear temporary array
+		undeliveredShipments.clear();
+
+		#pragma endregion
+
+		gameState->availableShipments.clear();
+
+		// Set the random seed based on number of days passed
+		srand(gameState->daysPassed);
+
+		int r;
+		// Give the salt a bit of a shake (always seems to get a low number on first go after calling srand)
+		for (int i = 0; i < 3; i++)
+		{
+			r = rand();
+		}
+
+		const int AVAILABLE_SHIPMENT_MIN = 1;
+		f32 num = ((double)rand() / RAND_MAX);
+		/*int range = (AVAILABLE_SHIPMENT_MAX - AVAILABLE_SHIPMENT_MIN);
+		int availableShipments = (num) * (range + AVAILABLE_SHIPMENT_MIN);*/
+		int range = (AVAILABLE_SHIPMENT_MAX);
+		int availableShipments = (num) * (range);
+		if (availableShipments < AVAILABLE_SHIPMENT_MAX) {
+			availableShipments++;
+		}
+
+		for (size_t i = 1; i <= availableShipments; i++) {
+			Shipment shipment = {};
+			//shipment.name = L"Package 1";
+
+			// Note: This method of generating random numbers in a range isn't suitable for
+			// applications that require high quality random numbers.
+			// rand() has a small output range [0,32767], making it unsuitable for
+			// generating random numbers across a large range using the method below.
+			// The approach below also may result in a non-uniform distribution.
+			// More robust random number functionality is available in the C++ <random> header.
+			// See https://docs.microsoft.com/cpp/standard-library/random
+			num = ((double)rand() / RAND_MAX);
+			range = CREDIT_MAX - CREDIT_MIN;
+			//int creditAward = (((double)rand() / RAND_MAX) * (CREDIT_MAX - CREDIT_MIN)) + CREDIT_MIN;
+			int creditAward = ((num) * (range)) + CREDIT_MIN;
+
+			shipment.creditAward = creditAward;
+			shipment.from = gameState->dockedLocation;
+
+			int maxLocations = gameState->systemLocations.length;
+			//int destination = ((double)rand() / RAND_MAX) * ((maxLocations - 1) + 1); // don't want to include docked location
+			num = ((double)rand() / RAND_MAX);
+			int destination = (num) * (maxLocations);
+			//int destination = (num) * ((maxLocations - 1)); // don't want to include docked location
+			/*if (destination < (maxLocations - 1)) {
+				destination++;
+			}*/
+			if (destination > maxLocations - 1)
+			{
+				destination = 0;
+			}
+
+			// array is 0 based so remove 1
+			//destination--;
+
+			// If selected location is the current location, then move on one
+			// If exceeds locations, then go back to first one
+			// TODO: probably better to randomise this again rather than consistently doing this
+			if (&gameState->systemLocations[destination] == shipment.from) {
+				destination++;
+				if (destination == gameState->systemLocations.length) {
+					destination = 0;
+				}
+			}
+
+			shipment.to = &gameState->systemLocations[destination];
+
+			//int weight = (((double)rand() / RAND_MAX) * (WEIGHT_MAX - WEIGHT_MIN)) + WEIGHT_MIN;
+			range = (WEIGHT_MAX - WEIGHT_MIN);
+			num = ((double)rand() / RAND_MAX);
+			int weight = (num) * (range);
+			if (weight < WEIGHT_MAX) {
+				weight++;
+			}
+			shipment.weight = weight;
+			gameState->availableShipments.push(shipment);
+		}
+	}
+};
 
 namespace SystemSelect {
 	// Forward declerations
 	void drawLocations(GameState *gameState, f32 delta);
+	void drawVisitPlanetButton(GameState *gameState);
 	void drawIndicator(GameState *gameState);
 	void drawUI(GameState *gameState);
 	f32 getDistanceFromStar(SystemLocation *location);
 	void highlightLocations(GameState *gameState);
 	void update(GameState *gameState, f32 delta);
 	void updateJourney(GameState *gameState, f32 delta);
+	void updateRefuel(GameState *gameState, f32 delta);
 
 	const f32 starRadius = 400.0f;
 	const Vec2<f32> starCenter = Vec3(-250.0f, 1080.0f * 0.5f);
@@ -26,6 +140,7 @@ namespace SystemSelect {
 	const f32 minMoonSpacing = minPlanetSpacing * 0.2f;
 	const FuelValue fuelBurnRate = 20;
 	const f32 dayRate = 0.01f;
+	const f32 VISIT_PLANET_BUTTON_Y = 180.0f;
 
 	void setup(GameState *gameState) {
 		gameState->textureLoadQueue.push(TextureAssetId::background);
@@ -42,6 +157,9 @@ namespace SystemSelect {
 		}
 
 		updateJourney(gameState, delta);
+		if (gameState->isRefuelling) {
+			updateRefuel(gameState, delta);
+		}
 		SystemCommon::drawStarField(gameState);
 		SystemCommon::drawCentralStar(gameState, starCenter, starRadius);
 		drawLocations(gameState, delta);
@@ -176,6 +294,110 @@ namespace SystemSelect {
 
 		gameState->uiElements.push(button);
 		gameState->uiElements.push(estimatedDaysText);
+	}
+
+	void drawRefuelButton(GameState *gameState) {
+		const bool enabled =
+			gameState->playerShip.fuel < gameState->playerShip.fuelTankCapacity &&
+			gameState->credits > gameState->dockedLocation->fuelPrice;
+		const f32 alpha = enabled ? 1.0f : 0.4f;
+
+		UIButtonData button = {};
+		button.label.text = L"Refuel";
+		button.label.font = L"consolas";
+		button.label.color = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
+		button.label.fontSize = 24.0f;
+		button.label.color = Rgba(1.0f, 1.0f, 1.0f, alpha);
+		button.color = Rgba(0.0f, 0.0f, 0.0f, alpha);
+		button.height = 70.0f;
+		button.width = 150.0f;
+		button.cornerRadius = 10.0f;
+		button.strokeColor = Rgba(0.62f, 0.62f, 0.62f, 1.0f);
+		button.strokeWidth = 5.0f;
+
+		const f32 buttonOffset = 20.0f;
+
+		button.position = Vec2(1920.0f - button.width - 10.0f, VISIT_PLANET_BUTTON_Y + button.height + buttonOffset);
+
+		// initialise to not refuelling
+		gameState->isRefuelling = false;
+
+		if (enabled) {
+			button.handleInput(gameState->input);
+			if (button.checkInput(UIButtonInputState::over)) {
+				gameState->input.cursor = Cursor::pointer;
+				button.strokeColor = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
+
+				if (button.checkInput(UIButtonInputState::down)) {
+					const f32 scale = 0.9f;
+					button.label.fontSize *= scale;
+					button.position += Vec2(
+						button.width - button.width * scale,
+						button.height - button.height * scale
+					) * 0.5f;
+					button.width *= scale;
+					button.height *= scale;
+					button.strokeWidth *= scale;
+
+					gameState->isRefuelling = true;
+
+					////if (refuelTween.progress == 0.0f || refuelTween.progress == 100.0f) {
+					//if (gameState->tweens.hasCapacity()) {
+					//	Tween refuelTween = {};
+					//	refuelTween.duration = 1.0f;
+					//	refuelTween.type = TweenValueType::float32;
+					//	*(f32 *)refuelTween.from = gameState->playerShip.fuel;
+					//	*(f32 *)refuelTween.to = gameState->playerShip.fuel + fuelAddition;
+					//	refuelTween.value = &gameState->playerShip.fuel;
+					//	gameState->tweens.push(refuelTween);
+
+					//	gameState->credits -= gameState->dockedLocation->fuelPrice;
+					//}
+				}
+			}
+		}
+
+		gameState->uiElements.push(button);
+	}
+
+	void drawVisitPlanetButton(GameState *gameState) {
+		f32 alpha = 1.0f;
+
+		UIButtonData button = {};
+		button.label.text = L"VISIT";
+		button.label.font = L"consolas";
+		button.label.color = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
+		button.label.fontSize = 24.0f;
+		button.label.color = Rgba(1.0f, 1.0f, 1.0f, alpha);
+		button.color = Rgba(0.0f, 0.0f, 0.0f, alpha);
+		button.height = 70.0f;
+		button.width = 150.0f;
+		button.cornerRadius = 10.0f;
+		button.strokeColor = Rgba(0.62f, 0.62f, 0.62f, 1.0f);
+		button.strokeWidth = 5.0f;
+		button.position = Vec2(1920.0f - button.width - 10.0f, VISIT_PLANET_BUTTON_Y);
+
+		button.handleInput(gameState->input);
+		if (button.checkInput(UIButtonInputState::over)) {
+			gameState->input.cursor = Cursor::pointer;
+			button.strokeColor = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
+
+			if (button.checkInput(UIButtonInputState::down)) {
+				const f32 scale = 0.9f;
+				button.label.fontSize *= scale;
+				button.position += Vec2(
+					button.width - button.width * scale,
+					button.height - button.height * scale
+				) * 0.5f;
+				button.width *= scale;
+				button.height *= scale;
+				button.strokeWidth *= scale;
+
+				PackageMenu::setup(gameState);
+			}
+		}
+
+		gameState->uiElements.push(button);
 	}
 
 	void drawFuelGauge(GameState *gameState) {
@@ -371,6 +593,12 @@ namespace SystemSelect {
 		if (gameState->selectedLocation != nullptr) {
 			drawDepartButton(gameState);
 		}
+		if (gameState->journeyProgress == 0.0f) {
+			drawVisitPlanetButton(gameState);
+			if (gameState->dockedLocation->isRefuellingLocation) {
+				drawRefuelButton(gameState);
+			}
+		}
 	}
 
 	f32 getDistanceFromStar(SystemLocation *location) {
@@ -418,6 +646,22 @@ namespace SystemSelect {
 			gameState->dockedLocation = gameState->targetLocation;
 			gameState->targetLocation = nullptr;
 			gameState->journeyProgress = 0.0f;
+
+			// TODO: Maybe regenerate fuel prices?
+
+			populateAvailablePackages(gameState);
+		}
+	}
+
+	void updateRefuel(GameState *gameState, f32 delta) {
+		if (
+			gameState->playerShip.fuel < gameState->playerShip.fuelTankCapacity && 
+			gameState->credits > gameState->dockedLocation->fuelPrice
+		) {
+			FuelValue fuelAddition = 1.0f;
+			gameState->playerShip.fuel += fuelAddition * delta;
+
+			gameState->credits -= gameState->dockedLocation->fuelPrice * delta;
 		}
 	}
 };

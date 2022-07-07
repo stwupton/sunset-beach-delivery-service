@@ -65,6 +65,7 @@ struct UIRectangleData : UICommonData {
 	UIStrokeStyle strokeStyle = UIStrokeStyle::solid;
 	f32 strokeWidth;
 	Rgba strokeColor;
+	bool fillRectange;
 };
 
 struct UIButtonLabelData : UICommonData {
@@ -83,6 +84,7 @@ enum class UIButtonInputState : u8 {
 struct UIButtonData : UIRectangleData {
 	UIButtonLabelData label;
 	u8 inputState = (u8)UIButtonInputState::none;
+	bool enabled;
 
 	void handleInput(const Input &input) {
 		this->inputState = 0;

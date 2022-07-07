@@ -26,6 +26,13 @@ typedef LoadQueue<SoundAssetId, 8> SoundLoadQueue;
 
 typedef void (*UpdateSystem)(struct GameState *gameState, f32 delta);
 
+const int CREDIT_MAX = 10000;
+const int CREDIT_MIN = 100;
+const int WEIGHT_MAX = 500;
+const int WEIGHT_MIN = 1;
+const int AVAILABLE_SHIPMENT_MAX = 4;
+const int SHIPMENT_MAX = 10;
+
 struct GameState {
 	// Combat data
 	Array<AimlessProjectile, 100> aimlessProjectiles;
@@ -47,7 +54,11 @@ struct GameState {
 
 	// Delivery data
 	u32 deliveriesMade = 0;
-	Array<Shipment, 10> shipments;
+	Array<Shipment, SHIPMENT_MAX> shipments;
+	Array<Shipment, AVAILABLE_SHIPMENT_MAX> availableShipments;
+
+	// Refuelling data
+	bool isRefuelling = false;
 
 	// Platform/game common data
 	CreditValue credits = 1000;
@@ -64,6 +75,6 @@ struct GameState {
 
 #ifdef DEBUG
 	EditorState editorState;
-	u8 gameSpeed = 1;
+	u8 gameSpeed = 3;
 #endif
 };
