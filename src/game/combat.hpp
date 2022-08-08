@@ -41,7 +41,7 @@ namespace Combat {
 		{
 			Ship ship = {};
 			ship.assetId = TextureAssetId::ship;
-			ship.position = Vec3(0.0f, -300.0f, 0.4f);
+			ship.position = Vec3(0.0f, -300.0f);
 			ship.scale = Vec2(0.5f, 0.5f);
 			ship.angle = -95.0f;
 			
@@ -66,7 +66,7 @@ namespace Combat {
 		{
 			Ship enemyShip = {};
 			enemyShip.assetId = TextureAssetId::enemyShip;
-			enemyShip.position = Vec3(0.0f, 300.0f, 0.4f);
+			enemyShip.position = Vec3(0.0f, 300.0f);
 			enemyShip.scale = Vec2(0.2f, 0.2f);
 			enemyShip.angle = -180.0f;
 
@@ -88,14 +88,6 @@ namespace Combat {
 
 	void update(GameState *gameState, f32 delta) {
 		SpriteBuffer &sprites = gameState->sprites;
-
-		// NOTE(steven): Background needs to be added before any sprites that have
-		// transparent textures are added.
-		Sprite background = {};
-		background.assetId = TextureAssetId::background;
-		background.position = Vec3<f32>(0.0f, 0.0f, 0.9f);
-		background.scale = Vec2<f32>(1.3f, 1.3f);
-		sprites.push(background);
 
 		addSprites(&sprites, gameState->allyShips);
 		addSprites(&sprites, gameState->enemyShips);

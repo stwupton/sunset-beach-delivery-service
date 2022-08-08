@@ -11,8 +11,6 @@
 #include "types/core.hpp"
 #include "types/vector.hpp"
 
-
-
 namespace SystemSelect {
 	void populateAvailablePackages(GameState *gameState) {
 		#pragma region Clear out any delivered packages
@@ -47,8 +45,7 @@ namespace SystemSelect {
 
 		int r;
 		// Give the salt a bit of a shake (always seems to get a low number on first go after calling srand)
-		for (int i = 0; i < 3; i++)
-		{
+		for (int i = 0; i < 3; i++) {
 			r = rand();
 		}
 
@@ -89,8 +86,7 @@ namespace SystemSelect {
 			/*if (destination < (maxLocations - 1)) {
 				destination++;
 			}*/
-			if (destination > maxLocations - 1)
-			{
+			if (destination > maxLocations - 1) {
 				destination = 0;
 			}
 

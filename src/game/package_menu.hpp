@@ -7,7 +7,6 @@
 #include "types/core.hpp"
 
 namespace PackageMenu {
-
 	// Forward declerations
 	void setup(GameState *gameState);
 	void update(GameState *gameState, f32 delta);
@@ -21,6 +20,7 @@ namespace PackageMenu {
 		pickup,
 		dropoff
 	};
+
 	PackageMenuState mode = PackageMenuState::main;
 	bool hasAvailablePackages = false;
 
@@ -64,7 +64,6 @@ namespace PackageMenu {
 	}
 
 	void drawPackageDropoffs(GameState *gameState) {
-
 		const f32 packageWidth = 200.0f;
 		const f32 packagePadding = 80.0f;
 
@@ -202,7 +201,6 @@ namespace PackageMenu {
 	}		
 
 	void drawPackages(GameState *gameState) {
-
 		const f32 packageWidth = 200.0f;
 		const f32 packagePadding = 80.0f;
 		int numOfPackages = gameState->availableShipments.length;
@@ -218,7 +216,6 @@ namespace PackageMenu {
 		f32 previousXPosDiff = 0.0f;
 
 		for (size_t i = 0; i < gameState->availableShipments.length; i++) {
-
 			f32 xPos = startXPos + previousXPosDiff;
 			f32 yPos = (screenHeight / 2.0f) - 20.0f;
 
@@ -273,11 +270,13 @@ namespace PackageMenu {
 			creditText.verticalAlignment = UITextAlignment::middle;
 			gameState->uiElements.push(creditText);
 
-			const bool enabled = gameState->availableShipments[i].available && gameState->shipments.length < SHIPMENT_MAX;
+			const bool selected = !gameState->availableShipments[i].available;
+			const bool atCapacity = gameState->shipments.length >= SHIPMENT_MAX;
+			const bool enabled = !selected && !atCapacity;
 			const f32 alpha = enabled ? 1.0f : 0.4f;
 
 			UIButtonData button = {};
-			button.label.text = gameState->shipments.length < SHIPMENT_MAX ? L"SELECT" : L"NO SPACE";
+			button.label.text = selected || !atCapacity ? L"SELECT" : L"NO SPACE";
 			button.label.font = L"consolas";
 			button.label.color = Rgba(0.0f, 1.0f, 0.0f, 1.0f);
 			button.label.fontSize = 24.0f;
@@ -321,7 +320,6 @@ namespace PackageMenu {
 	}
 
 	void drawExitButton(GameState *gameState) {
-
 		const f32 alpha = 1.0f;
 		const f32 bottomPadding = 20.0f;
 
@@ -366,7 +364,6 @@ namespace PackageMenu {
 	}
 
 	void drawReturnButton(GameState *gameState) {
-
 		const f32 alpha = 1.0f;
 		const f32 bottomPadding = 20.0f;
 
@@ -413,7 +410,7 @@ namespace PackageMenu {
 	void drawBackground(GameState *gameState) {
 		Sprite background = {};
 		background.assetId = TextureAssetId::marketPlace1;
-		background.position = Vec3<f32>(0.0f, 0.0f, 0.9f);
+		background.position = Vec3<f32>(0.0f, 0.0f);
 		background.scale = Vec2<f32>(1.3f, 1.3f);
 		gameState->sprites.push(background);
 	}

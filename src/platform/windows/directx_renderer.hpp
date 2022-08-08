@@ -367,7 +367,7 @@ public:
 
 	void finish() const {
 		// TODO(steven): SyncInterval results in different framerate on different monitors
-		HRESULT result = this->swapChain->Present(2, 0);
+		HRESULT result = this->swapChain->Present(1, 0);
 		ASSERT_HRESULT(result)
 	}
 
@@ -490,7 +490,10 @@ protected:
 		ASSERT_HRESULT(result)
 
 		const Vec3<f32> vertices[] = { 
-			{ -1.0f, -1.0f }, { -1.0f, 1.0f }, { 1.0f, -1.0f }, { 1.0f, 1.0f } 
+			{ -1.0f, -1.0f },
+			{ -1.0f, 1.0f }, 
+			{ 1.0f, -1.0f }, 
+			{ 1.0f, 1.0f } 
 		};
 		D3D11_BUFFER_DESC bufferDescription = {};
 		bufferDescription.Usage = D3D11_USAGE_DEFAULT;

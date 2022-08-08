@@ -198,7 +198,7 @@ protected:
 		ID3D10Blob *pixelShaderBlob;
 
 		HRESULT result = D3DCompileFromFile(
-			L"assets/shaders/shaders.hlsl", 
+			L"assets/shaders/sprite_shader.hlsl", 
 			nullptr, 
 			nullptr, 
 			"vertex", 
@@ -211,7 +211,7 @@ protected:
 		ASSERT_HRESULT(result)
 
 		result = D3DCompileFromFile(
-			L"assets/shaders/shaders.hlsl", 
+			L"assets/shaders/sprite_shader.hlsl", 
 			nullptr, 
 			nullptr, 
 			"pixel", 
