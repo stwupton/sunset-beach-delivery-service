@@ -2,6 +2,8 @@
 
 #include "types/core.hpp"
 
+#define GET_ASSET_PATH(_path) L"" ASSET_PATH _path
+
 enum class TextureAssetId : u8 {
 	ship,
 	enemyShip,
@@ -11,10 +13,10 @@ enum class TextureAssetId : u8 {
 };
 
 namespace _TextureAssetFileNames {
-	const wchar_t *ship = L"assets/img/ship.png";
-	const wchar_t *enemyShip = L"assets/img/enemy_ship.png";
-	const wchar_t *background = L"assets/img/starry_background.jpg";
-	const wchar_t *marketPlace1 = L"assets/img/marketPlace1.jpg";
+	const wchar_t *ship = GET_ASSET_PATH("img/ship.png");
+	const wchar_t *enemyShip = GET_ASSET_PATH("img/enemy_ship.png");
+	const wchar_t *background = GET_ASSET_PATH("img/starry_background.jpg");
+	const wchar_t *marketPlace1 = GET_ASSET_PATH("img/marketPlace1.jpg");
 };
 
 const wchar_t *textureNames[] = {
@@ -34,12 +36,12 @@ enum class SoundAssetId : u8 {
 };
 
 namespace _SoundAssetFileNames {
-	const wchar_t *left = L"assets/music/Left.wav";
-	const wchar_t *right = L"assets/music/Right.wav";
-	const wchar_t *stereo = L"assets/music/Stereo.wav";
-	const wchar_t *doomDeath = L"assets/music/sound1.wav";
-	const wchar_t *cha_ching = L"assets/music/cha_ching.wav";
-	const wchar_t *wahoo = L"assets/music/wahoo.wav";
+	const wchar_t *left = GET_ASSET_PATH("music/Left.wav");
+	const wchar_t *right = GET_ASSET_PATH("music/Right.wav");
+	const wchar_t *stereo = GET_ASSET_PATH("music/Stereo.wav");
+	const wchar_t *doomDeath = GET_ASSET_PATH("music/sound1.wav");
+	const wchar_t *cha_ching = GET_ASSET_PATH("music/cha_ching.wav");
+	const wchar_t *wahoo = GET_ASSET_PATH("music/wahoo.wav");
 };
 
 const wchar_t *soundNames[] = {
@@ -58,7 +60,7 @@ enum class MusicAssetId : u8 {
 
 namespace _MusicAssetFileNames {
 	// Source: https://www.free-stock-music.com/arthur-vyncke-approaching-mars.html
-	const wchar_t *mars = L"assets/music/mars.wav";
+	const wchar_t *mars = GET_ASSET_PATH("music/mars.wav");
 };
 
 const wchar_t *musicNames[] = {

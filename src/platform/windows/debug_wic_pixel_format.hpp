@@ -4,7 +4,7 @@
 #include <wincodec.h>
 #include <Windows.h>
 
-#include "platform/windows/utils.cpp"
+#include "platform/windows/utils.hpp"
 
 void debugWicPixelFormat(WICPixelFormatGUID wicPixelFormat) {
 	if (wicPixelFormat == GUID_WICPixelFormatUndefined) LOG(L"GUID_WICPixelFormatUndefined")

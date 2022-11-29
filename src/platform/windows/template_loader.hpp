@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/asset_definitions.hpp"
 #include "common/game_state.hpp"
 #include "platform/windows/file_loader.hpp"
 
@@ -10,7 +11,7 @@ void loadTemplates(GameState *gameState) {
 
 	wchar_t filePathBuffer[100];
 	for (TemplateData<Ship> &shipTemplate : shipTemplates) {
-		swprintf_s(filePathBuffer, L"assets/data/templates/%s", shipTemplate.fileName.data);
+		swprintf_s(filePathBuffer, GET_ASSET_PATH("data/templates/%s"), shipTemplate.fileName.data);
 		load(filePathBuffer, &shipTemplate.data, sizeof(Ship));
 	}
 }

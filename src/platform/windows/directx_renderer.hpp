@@ -12,6 +12,7 @@
 #include <combaseapi.h>
 #include <wincodec.h>
 
+#include "common/asset_definitions.hpp"
 #include "common/sprite.hpp"
 #include "common/window_config.hpp"
 #include "common/ui_element.hpp"
@@ -392,7 +393,7 @@ protected:
 		ID3D10Blob *blob;
 		ID3D10Blob *errorBlob;
 
-		const wchar_t *fileName = L"assets/shaders/sprite_shader.hlsl";
+		const wchar_t *fileName = GET_ASSET_PATH("shaders/sprite_shader.hlsl");
 		HRESULT result = D3DCompileFromFile(
 			fileName, 
 			nullptr, 
@@ -454,7 +455,7 @@ protected:
 		ID3D10Blob *blob;
 		ID3DBlob *errorBlob;
 
-		const wchar_t *fileName = L"assets/shaders/starfield_shader.hlsl";
+		const wchar_t *fileName = GET_ASSET_PATH("shaders/starfield_shader.hlsl");
 		HRESULT result = D3DCompileFromFile(
 			fileName, 
 			nullptr, 

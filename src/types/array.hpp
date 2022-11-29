@@ -4,6 +4,8 @@
 
 template<typename T, size_t Size>
 struct Array {
+	Array() {}
+
 	size_t length = 0;
 	T data[Size];
 

@@ -70,7 +70,7 @@ namespace ShipEditor {
 			SaveData &saveData = gameState->editorState.saveData;
 
 			saveData.pending = true;
-			swprintf_s(saveData.path.data, L"assets/data/templates/%s", state.shipTemplate->fileName.data);
+			swprintf_s(saveData.path.data, GET_ASSET_PATH("data/templates/%s"), state.shipTemplate->fileName.data);
 			// TODO(steven): Obviously dumping the binary data to file is not an ideal 
 			// solution but it works ok for now. Do proper serialisation.
 			memcpy(saveData.buffer, (void*)&state.shipTemplate->data, sizeof(Ship));

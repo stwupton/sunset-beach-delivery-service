@@ -34,6 +34,8 @@ const int AVAILABLE_SHIPMENT_MAX = 4;
 const int SHIPMENT_MAX = 10;
 
 struct GameState {
+	GameState() {}
+
 	// Combat data
 	Array<AimlessProjectile, 100> aimlessProjectiles;
 	Ship playerShip;

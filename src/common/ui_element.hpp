@@ -117,6 +117,8 @@ struct UIButtonData : UIRectangleData {
 };
 
 struct UIElement {
+	UIElement() {}
+
 	UIType type;
 	union {
 		UICommonData common;
