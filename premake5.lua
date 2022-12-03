@@ -3,7 +3,7 @@ workspace 'SBDS'
   platforms { 'Win64' }
   location 'build'
   includedirs { 'src' }
-  
+
 project 'SBDS'
   kind 'WindowedApp'
   language 'C++'
@@ -24,7 +24,10 @@ project 'SBDS'
   filter 'platforms:Win64'
     system 'Windows'
     architecture 'x86_64'
-    
+
+  filter { 'configurations:Debug', 'system:Windows', 'action:gmake2' }
+    linkoptions '-g'
+
   filter 'system:Windows'
     defines { 'WIN32', 'UNICODE' }
     links { 'user32', 'gdi32', 'd3d11', 'd3dcompiler', 'd2d1', 'dwrite', 'dxgi', 'Xaudio2', 'ole32' }

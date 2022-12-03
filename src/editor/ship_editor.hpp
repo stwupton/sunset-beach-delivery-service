@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef DEBUG
+
 #include "common/game_state.hpp"
 #include "editor/utils.hpp"
 
@@ -78,3 +80,5 @@ namespace ShipEditor {
 		}
 	}
 };
+
+#endif

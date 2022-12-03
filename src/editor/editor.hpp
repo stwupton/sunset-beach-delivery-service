@@ -1,5 +1,7 @@
 #pragma once 
 
+#ifdef DEBUG
+
 #include "common/game_state.hpp"
 #include "types/core.hpp"
 #include "editor/editor_menu.hpp"
@@ -48,3 +50,5 @@ namespace Editor {
 		}
 	}
 };
+
+#endif

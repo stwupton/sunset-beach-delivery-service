@@ -43,6 +43,7 @@ namespace Game {
 #endif
 	}
 
+#ifdef DEBUG
 	void debugUI(GameState *gameState, f32 delta) {
 		UIElementBuffer &uiElements = gameState->uiElements;
 
@@ -76,6 +77,7 @@ namespace Game {
 		text.position.y += text.height;
 		uiElements.push(text);
 	}
+#endif
 
 	void populateSystemLocations(GameState *gameState) {
 		SystemLocation location = {};

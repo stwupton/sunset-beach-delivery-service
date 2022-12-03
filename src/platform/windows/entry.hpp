@@ -190,6 +190,7 @@ INT WINAPI wWinMain(
 		}
 
 		if (editorOpen) {
+#ifdef DEBUG
 			Editor::update(gameState);
 
 			SaveData &saveData = gameState->editorState.saveData;
@@ -197,6 +198,7 @@ INT WINAPI wWinMain(
 				save(saveData.path.data, saveData.buffer, saveData.size);
 				saveData.pending = false;
 			}
+#endif
 		} else {
 			PROFILE(L"Game Update", Game::update(gameState, timings.delta))
 		}

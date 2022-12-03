@@ -1,5 +1,7 @@
 #pragma once 
 
+#ifdef DEBUG
+
 #include "common/editor_state.hpp"
 #include "common/game_state.hpp"
 #include "editor/ship_editor.hpp"
@@ -16,3 +18,5 @@ namespace EditorMenu {
 		}
 	}
 };
+
+#endif
